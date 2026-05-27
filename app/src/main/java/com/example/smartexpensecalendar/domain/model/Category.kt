@@ -8,16 +8,15 @@ data class Category(
 object DefaultCategories {
     val list = listOf(
         "Food",
+        "Groceries",
+        "Online Shopping",
+        "Bill Payment",
         "Travel",
-        "Grocery",
         "Fuel",
-        "Shopping",
         "Entertainment",
         "Medical",
         "Utilities",
         "Rent",
-        "Subscription",
-        "Investment",
         "Miscellaneous"
     )
 }

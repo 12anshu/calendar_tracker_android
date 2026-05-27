@@ -17,7 +17,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smartexpensecalendar.domain.model.Expense
-import com.example.smartexpensecalendar.domain.model.ExpenseSource
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -60,12 +59,12 @@ fun CalendarView(
                 val date = yearMonth.atDay(day)
                 val dayExpenses = expenses.filter { it.date == date }
                 val totalAmount = dayExpenses.sumOf { it.amount }
-                val hasAutoSms = dayExpenses.any { it.source == ExpenseSource.SMS }
+                val categories = dayExpenses.map { it.category }.distinct()
 
                 CalendarDayCell(
                     day = day,
                     totalAmount = totalAmount,
-                    hasAutoSms = hasAutoSms,
+                    categories = categories,
                     onClick = { onDateClick(date) }
                 )
             }
@@ -77,7 +76,7 @@ fun CalendarView(
 fun CalendarDayCell(
     day: Int,
     totalAmount: Double,
-    hasAutoSms: Boolean,
+    categories: List<String>,
     onClick: () -> Unit
 ) {
     Column(
@@ -85,33 +84,42 @@ fun CalendarDayCell(
             .aspectRatio(1f)
             .padding(2.dp)
             .background(
-                if (totalAmount > 0) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                if (totalAmount > 0) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 else Color.Transparent,
                 shape = MaterialTheme.shapes.small
             )
             .clickable { onClick() },
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
             text = day.toString(),
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 2.dp)
         )
+        
         if (totalAmount > 0) {
             Text(
-                text = "₹${totalAmount.toInt()}",
+                text = "₹${"%.0f".format(totalAmount)}",
                 style = MaterialTheme.typography.labelSmall,
-                fontSize = 8.sp,
-                color = MaterialTheme.colorScheme.primary
+                fontSize = 7.sp,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1
             )
         }
-        if (hasAutoSms) {
-            Box(
-                modifier = Modifier
-                    .size(4.dp)
-                    .background(MaterialTheme.colorScheme.secondary, shape = MaterialTheme.shapes.extraSmall)
-            )
+        
+        Row(
+            modifier = Modifier.padding(bottom = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(1.dp)
+        ) {
+            categories.take(4).forEach { category ->
+                Box(
+                    modifier = Modifier
+                        .size(4.dp)
+                        .background(getCategoryColor(category), shape = MaterialTheme.shapes.extraSmall)
+                )
+            }
         }
     }
 }

@@ -19,6 +19,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.smartexpensecalendar.domain.model.DefaultCategories
 import com.example.smartexpensecalendar.domain.model.Expense
 import com.example.smartexpensecalendar.presentation.detail.ExpenseDetailViewModel
+import com.example.smartexpensecalendar.ui.components.getCategoryColor
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -67,9 +68,12 @@ fun ExpenseDetailBottomSheet(
                     viewModel.addExpense(amount, category, date)
                 })
 
-                Divider(modifier = Modifier.padding(vertical = 16.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
-                LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     items(expenses) { expense ->
                         ExpenseRow(
                             expense = expense,
@@ -136,28 +140,35 @@ fun ExpenseRow(expense: Expense, onDelete: () -> Unit, onEdit: (Double, String) 
         }
     } else {
         ListItem(
-            headlineContent = { Text(expense.category) },
+            headlineContent = { 
+                Text(
+                    text = expense.category,
+                    color = getCategoryColor(expense.category),
+                    fontWeight = FontWeight.Bold
+                )
+            },
             supportingContent = {
                 Text(
-                    text = "Source: ${expense.source}${if (expense.merchant != null) " (${expense.merchant})" else ""}",
+                    text = if (expense.merchant != null) expense.merchant else "Direct Payment",
                     style = MaterialTheme.typography.bodySmall
                 )
             },
             trailingContent = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "₹${expense.amount}",
+                        text = "₹${"%,.0f".format(expense.amount)}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     IconButton(onClick = { isEditing = true }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit")
+                        Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(20.dp))
                     }
                     IconButton(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
                     }
                 }
-            }
+            },
+            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
         )
     }
 }
