@@ -1,0 +1,38 @@
+# Android Studio / IntelliJ
+.idea/
+*.iml
+.gradle/
+build/
+captures/
+externalNativeBuild/
+.cxx/
+local.properties
+.DS_Store
+
+# Gradle
+.gradle
+gradle-app.setting
+!gradle-wrapper.jar
+.navigation/
+
+# Built variants
+*.apk
+*.aar
+*.ap_
+*.aab
+
+# Keystore files
+*.jks
+*.keystore
+*.pk8
+*.p12
+
+# Google Services
+google-services.json
+
+# Log files
+*.log
+
+# Temp files
+*.tmp
+*.bak
