@@ -32,25 +32,25 @@ fun CalendarView(
     val days = (1..daysInMonth).toList()
     val prevMonthPadding = (0 until firstDayOfMonth).toList()
 
-    Column(modifier = modifier.padding(8.dp)) {
+    Column(modifier = modifier.padding(4.dp)) {
         // Day names
-        Row(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
             listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat").forEach { day ->
                 Text(
                     text = day,
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
         LazyVerticalGrid(
             columns = GridCells.Fixed(7),
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxWidth(),
+            userScrollEnabled = false // Calendar itself shouldn't scroll
         ) {
             items(prevMonthPadding) {
                 Box(modifier = Modifier.aspectRatio(1f))
@@ -65,6 +65,7 @@ fun CalendarView(
                     day = day,
                     totalAmount = totalAmount,
                     categories = categories,
+                    isToday = date == LocalDate.now(),
                     onClick = { onDateClick(date) }
                 )
             }
@@ -77,15 +78,19 @@ fun CalendarDayCell(
     day: Int,
     totalAmount: Double,
     categories: List<String>,
+    isToday: Boolean,
     onClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
-            .aspectRatio(1f)
-            .padding(2.dp)
+            .aspectRatio(0.9f) // Slightly taller for more info space
+            .padding(1.dp)
             .background(
-                if (totalAmount > 0) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                else Color.Transparent,
+                when {
+                    isToday -> MaterialTheme.colorScheme.primaryContainer
+                    totalAmount > 0 -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    else -> Color.Transparent
+                },
                 shape = MaterialTheme.shapes.small
             )
             .clickable { onClick() },
@@ -94,29 +99,37 @@ fun CalendarDayCell(
     ) {
         Text(
             text = day.toString(),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 2.dp)
+            style = MaterialTheme.typography.titleMedium,
+            fontSize = 16.sp,
+            fontWeight = if (isToday) FontWeight.ExtraBold else FontWeight.SemiBold,
+            color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = 1.dp)
         )
         
         if (totalAmount > 0) {
             Text(
                 text = "₹${"%.0f".format(totalAmount)}",
                 style = MaterialTheme.typography.labelSmall,
-                fontSize = 7.sp,
-                color = MaterialTheme.colorScheme.primary,
-                maxLines = 1
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (totalAmount > 1000) Color.Red else MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
             )
+        } else {
+            Spacer(modifier = Modifier.height(10.dp))
         }
         
         Row(
-            modifier = Modifier.padding(bottom = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(1.dp)
+            modifier = Modifier.padding(bottom = 2.dp),
+            horizontalArrangement = Arrangement.Center
         ) {
-            categories.take(4).forEach { category ->
+            categories.take(3).forEach { category ->
                 Box(
                     modifier = Modifier
-                        .size(4.dp)
+                        .padding(horizontal = 0.5.dp)
+                        .size(5.dp)
                         .background(getCategoryColor(category), shape = MaterialTheme.shapes.extraSmall)
                 )
             }

@@ -78,11 +78,12 @@ fun ExpenseDetailBottomSheet(
                         ExpenseRow(
                             expense = expense,
                             onDelete = {
-                                viewModel.deleteExpense(expense)
                                 scope.launch {
+                                    viewModel.deleteExpense(expense)
                                     val result = snackbarHostState.showSnackbar(
                                         message = "Expense deleted",
-                                        actionLabel = "Undo"
+                                        actionLabel = "Undo",
+                                        duration = SnackbarDuration.Short
                                     )
                                     if (result == SnackbarResult.ActionPerformed) {
                                         viewModel.addExpense(expense.amount, expense.category, expense.date)

@@ -75,11 +75,6 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     init {
-        viewModelScope.launch {
-            dataStoreManager.selectedMonth.firstOrNull()?.let {
-                _selectedMonth.value = it
-            }
-        }
         observeSyncProgress()
         observeMonthSyncStatus()
     }
@@ -167,6 +162,11 @@ class HomeViewModel @Inject constructor(
 
     fun prevMonth() {
         _selectedMonth.value = _selectedMonth.value.minusMonths(1)
+        saveMonth()
+    }
+
+    fun setMonth(yearMonth: YearMonth) {
+        _selectedMonth.value = yearMonth
         saveMonth()
     }
 

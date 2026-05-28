@@ -2,19 +2,24 @@ package com.example.smartexpensecalendar.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.smartexpensecalendar.presentation.home.HomeUiEvent
 import com.example.smartexpensecalendar.presentation.home.HomeViewModel
@@ -34,7 +39,6 @@ fun HomeScreen(
     val selectedMonth by viewModel.selectedMonth.collectAsState()
     val expenses by viewModel.expenses.collectAsState()
     val syncSummary by viewModel.syncSummary.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     
@@ -43,6 +47,23 @@ fun HomeScreen(
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
     var showDetailSheet by remember { mutableStateOf(false) }
     var historicalSyncMonth by remember { mutableStateOf<YearMonth?>(null) }
+    var showMonthPicker by remember { mutableStateOf(false) }
+
+    // Sliding gesture state
+    var swipeOffset by remember { mutableFloatStateOf(0f) }
+    val draggableState = rememberDraggableState { delta ->
+        swipeOffset += delta
+    }
+
+    LaunchedEffect(swipeOffset) {
+        if (swipeOffset > 150f) {
+            viewModel.prevMonth()
+            swipeOffset = 0f
+        } else if (swipeOffset < -150f) {
+            viewModel.nextMonth()
+            swipeOffset = 0f
+        }
+    }
 
     var exportContent by remember { mutableStateOf("") }
     val createDocumentLauncher = rememberLauncherForActivityResult(
@@ -116,102 +137,135 @@ fun HomeScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            Column {
-                TopAppBar(
-                    title = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxWidth()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 24.dp, bottom = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Smart Expense Calendar",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontFamily = FontFamily.Serif,
+                    fontStyle = FontStyle.Italic,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 1.sp
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Box {
+                        TextButton(
+                            onClick = { showMonthPicker = true },
+                            contentPadding = PaddingValues(0.dp)
                         ) {
-                            IconButton(onClick = { viewModel.prevMonth() }) {
-                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Prev")
-                            }
                             Text(
                                 text = "${selectedMonth.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${selectedMonth.year}",
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 16.dp)
+                                color = MaterialTheme.colorScheme.onSurface
                             )
-                            IconButton(onClick = { viewModel.nextMonth() }) {
-                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next")
-                            }
-                            
-                            Spacer(modifier = Modifier.width(8.dp))
-                            
-                            IconButton(
-                                onClick = { viewModel.syncSelectedMonth() },
-                                enabled = !uiState.isSyncing
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = "Sync Current Month",
-                                    tint = if (uiState.isSyncing) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
+                        }
+                        
+                        DropdownMenu(
+                            expanded = showMonthPicker,
+                            onDismissRequest = { showMonthPicker = false }
+                        ) {
+                            val current = YearMonth.now()
+                            (-12..12).forEach { offset ->
+                                val month = current.plusMonths(offset.toLong())
+                                DropdownMenuItem(
+                                    text = { 
+                                        Text("${month.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${month.year}") 
+                                    },
+                                    onClick = {
+                                        viewModel.setMonth(month)
+                                        showMonthPicker = false
+                                    }
                                 )
                             }
                         }
                     }
-                )
-                /*
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { viewModel.setSearchQuery(it) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text("Search category or merchant") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    singleLine = true,
-                    shape = MaterialTheme.shapes.medium
-                )
-                */
+                    
+                    Button(
+                        onClick = { viewModel.syncSelectedMonth() },
+                        enabled = !uiState.isSyncing,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text("Sync", style = MaterialTheme.typography.labelLarge)
+                    }
+                }
             }
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
+                .draggable(
+                    state = draggableState,
+                    orientation = Orientation.Horizontal,
+                    onDragStopped = { swipeOffset = 0f }
+                )
         ) {
-            CalendarView(
-                yearMonth = selectedMonth,
-                expenses = expenses,
-                onDateClick = { date ->
-                    selectedDate = date
-                    showDetailSheet = true
-                },
-                modifier = Modifier.weight(1f)
-            )
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                CalendarView(
+                    yearMonth = selectedMonth,
+                    expenses = expenses,
+                    onDateClick = { date ->
+                        selectedDate = date
+                        showDetailSheet = true
+                    },
+                    modifier = Modifier.wrapContentHeight() // Allow it to only take needed space
+                )
 
-            if (uiState.isSyncing) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    LinearProgressIndicator(
-                        progress = { uiState.syncProgress },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Text(
-                        text = "Syncing SMS... (${uiState.totalRead} read, ${uiState.expensesFound} expenses found)",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
+                if (uiState.isSyncing) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        LinearProgressIndicator(
+                            progress = { uiState.syncProgress },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            text = "Syncing SMS... (${uiState.totalRead} read, ${uiState.expensesFound} expenses found)",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
                 }
+
+                HorizontalDivider()
+
+                MonthlySummary(
+                    expenses = expenses,
+                    syncSummary = syncSummary,
+                    onExportCSV = { viewModel.exportCSV() },
+                    onExportJSON = { viewModel.exportJSON() },
+                    onImportJSON = { viewModel.triggerImport() },
+                    modifier = Modifier.weight(1f) // Give it remaining space
+                )
             }
-
-            HorizontalDivider()
-
-            MonthlySummary(
-                expenses = expenses,
-                syncSummary = syncSummary,
-                onExportCSV = { viewModel.exportCSV() },
-                onExportJSON = { viewModel.exportJSON() },
-                onImportJSON = { viewModel.triggerImport() },
-                modifier = Modifier.height(250.dp)
-            )
         }
     }
 
