@@ -20,33 +20,30 @@ object SMSParser {
         "spent", "debited", "paid", "transaction", "successful", "order", "payment", "txn", "using card", "on card", "purchase"
     )
 
-    // Keywords to ignore
+    // Keywords to ignore (Strict)
     private val ignoreKeywords = listOf(
-        "otp", "verification", "code", "password", "login", "received", "credited", "is due", 
+        "otp", "verification", "code", "password", "login", "received", "credited", 
+        "total amount due", "minimum amount due", "ignore if paid", "is due", 
         "statement", "failed", "declined", "limit", "available balance", "avl limit",
-        "cheq", "repayment", "repaid", "will be auto debited", "autopay facility", "to deactivate"
+        "cheq", "repayment", "repaid", "will be auto debited", "autopay facility", 
+        "to deactivate", "balance is low", "low balance", "recharge of"
     )
 
     fun parse(body: String): ParsedSMS? {
         val lowercaseBody = body.lowercase()
 
-        // 1. Strict OTP and Security Check
-        if (lowercaseBody.contains("otp") || lowercaseBody.contains("verification code")) {
-            return null
-        }
-
-        // 2. Future Tense Check (Auto-debit alerts)
-        if (lowercaseBody.contains("will be") || lowercaseBody.contains("due on")) {
-            return null
-        }
-
-        // 3. Ignore check
+        // 1. Strict Filter for Non-Transaction Alerts
         if (ignoreKeywords.any { lowercaseBody.contains(it) }) {
-             // Exception: "spent" or "debited" can coexist with "limit" (balance info), but NOT with "cheq" or "repayment"
-             val hasFinancialKeyword = lowercaseBody.contains("spent") || lowercaseBody.contains("debited") || lowercaseBody.contains("txn")
-             val isBillPayment = lowercaseBody.contains("cheq") || lowercaseBody.contains("repayment") || lowercaseBody.contains("repaid")
-             
-             if (!hasFinancialKeyword || isBillPayment) return null
+            // Exceptions: "spent" or "debited" can coexist with "limit" (balance info), 
+            // but NOT with most ignore keywords
+            val hasStrongFinancial = lowercaseBody.contains("spent") || lowercaseBody.contains("debited")
+            val isHardIgnore = lowercaseBody.contains("total amount due") || 
+                              lowercaseBody.contains("minimum amount due") ||
+                              lowercaseBody.contains("will be") ||
+                              lowercaseBody.contains("otp") ||
+                              lowercaseBody.contains("recharge of")
+            
+            if (isHardIgnore || !hasStrongFinancial) return null
         }
         
         if (!financialKeywords.any { lowercaseBody.contains(it) }) return null
@@ -58,34 +55,48 @@ object SMSParser {
         val amountStr = amountMatcher.group(1)?.replace(",", "") ?: return null
         val amount = amountStr.toDoubleOrNull() ?: return null
 
-        // 3. Extract Merchant
-        val merchant = extractMerchant(body)
+        // 3. Extract Merchant with Fallback to Bank Source
+        var merchant = extractMerchant(body)
+        
+        // Handle NEFT / ACH / Bank-as-Merchant cases
+        if (merchant == null || merchant.contains("Bank", ignoreCase = true)) {
+            merchant = identifyBankSource(body)
+        }
 
         return ParsedSMS(amount, merchant, true)
     }
 
+    private fun identifyBankSource(body: String): String {
+        return when {
+            body.contains("HDFC", ignoreCase = true) -> "HDFC Bank"
+            body.contains("Axis", ignoreCase = true) -> "Axis Bank"
+            body.contains("ICICI", ignoreCase = true) -> "ICICI Bank"
+            body.contains("SBI", ignoreCase = true) -> "SBI Bank"
+            else -> "Bank Transaction"
+        }
+    }
+
     private fun extractMerchant(body: String): String? {
-        val lines = body.split("\n").map { it.trim() }.filter { it.isNotBlank() }
-        
-        // Pattern 1: Multi-line (Axis Bank style)
-        // Line 1: Spent INR ...
-        // Line 4: Merchant
-        if (lines.size >= 4 && lines[0].contains("Spent", ignoreCase = true) && lines[1].contains("Bank", ignoreCase = true)) {
-            val potentialMerchant = lines[3]
-            if (!potentialMerchant.contains("Limit", ignoreCase = true)) {
-                return cleanMerchant(potentialMerchant)
-            }
+        // Special check for NEFT/ACH
+        if (body.contains("NEFT", ignoreCase = true) || body.contains("ACH", ignoreCase = true)) {
+            val type = if (body.contains("NEFT", ignoreCase = true)) "NEFT" else "ACH"
+            return "${identifyBankSource(body)} ($type)"
+        }
+
+        // Handle Meal Card
+        if (body.contains("Meal Card", ignoreCase = true)) {
+            return "Meal Card Transaction"
         }
 
         val patterns = listOf(
+            "(?i)at ([a-zA-Z0-9 *._@]+) on",
+            "(?i)at ([a-zA-Z0-9 *._@]+)\\.",
             "(?i)spent on ([a-zA-Z0-9 *._@]+)",
             "(?i)paid to ([a-zA-Z0-9 *._@]+)",
-            "(?i)at ([a-zA-Z0-9 *._@]+)",
             "(?i)via ([a-zA-Z0-9 *._@]+)",
             "(?i)on ([a-zA-Z0-9 *._@]+)",
             "(?i)For ([a-zA-Z0-9 *._@]+)",
-            "(?i)to ([a-zA-Z0-9 *._@]+)",
-            "(?i)@UPI_([a-zA-Z0-9 *._@]+)"
+            "(?i)to ([a-zA-Z0-9 *._@]+)"
         )
 
         for (patternStr in patterns) {

@@ -37,13 +37,20 @@ class SMSCategorizer @Inject constructor(
         "bookmyshow" to "Entertainment",
         "pvr" to "Entertainment",
         "flat" to "Rent",
-        "rent" to "Rent"
+        "rent" to "Rent",
+        "neft" to "Transfer",
+        "ach" to "Transfer",
+        "meal card" to "Groceries"
     )
 
     suspend fun categorize(merchant: String?): String {
         if (merchant == null) return "Miscellaneous"
 
         val merchantLower = merchant.lowercase()
+
+        // 0. Special Hardcoded Rules
+        if (merchantLower.contains("neft") || merchantLower.contains("ach")) return "Transfer"
+        if (merchantLower.contains("meal card")) return "Groceries"
 
         // 1. Check user-defined mappings in DB
         val savedCategory = repository.getCategoryForMerchant(merchantLower)
