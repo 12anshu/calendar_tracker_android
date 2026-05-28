@@ -65,4 +65,25 @@ object NotificationHelper {
             // Permission not granted
         }
     }
+
+    fun getSyncForegroundInfo(context: Context, progressText: String): androidx.work.ForegroundInfo {
+        createNotificationChannel(context)
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle("Syncing SMS")
+            .setContentText(progressText)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+            .build()
+        
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            androidx.work.ForegroundInfo(
+                1, 
+                notification, 
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        } else {
+            androidx.work.ForegroundInfo(1, notification)
+        }
+    }
 }

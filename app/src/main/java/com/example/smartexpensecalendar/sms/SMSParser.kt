@@ -17,22 +17,36 @@ object SMSParser {
 
     // Keywords to detect financial messages
     private val financialKeywords = listOf(
-        "spent", "debited", "paid", "transaction", "successful", "order", "payment", "txn", "autopay"
+        "spent", "debited", "paid", "transaction", "successful", "order", "payment", "txn", "using card", "on card", "purchase"
     )
 
     // Keywords to ignore
     private val ignoreKeywords = listOf(
         "otp", "verification", "code", "password", "login", "received", "credited", "is due", 
-        "statement", "failed", "declined", "limit", "available balance", "avl limit"
+        "statement", "failed", "declined", "limit", "available balance", "avl limit",
+        "cheq", "repayment", "repaid", "will be auto debited", "autopay facility", "to deactivate"
     )
 
     fun parse(body: String): ParsedSMS? {
         val lowercaseBody = body.lowercase()
 
-        // 1. Basic check if it's financial and NOT an OTP/credit
-        if (ignoreKeywords.any { lowercaseBody.contains(it) && !it.startsWith("avl") }) {
-             // Exception: "spent" or "debited" can coexist with "limit"
-             if (!(lowercaseBody.contains("spent") || lowercaseBody.contains("debited") || lowercaseBody.contains("txn"))) return null
+        // 1. Strict OTP and Security Check
+        if (lowercaseBody.contains("otp") || lowercaseBody.contains("verification code")) {
+            return null
+        }
+
+        // 2. Future Tense Check (Auto-debit alerts)
+        if (lowercaseBody.contains("will be") || lowercaseBody.contains("due on")) {
+            return null
+        }
+
+        // 3. Ignore check
+        if (ignoreKeywords.any { lowercaseBody.contains(it) }) {
+             // Exception: "spent" or "debited" can coexist with "limit" (balance info), but NOT with "cheq" or "repayment"
+             val hasFinancialKeyword = lowercaseBody.contains("spent") || lowercaseBody.contains("debited") || lowercaseBody.contains("txn")
+             val isBillPayment = lowercaseBody.contains("cheq") || lowercaseBody.contains("repayment") || lowercaseBody.contains("repaid")
+             
+             if (!hasFinancialKeyword || isBillPayment) return null
         }
         
         if (!financialKeywords.any { lowercaseBody.contains(it) }) return null

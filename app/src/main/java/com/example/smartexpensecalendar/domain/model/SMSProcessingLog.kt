@@ -6,11 +6,14 @@ data class SMSProcessingLog(
     val body: String,
     val date: Long,
     val status: ProcessingStatus,
-    val failureReason: String? = null
+    val failureReason: String? = null,
+    val parsedAmount: Double? = null,
+    val parsedMerchant: String? = null
 )
 
 enum class ProcessingStatus {
     PROCESSED,
     SKIPPED,
-    FAILED
+    FAILED,
+    IGNORED
 }

@@ -14,6 +14,8 @@ fun ExpenseEntity.toDomain(): Expense {
         merchant = merchant,
         source = ExpenseSource.valueOf(source),
         originalSmsId = originalSmsId,
+        originalSmsBody = originalSmsBody,
+        syncDate = syncDate,
         createdAt = createdAt
     )
 }
@@ -27,6 +29,8 @@ fun Expense.toEntity(): ExpenseEntity {
         merchant = merchant,
         source = source.name,
         originalSmsId = originalSmsId,
+        originalSmsBody = originalSmsBody,
+        syncDate = syncDate,
         createdAt = createdAt
     )
 }

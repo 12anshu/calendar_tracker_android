@@ -16,6 +16,7 @@ class SmartExpenseApplication : Application(), Configuration.Provider {
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
+            .setMinimumLoggingLevel(android.util.Log.INFO)
             .build()
 
     override fun onCreate() {

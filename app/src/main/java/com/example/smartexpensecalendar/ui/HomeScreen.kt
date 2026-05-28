@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,9 +33,9 @@ fun HomeScreen(
 ) {
     val selectedMonth by viewModel.selectedMonth.collectAsState()
     val expenses by viewModel.expenses.collectAsState()
+    val syncSummary by viewModel.syncSummary.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
-    val processedCount by viewModel.processedSMSCount.collectAsState()
     val context = LocalContext.current
     
     val snackbarHostState = remember { SnackbarHostState() }
@@ -135,6 +136,19 @@ fun HomeScreen(
                             IconButton(onClick = { viewModel.nextMonth() }) {
                                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next")
                             }
+                            
+                            Spacer(modifier = Modifier.width(8.dp))
+                            
+                            IconButton(
+                                onClick = { viewModel.syncSelectedMonth() },
+                                enabled = !uiState.isSyncing
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Sync Current Month",
+                                    tint = if (uiState.isSyncing) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     }
                 )
@@ -181,7 +195,7 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                     Text(
-                        text = "Syncing SMS... ($processedCount found)",
+                        text = "Syncing SMS... (${uiState.totalRead} read, ${uiState.expensesFound} expenses found)",
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 4.dp)
                     )
@@ -192,6 +206,7 @@ fun HomeScreen(
 
             MonthlySummary(
                 expenses = expenses,
+                syncSummary = syncSummary,
                 onExportCSV = { viewModel.exportCSV() },
                 onExportJSON = { viewModel.exportJSON() },
                 onImportJSON = { viewModel.triggerImport() },

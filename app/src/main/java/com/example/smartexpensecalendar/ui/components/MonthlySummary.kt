@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,10 +15,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.smartexpensecalendar.domain.model.Expense
+import com.example.smartexpensecalendar.presentation.home.SyncSummary
 
 @Composable
 fun MonthlySummary(
     expenses: List<Expense>,
+    syncSummary: SyncSummary? = null,
     onExportCSV: () -> Unit = {},
     onExportJSON: () -> Unit = {},
     onImportJSON: () -> Unit = {},
@@ -50,6 +54,34 @@ fun MonthlySummary(
             
             Row {
                 var showExportMenu by remember { mutableStateOf(false) }
+                var showSyncInfo by remember { mutableStateOf(false) }
+
+                if (syncSummary != null) {
+                    IconButton(onClick = { showSyncInfo = true }) {
+                        Icon(Icons.Default.Info, contentDescription = "Sync Info", tint = MaterialTheme.colorScheme.secondary)
+                    }
+
+                    if (showSyncInfo) {
+                        AlertDialog(
+                            onDismissRequest = { showSyncInfo = false },
+                            title = { Text("Sync Summary") },
+                            text = {
+                                Column {
+                                    Text("Total SMS Scanned: ${syncSummary.totalSmsScanned}")
+                                    Text("Financial SMS Found: ${syncSummary.financialSmsFound}")
+                                    Text("Total Amount Detected: ₹${"%.2f".format(syncSummary.totalAmount)}")
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text("This helps verify if the app is missing or over-counting messages.", style = MaterialTheme.typography.bodySmall)
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { showSyncInfo = false }) {
+                                    Text("Close")
+                                }
+                            }
+                        )
+                    }
+                }
                 
                 Box {
                     IconButton(onClick = { showExportMenu = true }) {

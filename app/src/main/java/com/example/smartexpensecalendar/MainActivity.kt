@@ -9,9 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import com.example.smartexpensecalendar.sms.SMSSyncWorker
 import com.example.smartexpensecalendar.ui.HomeScreen
 import com.example.smartexpensecalendar.ui.theme.SmartExpenseCalendarTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -21,10 +18,8 @@ class MainActivity : ComponentActivity() {
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        if (permissions[Manifest.permission.READ_SMS] == true) {
-            scheduleSMSSync()
-        }
+    ) { _ ->
+        // Permissions handled
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,12 +44,5 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    private fun scheduleSMSSync() {
-        val syncRequest = OneTimeWorkRequestBuilder<SMSSyncWorker>()
-            .addTag("sms_sync")
-            .build()
-        WorkManager.getInstance(applicationContext).enqueue(syncRequest)
     }
 }

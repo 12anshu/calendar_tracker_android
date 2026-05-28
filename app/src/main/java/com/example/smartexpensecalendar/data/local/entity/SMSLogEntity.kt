@@ -10,5 +10,7 @@ data class SMSLogEntity(
     val body: String,
     val date: Long,
     val status: String,
-    val failureReason: String?
+    val failureReason: String?,
+    val parsedAmount: Double? = null,
+    val parsedMerchant: String? = null
 )

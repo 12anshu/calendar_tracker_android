@@ -22,7 +22,8 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "smart_expense.db"
-        ).build()
+        ).fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides

@@ -13,6 +13,7 @@ interface ExpenseRepository {
     suspend fun upsertExpense(expense: Expense)
     suspend fun deleteExpense(expense: Expense)
     suspend fun getExpenseByCategoryAndDate(category: String, date: LocalDate): Expense?
+    suspend fun isSmsIdProcessed(smsId: Long): Boolean
 
     // Merchant Mapping
     suspend fun getCategoryForMerchant(merchant: String): String?
@@ -23,4 +24,5 @@ interface ExpenseRepository {
     suspend fun logSMSProcessing(log: SMSProcessingLog)
     suspend fun isSMSSimilarProcessed(body: String): Boolean
     fun getProcessedSMSCount(): Flow<Int>
+    fun getSMSLogsForMonth(year: Int, month: Int): Flow<List<SMSProcessingLog>>
 }

@@ -43,6 +43,10 @@ class ExpenseRepositoryImpl @Inject constructor(
         return dao.getExpenseByCategoryAndDate(category, date.toString())?.toDomain()
     }
 
+    override suspend fun isSmsIdProcessed(smsId: Long): Boolean {
+        return dao.isSmsIdProcessed(smsId)
+    }
+
     override suspend fun getCategoryForMerchant(merchant: String): String? {
         return dao.getCategoryForMerchant(merchant)
     }
@@ -67,5 +71,13 @@ class ExpenseRepositoryImpl @Inject constructor(
 
     override fun getProcessedSMSCount(): Flow<Int> {
         return dao.getProcessedSMSCount()
+    }
+
+    override fun getSMSLogsForMonth(year: Int, month: Int): Flow<List<SMSProcessingLog>> {
+        val startOfMonth = java.time.YearMonth.of(year, month).atDay(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val endOfMonth = java.time.YearMonth.of(year, month).atEndOfMonth().atTime(23, 59, 59).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        return dao.getSMSLogsForRange(startOfMonth, endOfMonth).map { entities ->
+            entities.map { it.toDomain() }
+        }
     }
 }

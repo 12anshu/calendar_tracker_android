@@ -5,6 +5,8 @@ import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
 import com.example.smartexpensecalendar.data.local.DataStoreManager
 import com.example.smartexpensecalendar.domain.model.Expense
+import com.example.smartexpensecalendar.domain.model.ProcessingStatus
+import com.example.smartexpensecalendar.domain.model.SMSProcessingLog
 import com.example.smartexpensecalendar.domain.repository.ExpenseRepository
 import com.example.smartexpensecalendar.utils.ExportUtils
 import com.example.smartexpensecalendar.utils.ImportUtils
@@ -25,7 +27,10 @@ sealed class HomeUiEvent {
 
 data class HomeUiState(
     val isSyncing: Boolean = false,
+    val isCurrentMonthSynced: Boolean = true,
     val syncProgress: Float = 0f,
+    val totalRead: Int = 0,
+    val expensesFound: Int = 0,
     val lastSyncTime: Long? = null,
     val pendingSyncMonth: YearMonth? = null
 )
@@ -49,6 +54,21 @@ class HomeViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val syncSummary: StateFlow<SyncSummary?> = _selectedMonth.flatMapLatest { month ->
+        repository.getSMSLogsForMonth(month.year, month.monthValue).map { logs ->
+            if (logs.isEmpty()) return@map null
+            
+            val financial = logs.filter { it.status == ProcessingStatus.PROCESSED }
+            SyncSummary(
+                totalSmsScanned = logs.size,
+                financialSmsFound = financial.size,
+                totalAmount = financial.sumOf { it.parsedAmount ?: 0.0 },
+                logs = financial
+            )
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     private val skippedMonths = mutableSetOf<String>()
 
     val processedSMSCount: StateFlow<Int> = repository.getProcessedSMSCount()
@@ -61,37 +81,37 @@ class HomeViewModel @Inject constructor(
             }
         }
         observeSyncProgress()
-        observeHistoricalSync()
+        observeMonthSyncStatus()
     }
 
-    private fun observeHistoricalSync() {
-        dataStoreManager.syncedMonths.onEach { synced ->
-            val startMonth = YearMonth.of(2026, 1)
-            val currentMonth = YearMonth.now()
-            
-            var checkMonth = startMonth
-            while (!checkMonth.isAfter(currentMonth)) {
-                val monthStr = checkMonth.toString()
-                if (!synced.contains(monthStr) && !skippedMonths.contains(monthStr)) {
-                    _uiState.update { it.copy(pendingSyncMonth = checkMonth) }
-                    _uiEvent.send(HomeUiEvent.RequestHistoricalSync(checkMonth))
-                    break
-                }
-                checkMonth = checkMonth.plusMonths(1)
-            }
+    private fun observeMonthSyncStatus() {
+        combine(_selectedMonth, dataStoreManager.syncedMonths) { month, synced ->
+            synced.contains(month.toString())
+        }.onEach { isSynced ->
+            _uiState.update { it.copy(isCurrentMonthSynced = isSynced) }
         }.launchIn(viewModelScope)
+    }
+
+    fun syncSelectedMonth() {
+        confirmHistoricalSync(_selectedMonth.value)
     }
 
     fun confirmHistoricalSync(yearMonth: YearMonth) {
         viewModelScope.launch {
             val syncRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.smartexpensecalendar.sms.SMSSyncWorker>()
                 .addTag("sms_sync")
+                .setExpedited(androidx.work.OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .setInputData(androidx.work.workDataOf(
                     "sync_year" to yearMonth.year,
                     "sync_month" to yearMonth.monthValue
                 ))
                 .build()
-            workManager.enqueue(syncRequest)
+            
+            workManager.enqueueUniqueWork(
+                "monthly_sms_sync",
+                androidx.work.ExistingWorkPolicy.REPLACE,
+                syncRequest
+            )
             
             _uiState.update { it.copy(pendingSyncMonth = null) }
         }
@@ -108,9 +128,18 @@ class HomeViewModel @Inject constructor(
         workManager.getWorkInfosByTagLiveData("sms_sync").asFlow().onEach { workInfos ->
             val info = workInfos.firstOrNull()
             if (info != null) {
-                val isRunning = info.state == androidx.work.WorkInfo.State.RUNNING
+                val isRunning = info.state == androidx.work.WorkInfo.State.RUNNING || 
+                               info.state == androidx.work.WorkInfo.State.ENQUEUED
                 val progress = info.progress.getFloat("progress", 0f)
-                _uiState.update { it.copy(isSyncing = isRunning, syncProgress = progress) }
+                val totalRead = info.progress.getInt("total_read", 0)
+                val expensesFound = info.progress.getInt("expenses_found", 0)
+                
+                _uiState.update { it.copy(
+                    isSyncing = isRunning, 
+                    syncProgress = progress,
+                    totalRead = totalRead,
+                    expensesFound = expensesFound
+                ) }
             } else {
                 _uiState.update { it.copy(isSyncing = false) }
             }
@@ -185,3 +214,10 @@ class HomeViewModel @Inject constructor(
         }
     }
 }
+
+data class SyncSummary(
+    val totalSmsScanned: Int,
+    val financialSmsFound: Int,
+    val totalAmount: Double,
+    val logs: List<SMSProcessingLog>
+)

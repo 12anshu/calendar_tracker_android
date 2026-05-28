@@ -23,6 +23,9 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE category = :category AND date = :date LIMIT 1")
     suspend fun getExpenseByCategoryAndDate(category: String, date: String): ExpenseEntity?
 
+    @Query("SELECT EXISTS(SELECT 1 FROM expenses WHERE originalSmsId = :smsId LIMIT 1)")
+    suspend fun isSmsIdProcessed(smsId: Long): Boolean
+
     @Query("SELECT category FROM merchant_mappings WHERE merchantKeyword = :merchant LIMIT 1")
     suspend fun getCategoryForMerchant(merchant: String): String?
 
@@ -40,4 +43,7 @@ interface ExpenseDao {
 
     @Query("SELECT COUNT(*) FROM sms_logs")
     fun getProcessedSMSCount(): Flow<Int>
+
+    @Query("SELECT * FROM sms_logs WHERE date >= :startMillis AND date <= :endMillis")
+    fun getSMSLogsForRange(startMillis: Long, endMillis: Long): Flow<List<SMSLogEntity>>
 }

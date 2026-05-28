@@ -11,6 +11,8 @@ import com.example.smartexpensecalendar.domain.model.ExpenseSource
 import com.example.smartexpensecalendar.domain.model.ProcessingStatus
 import com.example.smartexpensecalendar.domain.model.SMSProcessingLog
 import com.example.smartexpensecalendar.domain.repository.ExpenseRepository
+import com.example.smartexpensecalendar.data.local.DataStoreManager
+import com.example.smartexpensecalendar.utils.NotificationHelper
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.time.Instant
@@ -22,12 +24,22 @@ class SMSSyncWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val repository: ExpenseRepository,
     private val categorizer: SMSCategorizer,
-    private val dataStoreManager: com.example.smartexpensecalendar.data.local.DataStoreManager
+    private val dataStoreManager: DataStoreManager
 ) : CoroutineWorker(context, params) {
+
+    override suspend fun getForegroundInfo(): androidx.work.ForegroundInfo {
+        return NotificationHelper.getSyncForegroundInfo(applicationContext, "Scanning SMS messages...")
+    }
 
     override suspend fun doWork(): Result {
         val syncYear = inputData.getInt("sync_year", -1)
         val syncMonth = inputData.getInt("sync_month", -1)
+        
+        try {
+            setForeground(getForegroundInfo())
+        } catch (e: Exception) {
+            // Foreground not supported or failed
+        }
 
         val selection = if (syncYear != -1 && syncMonth != -1) {
             val startOfMonth = java.time.YearMonth.of(syncYear, syncMonth).atDay(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -59,7 +71,19 @@ class SMSSyncWorker @AssistedInject constructor(
             while (it.moveToNext()) {
                 currentCount++
                 if (currentCount % 10 == 0 || currentCount == totalCount) {
-                    setProgress(workDataOf("progress" to (currentCount.toFloat() / totalCount)))
+                    val progress = currentCount.toFloat() / totalCount
+                    setProgress(workDataOf(
+                        "progress" to progress,
+                        "total_read" to currentCount,
+                        "expenses_found" to processedExpenses
+                    ))
+                    
+                    try {
+                        setForeground(NotificationHelper.getSyncForegroundInfo(
+                            applicationContext, 
+                            "Processed $currentCount/$totalCount messages..."
+                        ))
+                    } catch (e: Exception) {}
                 }
 
                 val body = it.getString(bodyIndex)
@@ -67,8 +91,16 @@ class SMSSyncWorker @AssistedInject constructor(
                 val date = it.getLong(dateIndex)
                 val id = it.getLong(idIndex)
 
-                // Skip if already processed
-                if (repository.isSMSSimilarProcessed(body)) continue
+                // Skip if already processed by ID
+                if (repository.isSmsIdProcessed(id)) {
+                    continue
+                }
+
+                // Additional check for body similarity (optional but helps with cross-device duplicates)
+                if (repository.isSMSSimilarProcessed(body)) {
+                    // Log it as ignored or skip
+                    continue
+                }
 
                 val parsed = SMSParser.parse(body)
                 if (parsed != null && parsed.isFinancial) {
@@ -78,24 +110,30 @@ class SMSSyncWorker @AssistedInject constructor(
                         .atZone(ZoneId.systemDefault())
                         .toLocalDate()
 
-                    val existing = repository.getExpenseByCategoryAndDate(category, localDate)
-                    if (existing != null) {
-                        repository.upsertExpense(existing.copy(amount = existing.amount + parsed.amount))
-                    } else {
-                        repository.upsertExpense(
-                            Expense(
-                                amount = parsed.amount,
-                                category = category,
-                                date = localDate,
-                                merchant = parsed.merchant,
-                                source = ExpenseSource.SMS,
-                                originalSmsId = id
-                            )
+                    // Each unique financial SMS is a separate record now
+                    repository.upsertExpense(
+                        Expense(
+                            amount = parsed.amount,
+                            category = category,
+                            date = localDate,
+                            merchant = parsed.merchant,
+                            source = ExpenseSource.SMS,
+                            originalSmsId = id,
+                            originalSmsBody = body,
+                            syncDate = System.currentTimeMillis()
                         )
-                    }
+                    )
 
                     repository.logSMSProcessing(
-                        SMSProcessingLog(id, address, body, date, ProcessingStatus.PROCESSED)
+                        SMSProcessingLog(
+                            id, address, body, date, ProcessingStatus.PROCESSED,
+                            parsedAmount = parsed.amount, parsedMerchant = parsed.merchant
+                        )
+                    )
+                } else {
+                    // Log as ignored to avoid re-parsing
+                    repository.logSMSProcessing(
+                        SMSProcessingLog(id, address, body, date, ProcessingStatus.IGNORED)
                     )
                 }
             }
