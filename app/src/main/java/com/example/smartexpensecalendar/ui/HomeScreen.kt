@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
@@ -338,18 +339,18 @@ fun FintechBottomNav(modifier: Modifier = Modifier) {
 
     Box(
         modifier = modifier
-            .padding(horizontal = 20.dp, vertical = 20.dp)
+            .padding(horizontal = 4.dp, vertical = 20.dp)
             .fillMaxWidth()
             .height(82.dp)
-            .clip(RoundedCornerShape(32.dp))
-            .background(
-                Color.White.copy(alpha = 0.05f)
-            )
-            .border(
-                1.dp,
-                Color.White.copy(alpha = 0.08f),
-                RoundedCornerShape(32.dp)
-            )
+//            .clip(RoundedCornerShape(12.dp))
+//            .background(
+//                Color.White.copy(alpha = 0.05f)
+//            )
+//            .border(
+//                1.dp,
+//                Color.White.copy(alpha = 0.08f),
+//                RoundedCornerShape(12.dp)
+//            )
     ) {
 
         Row(
@@ -357,11 +358,10 @@ fun FintechBottomNav(modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             FintechNavItem(Icons.Default.Home, "Home", true)
-            FintechNavItem(Icons.AutoMirrored.Filled.List, "Transactions", false)
-            FintechNavItem(Icons.Default.Info, "Analytics", false)
-            FintechNavItem(Icons.Default.Settings, "Budgets", false)
+            FintechNavItem(Icons.AutoMirrored.Filled.ReceiptLong, "Transactions", false)
+            FintechNavItem(Icons.Default.AutoGraph, "Insights", false)
+            FintechNavItem(Icons.Default.Assessment, "Report", false)
             FintechNavItem(Icons.Default.Person, "Profile", false)
         }
     }

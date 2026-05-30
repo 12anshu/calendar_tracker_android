@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.smartexpensecalendar.app-mergeDebugResources-63:/values-uk/values-uk.xml",
+            "outputFile": "com.example.smartexpensecalendar.app-mergeDebugResources-64:/values-uk/values-uk.xml",
             "map": [
                 {
                     "source": "C:\\Users\\ashutosh.kumar\\.gradle\\caches\\9.0.0\\transforms\\2ee46e0c68231007e1f1393c918dc071\\transformed\\jetified-ui-release\\res\\values-uk\\values-uk.xml",
