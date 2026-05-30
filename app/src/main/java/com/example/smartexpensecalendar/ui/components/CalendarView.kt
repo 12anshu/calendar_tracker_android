@@ -1,22 +1,34 @@
 package com.example.smartexpensecalendar.ui.components
 
+import android.icu.util.Calendar
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smartexpensecalendar.domain.model.Expense
+import com.example.smartexpensecalendar.ui.theme.*
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -25,6 +37,7 @@ fun CalendarView(
     yearMonth: YearMonth,
     expenses: List<Expense>,
     onDateClick: (LocalDate) -> Unit,
+    selectedDate: LocalDate? = null,
     modifier: Modifier = Modifier
 ) {
     val daysInMonth = yearMonth.lengthOfMonth()
@@ -32,17 +45,17 @@ fun CalendarView(
     val days = (1..daysInMonth).toList()
     val prevMonthPadding = (0 until firstDayOfMonth).toList()
 
-    Column(modifier = modifier.padding(4.dp)) {
+    Column(modifier = modifier.padding(horizontal = 4.dp, vertical = 0.dp)) {
         // Day names
-        Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+        Row(modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
             listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat").forEach { day ->
                 Text(
                     text = day,
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                    color = TextSecondary
                 )
             }
         }
@@ -50,7 +63,9 @@ fun CalendarView(
         LazyVerticalGrid(
             columns = GridCells.Fixed(7),
             modifier = Modifier.fillMaxWidth(),
-            userScrollEnabled = false // Calendar itself shouldn't scroll
+            userScrollEnabled = false,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             items(prevMonthPadding) {
                 Box(modifier = Modifier.aspectRatio(1f))
@@ -65,6 +80,7 @@ fun CalendarView(
                     day = day,
                     totalAmount = totalAmount,
                     categories = categories,
+                    isSelected = date == selectedDate,
                     isToday = date == LocalDate.now(),
                     onClick = { onDateClick(date) }
                 )
@@ -78,61 +94,151 @@ fun CalendarDayCell(
     day: Int,
     totalAmount: Double,
     categories: List<String>,
+    isSelected: Boolean,
     isToday: Boolean,
     onClick: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .aspectRatio(0.9f) // Slightly taller for more info space
-            .padding(1.dp)
-            .background(
-                when {
-                    isToday -> MaterialTheme.colorScheme.primaryContainer
-                    totalAmount > 0 -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    else -> Color.Transparent
-                },
-                shape = MaterialTheme.shapes.small
-            )
-            .clickable { onClick() },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = day.toString(),
-            style = MaterialTheme.typography.titleMedium,
-            fontSize = 16.sp,
-            fontWeight = if (isToday) FontWeight.ExtraBold else FontWeight.SemiBold,
-            color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(top = 1.dp)
-        )
-        
-        if (totalAmount > 0) {
-            Text(
-                text = "₹${"%.0f".format(totalAmount)}",
-                style = MaterialTheme.typography.labelSmall,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (totalAmount > 1000) Color.Red else MaterialTheme.colorScheme.primary,
-                maxLines = 1,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        } else {
-            Spacer(modifier = Modifier.height(10.dp))
-        }
-        
-        Row(
-            modifier = Modifier.padding(bottom = 2.dp),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            categories.take(3).forEach { category ->
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 0.5.dp)
-                        .size(5.dp)
-                        .background(getCategoryColor(category), shape = MaterialTheme.shapes.extraSmall)
-                )
+    val heatmapColor = when {
+        totalAmount > 5001 -> HeatmapHigh.copy(alpha = 0.1f)
+        totalAmount > 1001 -> HeatmapMedium.copy(alpha = 0.1f)
+        totalAmount > 0 -> HeatmapLow.copy(alpha = 0.1f)
+        else -> Color.Transparent
+    }
+    val calendarTextColor = when {
+        totalAmount > 5001 -> CalendarTextHigh
+        totalAmount > 1001 -> CalendarTextMedium
+        totalAmount > 0 -> CalendarTextSmall
+        else -> Color.Transparent
+    }
+
+    val cellModifier = Modifier
+        .aspectRatio(1f)
+        .clip(RoundedCornerShape(8.dp))
+        .then(
+            when {
+
+                isSelected && isToday -> {
+                    Modifier
+                        .border(
+                            2.dp,
+                            CyanGlow,
+                            RoundedCornerShape(8.dp)
+                        )
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    CyanGlow.copy(alpha = 0.28f),
+                                    CyanGlow.copy(alpha = 0.10f)
+                                )
+                            )
+                        )
+                }
+
+                isSelected -> {
+                    Modifier
+                        .border(
+                            2.dp,
+                            CyanGlow,
+                            RoundedCornerShape(8.dp)
+                        )
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    CyanGlow.copy(alpha = 0.22f),
+                                    CyanGlow.copy(alpha = 0.08f)
+                                )
+                            )
+                        )
+                }
+
+                isToday -> {
+                    Modifier
+                        .border(
+                            1.5.dp,
+                            PrimaryAccent.copy(alpha = 0.7f),
+                            RoundedCornerShape(8.dp)
+                        )
+                        .background(
+                            PrimaryAccent.copy(alpha = 0.06f)
+                        )
+                }
+
+                else -> {
+                    Modifier
+                        .background(SurfaceGlass)
+                        .border(
+                            1.dp,
+                            SurfaceGlassBright,
+                            RoundedCornerShape(8.dp)
+                        )
+                }
             }
+        )
+        .background(heatmapColor)
+        .clickable { onClick() }
+
+    Box(modifier = cellModifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 4.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = day.toString(),
+                style = MaterialTheme.typography.labelLarge,
+                fontSize = 17.sp,
+                letterSpacing = (-0.3).sp,
+                fontWeight = if (isToday || isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isToday) PrimaryAccent else TextPrimary
+            )
+
+            if (totalAmount > 0) {
+                Text(
+                    text = "₹${"%.0f".format(totalAmount)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = calendarTextColor,
+                    maxLines = 1
+                )
+            } else {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+//            Row(
+//                modifier = Modifier.padding(bottom = 1.dp),
+//                horizontalArrangement = Arrangement.spacedBy(2.dp)
+//            ) {
+//                categories.take(3).forEach { category ->
+//                    Box(
+//                        modifier = Modifier
+//                            .size(5.dp)
+//                            .background(getCategoryColor(category), shape = CircleShape)
+//                    )
+//                }
+//            }
         }
+
+//        if (isSelected) {
+//            Surface(
+////                color = CyanGlow,
+//                shape = CircleShape,
+//                modifier = Modifier
+//                    .align(Alignment.TopEnd)
+////                    .offset(x = 2.dp, y = (2).dp)
+//                    .size(18.dp)
+//                    .shadow(4.dp, CircleShape)
+////                    .padding(horizontal = 4.dp, vertical = 8.dp)
+//            ) {
+//                Icon(
+//                    imageVector = Icons.Default.Add,
+//                    contentDescription = null,
+//                    tint = BackgroundStart,
+//                    modifier = Modifier.padding(0.dp)
+//                )
+//            }
+//        }
     }
 }

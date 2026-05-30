@@ -19,7 +19,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.smartexpensecalendar.domain.model.DefaultCategories
 import com.example.smartexpensecalendar.domain.model.Expense
 import com.example.smartexpensecalendar.presentation.detail.ExpenseDetailViewModel
-import com.example.smartexpensecalendar.ui.components.getCategoryColor
+import com.example.smartexpensecalendar.ui.theme.getCategoryColor
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 

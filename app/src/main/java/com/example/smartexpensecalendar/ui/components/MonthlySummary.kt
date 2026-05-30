@@ -1,21 +1,28 @@
 package com.example.smartexpensecalendar.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.smartexpensecalendar.domain.model.Expense
 import com.example.smartexpensecalendar.presentation.home.SyncSummary
+import com.example.smartexpensecalendar.ui.theme.*
+import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
 
 @Composable
 fun MonthlySummary(
@@ -27,158 +34,265 @@ fun MonthlySummary(
     modifier: Modifier = Modifier
 ) {
     val totalMonth = expenses.sumOf { it.amount }
-    val categoryBreakdown = expenses.groupBy { it.category }
-        .mapValues { it.value.sumOf { e -> e.amount } }
-        .toList()
-        .sortedByDescending { it.second }
+    val monthlyBudget by remember {
+        mutableDoubleStateOf(50000.0)
+    }
 
-    Column(modifier = modifier.padding(16.dp)) {
+    Column(
+        modifier = modifier
+            .padding(horizontal = 4.dp)
+            .padding(top = 16.dp)
+    ) {
+        AnalyticsCard(
+            totalAmount = totalMonth,
+            budget = monthlyBudget,
+            onCardClick = {}
+        )
+    }
+}
+
+@Composable
+fun AnalyticsCard(
+    totalAmount: Double,
+    budget: Double,
+    onCardClick: () -> Unit
+) {
+    val budgetUsedPercentage = if (budget > 0) ((totalAmount / budget) * 100).coerceAtMost(100.0) else 0.0
+    val remaining = budget - totalAmount
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(SurfaceGlass)
+            .border(
+                width = 1.dp,
+                color = SurfaceGlassBright,
+                shape = RoundedCornerShape(16.dp)
+            )
+            .clickable { onCardClick() }
+            .padding(16.dp)
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column {
+            // LEFT: Monthly Spending
+            Column(modifier = Modifier.weight(1.3f)) {
                 Text(
                     text = "Monthly Spending",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextSecondary,
                     fontWeight = FontWeight.Bold
                 )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
                 Text(
-                    text = "₹${"%.2f".format(totalMonth)}",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.ExtraBold
+                    text = "₹${formatIndianCurrency(totalAmount)}",
+                    color = TextPrimary,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-1.sp)
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "▲ 12.5%",
+                        color = ColorGroceries,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    Text(
+                        text = " vs Apr 2026",
+                        color = TextSecondary,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+            }
+
+            // CENTER: Donut
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                BudgetDonut(
+                    progress = budgetUsedPercentage.toFloat(),
+                    modifier = Modifier.size(90.dp)
                 )
             }
-            
-            Row {
-                var showExportMenu by remember { mutableStateOf(false) }
-                var showSyncInfo by remember { mutableStateOf(false) }
 
-                if (syncSummary != null) {
-                    IconButton(onClick = { showSyncInfo = true }) {
-                        Icon(Icons.Default.Info, contentDescription = "Sync Info", tint = MaterialTheme.colorScheme.secondary)
-                    }
-
-                    if (showSyncInfo) {
-                        AlertDialog(
-                            onDismissRequest = { showSyncInfo = false },
-                            title = { Text("Sync Summary") },
-                            text = {
-                                Column {
-                                    Text("Total SMS Scanned: ${syncSummary.totalSmsScanned}")
-                                    Text("Financial SMS Found: ${syncSummary.financialSmsFound}")
-                                    Text("Total Amount Detected: ₹${"%.2f".format(syncSummary.totalAmount)}")
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text("This helps verify if the app is missing or over-counting messages.", style = MaterialTheme.typography.bodySmall)
-                                }
-                            },
-                            confirmButton = {
-                                TextButton(onClick = { showSyncInfo = false }) {
-                                    Text("Close")
-                                }
-                            }
-                        )
-                    }
-                }
+            // RIGHT: Budget & Remaining
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.End
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = "Open Analytics",
+                    tint = TextSecondary,
+                    modifier = Modifier.size(22.dp)
+                )
                 
-                Box {
-                    IconButton(onClick = { showExportMenu = true }) {
-                        Text("Export", style = MaterialTheme.typography.labelSmall)
-                    }
-                    DropdownMenu(expanded = showExportMenu, onDismissRequest = { showExportMenu = false }) {
-                        DropdownMenuItem(text = { Text("Export CSV") }, onClick = { onExportCSV(); showExportMenu = false })
-                        DropdownMenuItem(text = { Text("Export JSON") }, onClick = { onExportJSON(); showExportMenu = false })
-                    }
-                }
-            }
-        }
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                Text(
+                    text = "Budget",
+                    color = TextSecondary,
+                    style = MaterialTheme.typography.labelSmall
+                )
+                Text(
+                    text = "₹${formatIndianCurrency(budget)}",
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyMedium
+                )
 
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = "Categories",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.secondary,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+                Spacer(modifier = Modifier.height(12.dp))
 
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(bottom = 16.dp)
-        ) {
-            items(categoryBreakdown) { (category, amount) ->
-                CategoryCard(category, amount, totalMonth)
+                Text(
+                    text = "Remaining",
+                    color = TextSecondary,
+                    style = MaterialTheme.typography.labelSmall
+                )
+                Text(
+                    text = "₹${formatIndianCurrency(kotlin.math.abs(remaining))}",
+                    color = if (remaining >= 0) ColorGroceries else ColorTransport,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
         }
     }
 }
 
 @Composable
-fun CategoryCard(category: String, amount: Double, total: Double) {
-    val percentage = if (total > 0) (amount / total).toFloat() else 0f
-    
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-        shape = MaterialTheme.shapes.medium,
-        modifier = Modifier.fillMaxWidth()
+fun BudgetDonut(
+    progress: Float,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        CircularProgressIndicator(
+            progress = { 1f },
+            modifier = Modifier.fillMaxSize(),
+            color = SurfaceGlassBright,
+            strokeWidth = 7.dp,
+            trackColor = ProgressIndicatorDefaults.circularTrackColor,
+            strokeCap = ProgressIndicatorDefaults.CircularDeterminateStrokeCap,
+        )
+
+        CircularProgressIndicator(
+            progress = { progress / 100f },
+            modifier = Modifier.fillMaxSize(),
+            color = ProgressColor,
+            strokeWidth = 7.dp,
+            trackColor = ProgressIndicatorDefaults.circularTrackColor,
+            strokeCap = StrokeCap.Round,
+        )
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "${progress.toInt()}%",
+                color = TextPrimary,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+            Text(
+                text = "budget",
+                color = TextSecondary,
+                fontSize = 10.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun PremiumCategoryCard(category: String, amount: Double, total: Double) {
+    val percentage = if (total > 0) (amount / total).toFloat() else 0f
+    val categoryColor = getCategoryColor(category)
+    
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(6.dp))
+            .background(SurfaceGlass)
+            .border(
+                1.dp,
+                SurfaceGlassBright,
+                RoundedCornerShape(6.dp)
+            )
+            .padding(4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    )
+    {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(categoryColor.copy(alpha = 0.1f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(modifier = Modifier.size(8.dp).background(categoryColor, CircleShape))
+        }
+
+        Spacer(modifier = Modifier.width(0.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
                     text = category,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Normal,
+                    color = TextSecondary
                 )
                 Text(
                     text = "₹${"%,.0f".format(amount)}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Normal,
+                    color = TextSecondary
                 )
             }
             
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(0.dp))
             
-            LinearProgressIndicator(
-                progress = { percentage },
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(6.dp),
-                color = getCategoryColor(category),
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-            )
+                    .height(4.dp)
+                    .background(SurfaceGlass, CircleShape)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(percentage)
+                        .fillMaxHeight()
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    categoryColor.copy(alpha = 0.5f),
+                                    categoryColor
+                                )
+                            ),
+                            CircleShape
+                        )
+                )
+            }
             
             Text(
-                text = "${(percentage * 100).toInt()}% of total",
+                text = "${(percentage * 100).toInt()}% of total spend",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = TextSecondary,
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
-    }
-}
-
-@Composable
-fun getCategoryColor(category: String): Color {
-    return when (category.lowercase()) {
-        "food" -> Color(0xFFFF9800)
-        "groceries" -> Color(0xFF4CAF50)
-        "shopping", "online shopping" -> Color(0xFF2196F3)
-        "travel" -> Color(0xFF00BCD4)
-        "bill payment" -> Color(0xFFE91E63)
-        "utilities" -> Color(0xFF9C27B0)
-        "rent" -> Color(0xFF795548)
-        "entertainment" -> Color(0xFF673AB7)
-        "medical" -> Color(0xFFF44336)
-        "fuel" -> Color(0xFF607D8B)
-        else -> MaterialTheme.colorScheme.primary
     }
 }

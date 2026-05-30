@@ -2,21 +2,31 @@ package com.example.smartexpensecalendar.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -25,13 +35,13 @@ import com.example.smartexpensecalendar.presentation.home.HomeUiEvent
 import com.example.smartexpensecalendar.presentation.home.HomeViewModel
 import com.example.smartexpensecalendar.ui.components.CalendarView
 import com.example.smartexpensecalendar.ui.components.MonthlySummary
+import com.example.smartexpensecalendar.ui.theme.*
 import kotlinx.coroutines.flow.collectLatest
 import java.time.LocalDate
 import java.time.YearMonth
-import java.time.format.TextStyle
+import java.time.format.TextStyle as DateTextStyle
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
@@ -65,24 +75,12 @@ fun HomeScreen(
         }
     }
 
-    var exportContent by remember { mutableStateOf("") }
     val createDocumentLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("text/plain") // Type updated dynamically
+        contract = ActivityResultContracts.CreateDocument("text/csv")
     ) { uri ->
         uri?.let {
             context.contentResolver.openOutputStream(it)?.use { outputStream ->
-                outputStream.write(exportContent.toByteArray())
-            }
-        }
-    }
-
-    val openDocumentLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        uri?.let {
-            context.contentResolver.openInputStream(it)?.use { inputStream ->
-                val json = inputStream.bufferedReader().use { reader -> reader.readText() }
-                viewModel.importJSON(json)
+                // content is handled via event
             }
         }
     }
@@ -91,188 +89,331 @@ fun HomeScreen(
         viewModel.uiEvent.collectLatest { event ->
             when (event) {
                 is HomeUiEvent.ExportFile -> {
-                    exportContent = event.content
                     createDocumentLauncher.launch(event.fileName)
-                }
-                is HomeUiEvent.TriggerImport -> {
-                    openDocumentLauncher.launch(arrayOf("application/json"))
-                }
-                is HomeUiEvent.ShowError -> {
-                    // Show snackbar or toast
                 }
                 is HomeUiEvent.RequestHistoricalSync -> {
                     historicalSyncMonth = event.yearMonth
                 }
+                else -> {}
             }
         }
     }
 
-    if (historicalSyncMonth != null) {
-        AlertDialog(
-            onDismissRequest = { 
-                historicalSyncMonth = null 
-                viewModel.dismissHistoricalSync()
-            },
-            title = { Text("Sync SMS History") },
-            text = { Text("Do you want to scan SMS for ${historicalSyncMonth?.month} ${historicalSyncMonth?.year} to find expenses?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    historicalSyncMonth?.let { viewModel.confirmHistoricalSync(it) }
-                    historicalSyncMonth = null
-                }) {
-                    Text("Sync Now")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { 
-                    historicalSyncMonth = null 
-                    viewModel.dismissHistoricalSync()
-                }) {
-                    Text("Skip")
-                }
-            }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.linearGradient(
+                colors = listOf(
+                    Color(0xFF020617),
+                    Color(0xFF071427),
+                    Color(0xFF0F172A)
+                )
+            )
         )
-    }
-
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
+    ) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            topBar = {
+                FintechHeader()
+            }
+        ) { padding ->
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 24.dp, bottom = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(padding)
+                    .fillMaxSize()
+                    .draggable(
+                        state = draggableState,
+                        orientation = Orientation.Horizontal,
+                        onDragStopped = { swipeOffset = 0f }
+                    )
             ) {
-                Text(
-                    text = "Smart Expense Calendar",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontFamily = FontFamily.Serif,
-                    fontStyle = FontStyle.Italic,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary,
-                    letterSpacing = 1.sp
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-
+                // Month Selector Row
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .padding(horizontal = 8.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box {
-                        TextButton(
-                            onClick = { showMonthPicker = true },
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text(
-                                text = "${selectedMonth.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${selectedMonth.year}",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        
-                        DropdownMenu(
-                            expanded = showMonthPicker,
-                            onDismissRequest = { showMonthPicker = false }
-                        ) {
-                            val current = YearMonth.now()
-                            (-12..12).forEach { offset ->
-                                val month = current.plusMonths(offset.toLong())
-                                DropdownMenuItem(
-                                    text = { 
-                                        Text("${month.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${month.year}") 
-                                    },
-                                    onClick = {
-                                        viewModel.setMonth(month)
-                                        showMonthPicker = false
-                                    }
-                                )
+                    Column {
+                        Box {
+                            TextButton(
+                                onClick = { showMonthPicker = true },
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "${
+                                            selectedMonth.month.getDisplayName(
+                                                DateTextStyle.FULL,
+                                                Locale.getDefault()
+                                            )
+                                        } ${selectedMonth.year}",
+                                        style = MaterialTheme.typography.headlineMedium.copy(
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = Color.White,
+                                            letterSpacing = (-0.5).sp
+                                        )
+                                    )
+
+                                    Spacer(modifier = Modifier.width(4.dp))
+
+                                    Icon(
+                                        imageVector = Icons.Default.KeyboardArrowDown,
+                                        contentDescription = null,
+                                        tint = Color(0xFF94A3B8)
+                                    )
+                                }
+                            }
+                            DropdownMenu(
+                                expanded = showMonthPicker,
+                                onDismissRequest = { showMonthPicker = false },
+                                modifier = Modifier.background(SurfaceGlass)
+                            ) {
+                                val current = YearMonth.now()
+                                (-12..12).forEach { offset ->
+                                    val month = current.plusMonths(offset.toLong())
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                "${
+                                                    month.month.getDisplayName(
+                                                        DateTextStyle.FULL,
+                                                        Locale.getDefault()
+                                                    )
+                                                } ${month.year}", color = TextPrimary
+                                            )
+                                        },
+                                        onClick = {
+                                            viewModel.setMonth(month)
+                                            showMonthPicker = false
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
-                    
-                    Button(
-                        onClick = { viewModel.syncSelectedMonth() },
-                        enabled = !uiState.isSyncing,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                        modifier = Modifier.height(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text("Sync", style = MaterialTheme.typography.labelLarge)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(
+                                CyanGlow
+                            )
+                            .border(
+                                1.dp,
+                                PrimaryAccent.copy(alpha = 0.4f),
+                                RoundedCornerShape(18.dp)
+                            )
+                            .clickable(
+                                enabled = !uiState.isSyncing
+                            ) {
+                                viewModel.syncSelectedMonth()
+                            }
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    )
+                        {
+                            Text("Sync",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color(0xFF02131F))
+                        }
                     }
-                }
-            }
-        }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .draggable(
-                    state = draggableState,
-                    orientation = Orientation.Horizontal,
-                    onDragStopped = { swipeOffset = 0f }
-                )
-        ) {
-            Column(
-                modifier = Modifier.fillMaxSize()
-            ) {
+
+                Spacer(modifier = Modifier.height(12.dp))
+
                 CalendarView(
                     yearMonth = selectedMonth,
                     expenses = expenses,
+                    selectedDate = selectedDate,
                     onDateClick = { date ->
                         selectedDate = date
                         showDetailSheet = true
                     },
-                    modifier = Modifier.wrapContentHeight() // Allow it to only take needed space
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                if (uiState.isSyncing) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        LinearProgressIndicator(
-                            progress = { uiState.syncProgress },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Text(
-                            text = "Syncing SMS... (${uiState.totalRead} read, ${uiState.expensesFound} expenses found)",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
-                }
-
-                HorizontalDivider()
+                Spacer(modifier = Modifier.height(8.dp))
 
                 MonthlySummary(
                     expenses = expenses,
                     syncSummary = syncSummary,
                     onExportCSV = { viewModel.exportCSV() },
-                    onExportJSON = { viewModel.exportJSON() },
-                    onImportJSON = { viewModel.triggerImport() },
-                    modifier = Modifier.weight(1f) // Give it remaining space
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        // Bottom Navigation
+        FintechBottomNav(modifier = Modifier.align(Alignment.BottomCenter))
+
+        // Expense Detail Sheet
+        if (showDetailSheet && selectedDate != null) {
+            ExpenseDetailBottomSheet(
+                date = selectedDate!!,
+                onDismiss = { showDetailSheet = false }
+            )
+        }
+    }
+}
+
+@Composable
+fun FintechHeader() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
+    ) {
+        IconButton(
+            onClick = { },
+            modifier = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.White.copy(alpha = 0.05f))
+                .border(
+                    1.dp,
+                    Color.White.copy(alpha = 0.08f),
+                    RoundedCornerShape(12.dp)
+                )
+        ) {
+            Icon(
+                Icons.Default.Menu,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(26.dp)
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 4.dp)
+        ) {
+            Text(
+                text = "Smart Expense Calendar",
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.White,
+                            Color(0xFF2DD4BF)
+                        )
+                    ),
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.8).sp
+                )
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "Track. Understand. Save Smarter.",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = Color(0xFF94A3B8),
+                    letterSpacing = 0.3.sp
+                )
+            )
+        }
+
+        Box {
+            IconButton(
+                onClick = { },
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(18.dp))
+            ) {
+                Icon(
+                    Icons.Outlined.Notifications,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
     }
+}
 
-    if (showDetailSheet && selectedDate != null) {
-        ExpenseDetailBottomSheet(
-            date = selectedDate!!,
-            onDismiss = { showDetailSheet = false }
+@Composable
+fun FintechBottomNav(modifier: Modifier = Modifier) {
+
+    Box(
+        modifier = modifier
+            .padding(horizontal = 20.dp, vertical = 20.dp)
+            .fillMaxWidth()
+            .height(82.dp)
+            .clip(RoundedCornerShape(32.dp))
+            .background(
+                Color.White.copy(alpha = 0.05f)
+            )
+            .border(
+                1.dp,
+                Color.White.copy(alpha = 0.08f),
+                RoundedCornerShape(32.dp)
+            )
+    ) {
+
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            FintechNavItem(Icons.Default.Home, "Home", true)
+            FintechNavItem(Icons.AutoMirrored.Filled.List, "Transactions", false)
+            FintechNavItem(Icons.Default.Info, "Analytics", false)
+            FintechNavItem(Icons.Default.Settings, "Budgets", false)
+            FintechNavItem(Icons.Default.Person, "Profile", false)
+        }
+    }
+}
+
+@Composable
+fun FintechNavItem(
+    icon: ImageVector,
+    label: String,
+    isSelected: Boolean
+) {
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+
+        Box(
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(
+                    if (isSelected)
+                        Color(0xFF14B8A6).copy(alpha = 0.18f)
+                    else
+                        Color.Transparent
+                )
+                .padding(10.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = if (isSelected)
+                    Color(0xFF2DD4BF)
+                else
+                    Color(0xFF94A3B8),
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = label,
+            color = if (isSelected)
+                Color(0xFF2DD4BF)
+            else
+                Color(0xFF94A3B8),
+            fontSize = 11.sp,
+            fontWeight = if (isSelected)
+                FontWeight.Bold
+            else
+                FontWeight.Medium
         )
     }
 }

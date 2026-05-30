@@ -7,7 +7,6 @@ captures/
 externalNativeBuild/
 .cxx/
 local.properties
-.DS_Store
 
 # Gradle
 .gradle
@@ -32,6 +31,13 @@ google-services.json
 
 # Log files
 *.log
+*.hprof
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+*.swp
+*~
 
 # Temp files
 *.tmp
