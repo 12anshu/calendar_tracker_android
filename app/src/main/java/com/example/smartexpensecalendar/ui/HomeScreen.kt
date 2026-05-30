@@ -398,8 +398,12 @@ fun FintechBottomNav(
                     restoreState = true
                 }
             }
-            FintechNavItem(Icons.AutoMirrored.Filled.ReceiptLong, "Transactions", false) {
-                // navController.navigate(Screen.Transactions.route)
+            FintechNavItem(Icons.AutoMirrored.Filled.ReceiptLong, "Transactions", isSelected = false) {
+                navController.navigate(Screen.Transactions.route) {
+                    popUpTo(Screen.Home.route) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
+                }
             }
             FintechNavItem(Icons.Default.AutoGraph, "Insights", false) {
                 navController.navigate(Screen.Insights.route)

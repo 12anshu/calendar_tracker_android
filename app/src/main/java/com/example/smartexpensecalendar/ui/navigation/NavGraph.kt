@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import com.example.smartexpensecalendar.ui.BudgetDetailScreen
 import com.example.smartexpensecalendar.ui.HomeScreen
 import com.example.smartexpensecalendar.ui.SpendingAnalysisScreen
+import com.example.smartexpensecalendar.ui.TransactionsScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -22,6 +23,9 @@ fun NavGraph(navController: NavHostController) {
         }
         composable(Screen.Budget.route) {
             BudgetDetailScreen(navController = navController)
+        }
+        composable(Screen.Transactions.route) {
+            TransactionsScreen(navController = navController)
         }
         composable(Screen.Insights.route) {
             // Placeholder for Insights Screen
