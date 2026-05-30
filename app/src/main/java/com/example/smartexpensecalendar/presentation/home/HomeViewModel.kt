@@ -32,7 +32,8 @@ data class HomeUiState(
     val totalRead: Int = 0,
     val expensesFound: Int = 0,
     val lastSyncTime: Long? = null,
-    val pendingSyncMonth: YearMonth? = null
+    val pendingSyncMonth: YearMonth? = null,
+    val totalBudget: Double = 0.0
 )
 
 @HiltViewModel
@@ -77,6 +78,17 @@ class HomeViewModel @Inject constructor(
     init {
         observeSyncProgress()
         observeMonthSyncStatus()
+        observeBudget()
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun observeBudget() {
+        _selectedMonth.flatMapLatest { month ->
+            repository.getBudgetsForMonth(month)
+        }.onEach { budgets ->
+            val total = budgets["Total"] ?: 0.0
+            _uiState.update { it.copy(totalBudget = total) }
+        }.launchIn(viewModelScope)
     }
 
     private fun observeMonthSyncStatus() {

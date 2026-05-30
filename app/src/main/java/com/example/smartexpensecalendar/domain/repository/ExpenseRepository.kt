@@ -30,4 +30,9 @@ interface ExpenseRepository {
     fun getProcessedSMSCount(): Flow<Int>
     fun getSMSLogsForMonth(year: Int, month: Int): Flow<List<SMSProcessingLog>>
     suspend fun clearAllData()
+
+    // Budget operations
+    suspend fun upsertBudget(month: java.time.YearMonth, category: String, amount: Double)
+    fun getBudgetsForMonth(month: java.time.YearMonth): Flow<Map<String, Double>>
+    suspend fun getBudgetForCategory(month: java.time.YearMonth, category: String): Double
 }

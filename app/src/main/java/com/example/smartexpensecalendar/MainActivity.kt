@@ -13,6 +13,9 @@ import com.example.smartexpensecalendar.ui.HomeScreen
 import com.example.smartexpensecalendar.ui.theme.SmartExpenseCalendarTheme
 import dagger.hilt.android.AndroidEntryPoint
 
+import androidx.navigation.compose.rememberNavController
+import com.example.smartexpensecalendar.ui.navigation.NavGraph
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
@@ -40,7 +43,8 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    HomeScreen()
+                    val navController = rememberNavController()
+                    NavGraph(navController = navController)
                 }
             }
         }

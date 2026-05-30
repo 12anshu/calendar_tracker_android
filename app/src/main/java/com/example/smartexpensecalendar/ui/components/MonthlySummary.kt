@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,18 +29,17 @@ import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
 fun MonthlySummary(
     expenses: List<Expense>,
     syncSummary: SyncSummary? = null,
+    totalBudget: Double = 0.0,
     onExportCSV: () -> Unit = {},
     onExportJSON: () -> Unit = {},
     onImportJSON: () -> Unit = {},
+    onAnalyticsClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val totalMonth = expenses.filter { 
         it.type == com.example.smartexpensecalendar.domain.model.TransactionType.DEBIT &&
         it.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.COMPLETED
     }.sumOf { it.amount }
-    val monthlyBudget by remember {
-        mutableDoubleStateOf(50000.0)
-    }
 
     Column(
         modifier = modifier
@@ -48,8 +48,8 @@ fun MonthlySummary(
     ) {
         AnalyticsCard(
             totalAmount = totalMonth,
-            budget = monthlyBudget,
-            onCardClick = {}
+            budget = totalBudget,
+            onCardClick = onAnalyticsClick
         )
     }
 }
@@ -147,12 +147,32 @@ fun AnalyticsCard(
                     color = TextSecondary,
                     style = MaterialTheme.typography.labelSmall
                 )
-                Text(
-                    text = "₹${formatIndianCurrency(budget)}",
-                    color = TextPrimary,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                if (budget > 0) {
+                    Text(
+                        text = "₹${formatIndianCurrency(budget)}",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { onCardClick() }
+                    ) {
+                        Text(
+                            text = "Set Budget",
+                            color = CyanGlow,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = null,
+                            tint = CyanGlow,
+                            modifier = Modifier.size(12.dp).padding(start = 2.dp)
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -161,12 +181,20 @@ fun AnalyticsCard(
                     color = TextSecondary,
                     style = MaterialTheme.typography.labelSmall
                 )
-                Text(
-                    text = "₹${formatIndianCurrency(kotlin.math.abs(remaining))}",
-                    color = if (remaining >= 0) ColorGroceries else ColorTransport,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                if (budget > 0) {
+                    Text(
+                        text = "₹${formatIndianCurrency(kotlin.math.abs(remaining))}",
+                        color = if (remaining >= 0) ColorGroceries else ColorTransport,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                } else {
+                    Text(
+                        text = "--",
+                        color = TextSecondary,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
     }

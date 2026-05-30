@@ -1,6 +1,7 @@
 package com.example.smartexpensecalendar.data.local
 
 import androidx.room.*
+import com.example.smartexpensecalendar.data.local.entity.BudgetEntity
 import com.example.smartexpensecalendar.data.local.entity.ExpenseEntity
 import com.example.smartexpensecalendar.data.local.entity.MerchantMappingEntity
 import com.example.smartexpensecalendar.data.local.entity.SMSLogEntity
@@ -69,4 +70,17 @@ interface ExpenseDao {
 
     @Query("DELETE FROM sms_logs")
     suspend fun clearAllSMSLogs()
+
+    // Budget Operations
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertBudget(budget: BudgetEntity)
+
+    @Query("SELECT * FROM budgets WHERE month = :month")
+    fun getBudgetsForMonth(month: String): Flow<List<BudgetEntity>>
+
+    @Query("SELECT * FROM budgets WHERE month < :month ORDER BY month DESC LIMIT 50")
+    suspend fun getPreviousBudgets(month: String): List<BudgetEntity>
+
+    @Query("SELECT amount FROM budgets WHERE month = :month AND category = :category LIMIT 1")
+    suspend fun getBudgetForCategory(month: String, category: String): Double?
 }

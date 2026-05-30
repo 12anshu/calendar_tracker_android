@@ -7,8 +7,8 @@ import com.example.smartexpensecalendar.domain.model.Expense
 import com.example.smartexpensecalendar.domain.model.MerchantMapping
 import com.example.smartexpensecalendar.domain.model.SMSProcessingLog
 import com.example.smartexpensecalendar.domain.repository.ExpenseRepository
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.*
 import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -43,10 +43,6 @@ class ExpenseRepositoryImpl @Inject constructor(
         return dao.getExpenseByCategoryAndDate(category, date.toString())?.toDomain()
     }
 
-    override suspend fun isSmsIdProcessed(smsId: Long): Boolean {
-        return dao.isSmsIdProcessed(smsId)
-    }
-
     override suspend fun findSimilarExpense(amount: Double, date: LocalDate): Expense? {
         return dao.findSimilarExpense(amount, date.toString())?.toDomain()
     }
@@ -63,6 +59,10 @@ class ExpenseRepositoryImpl @Inject constructor(
         linkedId: Long?
     ) {
         dao.updateExpenseStatus(id, status.name, linkedId)
+    }
+
+    override suspend fun isSmsIdProcessed(smsId: Long): Boolean {
+        return dao.isSmsIdProcessed(smsId)
     }
 
     override suspend fun getCategoryForMerchant(merchant: String): String? {
@@ -102,5 +102,35 @@ class ExpenseRepositoryImpl @Inject constructor(
     override suspend fun clearAllData() {
         dao.clearAllExpenses()
         dao.clearAllSMSLogs()
+    }
+
+    override suspend fun upsertBudget(month: java.time.YearMonth, category: String, amount: Double) {
+        dao.upsertBudget(com.example.smartexpensecalendar.data.local.entity.BudgetEntity(month.toString(), category, amount))
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun getBudgetsForMonth(month: java.time.YearMonth): Flow<Map<String, Double>> {
+        return dao.getBudgetsForMonth(month.toString()).flatMapLatest { currentBudgets ->
+            if (currentBudgets.isEmpty()) {
+                flow {
+                    val prevBudgets = dao.getPreviousBudgets(month.toString())
+                    if (prevBudgets.isNotEmpty()) {
+                        val latestMonth = prevBudgets.first().month
+                        val budgetsMap = prevBudgets
+                            .filter { it.month == latestMonth }
+                            .associate { it.category to it.amount }
+                        emit(budgetsMap)
+                    } else {
+                        emit(emptyMap<String, Double>())
+                    }
+                }
+            } else {
+                flowOf(currentBudgets.associate { it.category to it.amount })
+            }
+        }
+    }
+
+    override suspend fun getBudgetForCategory(month: java.time.YearMonth, category: String): Double {
+        return dao.getBudgetForCategory(month.toString(), category) ?: 0.0
     }
 }

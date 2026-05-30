@@ -43,9 +43,13 @@ import java.time.YearMonth
 import java.time.format.TextStyle as DateTextStyle
 import java.util.*
 
+import androidx.navigation.NavController
+import com.example.smartexpensecalendar.ui.navigation.Screen
+
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel = hiltViewModel()
+    viewModel: HomeViewModel = hiltViewModel(),
+    navController: NavController
 ) {
     val selectedMonth by viewModel.selectedMonth.collectAsState()
     val expenses by viewModel.expenses.collectAsState()
@@ -103,14 +107,19 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.linearGradient(
-                colors = listOf(
-                    Color(0xFF020617),
-                    Color(0xFF071427),
-                    Color(0xFF0F172A)
+//            .background(Brush.linearGradient(
+//                colors = listOf(
+//                    Color(0xFF020617),
+//                    Color(0xFF071427),
+//                    Color(0xFF0F172A)
+//                )
+//            )
+//        )
+            .background(
+                Brush.verticalGradient(
+                    listOf(CyanGlow.copy(alpha = 0.1f), CyanGlow.copy(alpha = 0.1f))
                 )
             )
-        )
     ) {
         Scaffold(
             containerColor = Color.Transparent,
@@ -240,14 +249,19 @@ fun HomeScreen(
                 MonthlySummary(
                     expenses = expenses,
                     syncSummary = syncSummary,
+                    totalBudget = uiState.totalBudget,
                     onExportCSV = { viewModel.exportCSV() },
+                    onAnalyticsClick = { navController.navigate(Screen.SpendingAnalysis.route) },
                     modifier = Modifier.weight(1f)
                 )
             }
         }
 
         // Bottom Navigation
-        FintechBottomNav(modifier = Modifier.align(Alignment.BottomCenter))
+        FintechBottomNav(
+            navController = navController,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
 
         // Expense Detail Sheet
         if (showDetailSheet && selectedDate != null) {
@@ -360,22 +374,16 @@ fun FintechHeader(
 }
 
 @Composable
-fun FintechBottomNav(modifier: Modifier = Modifier) {
+fun FintechBottomNav(
+    navController: NavController,
+    modifier: Modifier = Modifier
+) {
 
     Box(
         modifier = modifier
             .padding(horizontal = 4.dp, vertical = 20.dp)
             .fillMaxWidth()
             .height(82.dp)
-//            .clip(RoundedCornerShape(12.dp))
-//            .background(
-//                Color.White.copy(alpha = 0.05f)
-//            )
-//            .border(
-//                1.dp,
-//                Color.White.copy(alpha = 0.08f),
-//                RoundedCornerShape(12.dp)
-//            )
     ) {
 
         Row(
@@ -383,11 +391,25 @@ fun FintechBottomNav(modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            FintechNavItem(Icons.Default.Home, "Home", true)
-            FintechNavItem(Icons.AutoMirrored.Filled.ReceiptLong, "Transactions", false)
-            FintechNavItem(Icons.Default.AutoGraph, "Insights", false)
-            FintechNavItem(Icons.Default.Assessment, "Report", false)
-            FintechNavItem(Icons.Default.Person, "Profile", false)
+            FintechNavItem(Icons.Default.Home, "Home", true) {
+                navController.navigate(Screen.Home.route) {
+                    popUpTo(Screen.Home.route) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
+            FintechNavItem(Icons.AutoMirrored.Filled.ReceiptLong, "Transactions", false) {
+                // navController.navigate(Screen.Transactions.route)
+            }
+            FintechNavItem(Icons.Default.AutoGraph, "Insights", false) {
+                navController.navigate(Screen.Insights.route)
+            }
+            FintechNavItem(Icons.Default.AccountBalanceWallet, "Budget", false) {
+                navController.navigate(Screen.Budget.route)
+            }
+            FintechNavItem(Icons.Default.Person, "Profile", false) {
+                // navController.navigate(Screen.Profile.route)
+            }
         }
     }
 }
@@ -396,12 +418,14 @@ fun FintechBottomNav(modifier: Modifier = Modifier) {
 fun FintechNavItem(
     icon: ImageVector,
     label: String,
-    isSelected: Boolean
+    isSelected: Boolean,
+    onClick: () -> Unit
 ) {
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.clickable { onClick() }
     ) {
 
         Box(
