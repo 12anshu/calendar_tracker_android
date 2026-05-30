@@ -43,4 +43,10 @@ class DataStoreManager @Inject constructor(
             preferences[SYNCED_MONTHS] = current + yearMonth
         }
     }
+
+    suspend fun clearSyncStatus() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(SYNCED_MONTHS)
+        }
+    }
 }

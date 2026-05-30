@@ -30,7 +30,11 @@ fun ExpenseDetailBottomSheet(
     onDismiss: () -> Unit,
     viewModel: ExpenseDetailViewModel = hiltViewModel()
 ) {
-    val expenses by viewModel.getExpensesForDate(date).collectAsState(initial = emptyList())
+    val expensesRaw by viewModel.getExpensesForDate(date).collectAsState(initial = emptyList())
+    val expenses = expensesRaw.filter { 
+        it.type == com.example.smartexpensecalendar.domain.model.TransactionType.DEBIT &&
+        it.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.COMPLETED
+    }
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }

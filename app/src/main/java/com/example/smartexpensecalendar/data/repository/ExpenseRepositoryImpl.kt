@@ -47,6 +47,24 @@ class ExpenseRepositoryImpl @Inject constructor(
         return dao.isSmsIdProcessed(smsId)
     }
 
+    override suspend fun findSimilarExpense(amount: Double, date: LocalDate): Expense? {
+        return dao.findSimilarExpense(amount, date.toString())?.toDomain()
+    }
+
+    override suspend fun findMatchingExpense(amount: Double, date: LocalDate, daysBack: Long): Expense? {
+        val startDate = date.minusDays(daysBack).toString()
+        val endDate = date.toString()
+        return dao.findMatchingDebit(amount, startDate, endDate)?.toDomain()
+    }
+
+    override suspend fun updateExpenseStatus(
+        id: Long,
+        status: com.example.smartexpensecalendar.domain.model.TransactionStatus,
+        linkedId: Long?
+    ) {
+        dao.updateExpenseStatus(id, status.name, linkedId)
+    }
+
     override suspend fun getCategoryForMerchant(merchant: String): String? {
         return dao.getCategoryForMerchant(merchant)
     }
@@ -79,5 +97,10 @@ class ExpenseRepositoryImpl @Inject constructor(
         return dao.getSMSLogsForRange(startOfMonth, endOfMonth).map { entities ->
             entities.map { it.toDomain() }
         }
+    }
+
+    override suspend fun clearAllData() {
+        dao.clearAllExpenses()
+        dao.clearAllSMSLogs()
     }
 }

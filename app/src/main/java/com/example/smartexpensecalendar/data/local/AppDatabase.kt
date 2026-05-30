@@ -8,7 +8,7 @@ import com.example.smartexpensecalendar.data.local.entity.SMSLogEntity
 
 @Database(
     entities = [ExpenseEntity::class, MerchantMappingEntity::class, SMSLogEntity::class],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

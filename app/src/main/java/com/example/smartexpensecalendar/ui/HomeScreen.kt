@@ -116,7 +116,9 @@ fun HomeScreen(
             containerColor = Color.Transparent,
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
-                FintechHeader()
+                FintechHeader(
+                    onResetClick = { viewModel.resetAndSync() }
+                )
             }
         ) { padding ->
             Column(
@@ -258,7 +260,11 @@ fun HomeScreen(
 }
 
 @Composable
-fun FintechHeader() {
+fun FintechHeader(
+    onResetClick: () -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -266,24 +272,43 @@ fun FintechHeader() {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top
     ) {
-        IconButton(
-            onClick = { },
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color.White.copy(alpha = 0.05f))
-                .border(
-                    1.dp,
-                    Color.White.copy(alpha = 0.08f),
-                    RoundedCornerShape(12.dp)
+        Box {
+            IconButton(
+                onClick = { showMenu = true },
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White.copy(alpha = 0.05f))
+                    .border(
+                        1.dp,
+                        Color.White.copy(alpha = 0.08f),
+                        RoundedCornerShape(12.dp)
+                    )
+            ) {
+                Icon(
+                    Icons.Default.Menu,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(26.dp)
                 )
-        ) {
-            Icon(
-                Icons.Default.Menu,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(26.dp)
-            )
+            }
+
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false },
+                modifier = Modifier.background(SurfaceGlass)
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Reset Database & Sync", color = Color.Red) },
+                    onClick = {
+                        showMenu = false
+                        onResetClick()
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.Red)
+                    }
+                )
+            }
         }
 
         Column(

@@ -105,10 +105,35 @@ class SMSSyncWorker @AssistedInject constructor(
                 val parsed = SMSParser.parse(body)
                 if (parsed != null && parsed.isFinancial) {
                     processedExpenses++
-                    val category = categorizer.categorize(parsed.merchant)
+                    val category = if (parsed.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.SETTLEMENT) 
+                        "Settlement" 
+                    else if (parsed.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.REFUNDED)
+                        "Refund"
+                    else
+                        categorizer.categorize(parsed.merchant)
+
                     val localDate = Instant.ofEpochMilli(date)
                         .atZone(ZoneId.systemDefault())
                         .toLocalDate()
+
+                    // Logical Deduplication: Check if same amount already exists on this day
+                    if (repository.findSimilarExpense(parsed.amount, localDate) != null) {
+                        repository.logSMSProcessing(
+                            SMSProcessingLog(id, address, body, date, ProcessingStatus.IGNORED)
+                        )
+                        continue
+                    }
+
+                    // Reconciliation Logic
+                    var linkedId: Long? = null
+                    if (parsed.type == com.example.smartexpensecalendar.domain.model.TransactionType.CREDIT) {
+                        val match = repository.findMatchingExpense(parsed.amount, localDate, 3)
+                        if (match != null) {
+                            linkedId = match.id
+                            // Update the original debit to match this status
+                            repository.updateExpenseStatus(match.id, parsed.status, null) // We'll set linkedId after we get the new ID
+                        }
+                    }
 
                     // Each unique financial SMS is a separate record now
                     repository.upsertExpense(
@@ -118,6 +143,10 @@ class SMSSyncWorker @AssistedInject constructor(
                             date = localDate,
                             merchant = parsed.merchant,
                             source = ExpenseSource.SMS,
+                            type = parsed.type,
+                            status = parsed.status,
+                            accountSuffix = parsed.accountSuffix,
+                            linkedId = linkedId,
                             originalSmsId = id,
                             originalSmsBody = body,
                             syncDate = System.currentTimeMillis()

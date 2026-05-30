@@ -14,6 +14,10 @@ interface ExpenseRepository {
     suspend fun deleteExpense(expense: Expense)
     suspend fun getExpenseByCategoryAndDate(category: String, date: LocalDate): Expense?
     suspend fun isSmsIdProcessed(smsId: Long): Boolean
+    
+    suspend fun findSimilarExpense(amount: Double, date: LocalDate): Expense?
+    suspend fun findMatchingExpense(amount: Double, date: LocalDate, daysBack: Long): Expense?
+    suspend fun updateExpenseStatus(id: Long, status: com.example.smartexpensecalendar.domain.model.TransactionStatus, linkedId: Long?)
 
     // Merchant Mapping
     suspend fun getCategoryForMerchant(merchant: String): String?
@@ -25,4 +29,5 @@ interface ExpenseRepository {
     suspend fun isSMSSimilarProcessed(body: String): Boolean
     fun getProcessedSMSCount(): Flow<Int>
     fun getSMSLogsForMonth(year: Int, month: Int): Flow<List<SMSProcessingLog>>
+    suspend fun clearAllData()
 }

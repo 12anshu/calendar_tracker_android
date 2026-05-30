@@ -91,6 +91,14 @@ class HomeViewModel @Inject constructor(
         confirmHistoricalSync(_selectedMonth.value)
     }
 
+    fun resetAndSync() {
+        viewModelScope.launch {
+            repository.clearAllData()
+            dataStoreManager.clearSyncStatus()
+            syncSelectedMonth()
+        }
+    }
+
     fun confirmHistoricalSync(yearMonth: YearMonth) {
         viewModelScope.launch {
             val syncRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.smartexpensecalendar.sms.SMSSyncWorker>()

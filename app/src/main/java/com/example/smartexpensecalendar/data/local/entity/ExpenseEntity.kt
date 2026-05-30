@@ -15,8 +15,12 @@ data class ExpenseEntity(
     val date: String, // Stored as ISO string (Transaction date)
     val merchant: String?,
     val source: String,
+    val type: String,   // DEBIT or CREDIT
+    val status: String, // COMPLETED, SETTLEMENT, REFUNDED, FAILED
+    val accountSuffix: String?,
+    val linkedId: Long?,
     val originalSmsId: Long?,
-    val originalSmsBody: String?, // For testing/debugging
-    val syncDate: Long, // Date when it was synced
-    val createdAt: Long // Record creation timestamp
+    val originalSmsBody: String?,
+    val syncDate: Long,
+    val createdAt: Long
 )

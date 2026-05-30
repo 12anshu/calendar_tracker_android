@@ -23,6 +23,23 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE category = :category AND date = :date LIMIT 1")
     suspend fun getExpenseByCategoryAndDate(category: String, date: String): ExpenseEntity?
 
+    @Query("SELECT * FROM expenses WHERE amount = :amount AND date = :date LIMIT 1")
+    suspend fun findSimilarExpense(amount: Double, date: String): ExpenseEntity?
+
+    @Query("""
+        SELECT * FROM expenses 
+        WHERE amount = :amount 
+        AND type = 'DEBIT' 
+        AND status = 'COMPLETED' 
+        AND date >= :startDate 
+        AND date <= :endDate 
+        ORDER BY date DESC LIMIT 1
+    """)
+    suspend fun findMatchingDebit(amount: Double, startDate: String, endDate: String): ExpenseEntity?
+
+    @Query("UPDATE expenses SET status = :status, linkedId = :linkedId WHERE id = :id")
+    suspend fun updateExpenseStatus(id: Long, status: String, linkedId: Long?)
+
     @Query("SELECT EXISTS(SELECT 1 FROM expenses WHERE originalSmsId = :smsId LIMIT 1)")
     suspend fun isSmsIdProcessed(smsId: Long): Boolean
 
@@ -46,4 +63,10 @@ interface ExpenseDao {
 
     @Query("SELECT * FROM sms_logs WHERE date >= :startMillis AND date <= :endMillis")
     fun getSMSLogsForRange(startMillis: Long, endMillis: Long): Flow<List<SMSLogEntity>>
+
+    @Query("DELETE FROM expenses")
+    suspend fun clearAllExpenses()
+
+    @Query("DELETE FROM sms_logs")
+    suspend fun clearAllSMSLogs()
 }

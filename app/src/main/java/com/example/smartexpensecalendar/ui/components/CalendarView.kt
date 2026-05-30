@@ -72,7 +72,11 @@ fun CalendarView(
             }
             items(days) { day ->
                 val date = yearMonth.atDay(day)
-                val dayExpenses = expenses.filter { it.date == date }
+                val dayExpenses = expenses.filter { 
+                    it.date == date && 
+                    it.type == com.example.smartexpensecalendar.domain.model.TransactionType.DEBIT &&
+                    it.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.COMPLETED
+                }
                 val totalAmount = dayExpenses.sumOf { it.amount }
                 val categories = dayExpenses.map { it.category }.distinct()
 

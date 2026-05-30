@@ -33,7 +33,10 @@ fun MonthlySummary(
     onImportJSON: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val totalMonth = expenses.sumOf { it.amount }
+    val totalMonth = expenses.filter { 
+        it.type == com.example.smartexpensecalendar.domain.model.TransactionType.DEBIT &&
+        it.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.COMPLETED
+    }.sumOf { it.amount }
     val monthlyBudget by remember {
         mutableDoubleStateOf(50000.0)
     }
