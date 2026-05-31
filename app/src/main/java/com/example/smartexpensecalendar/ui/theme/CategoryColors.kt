@@ -9,6 +9,7 @@ fun getCategoryColor(category: String): Color {
         "upi / digital", "upi" -> CategoryColors.UPI
         "online shopping" -> CategoryColors.OnlineSpending
         "bill payment" -> CategoryColors.BillPayment
+        "credit card payment" -> CategoryColors.CreditCardPayment
         "travel" -> CategoryColors.Travel
         "fuel" -> CategoryColors.Fuel
         "entertainment" -> CategoryColors.Entertainment
@@ -29,6 +30,7 @@ object CategoryColors {
     val UPI = Color(0xFF3B82F6)
     val OnlineSpending = Color(0xFF6366F1)
     val BillPayment = Color(0xFF06B6D4)
+    val CreditCardPayment = Color(0xFF64748B)
     val Travel = Color(0xFF8B5CF6)
     val Fuel = Color(0xFFEF4444)
     val Entertainment = Color(0xFFEC4899)

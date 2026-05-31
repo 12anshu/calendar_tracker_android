@@ -111,9 +111,14 @@ class ExpenseRepositoryImpl @Inject constructor(
         dao.clearAllSMSLogs()
     }
 
+    override suspend fun clearMerchantMappings() {
+        dao.clearAllMerchantMappings()
+    }
+
     override suspend fun clearAllData() {
         dao.clearAllExpenses()
         dao.clearAllSMSLogs()
+        dao.clearAllMerchantMappings()
     }
 
     override suspend fun upsertBudget(month: java.time.YearMonth, category: String, amount: Double) {

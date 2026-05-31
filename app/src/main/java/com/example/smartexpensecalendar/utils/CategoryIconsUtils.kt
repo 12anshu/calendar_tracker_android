@@ -13,6 +13,7 @@ object CategoryIconsUtils {
             "upi / digital", "upi" -> Icons.Rounded.Payments
             "online spending", "online shopping" -> Icons.Rounded.ShoppingBag
             "bill payment" -> Icons.AutoMirrored.Rounded.ReceiptLong
+            "credit card payment" -> Icons.Rounded.CreditCard
             "travel" -> Icons.Rounded.TravelExplore
             "fuel" -> Icons.Rounded.LocalGasStation
             "entertainment" -> Icons.Rounded.Theaters

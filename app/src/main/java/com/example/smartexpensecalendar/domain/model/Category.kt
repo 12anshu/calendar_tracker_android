@@ -12,6 +12,7 @@ object DefaultCategories {
         "UPI / Digital",
         "Online Shopping",
         "Bill Payment",
+        "Credit Card Payment",
         "Travel",
         "Fuel",
         "Entertainment",

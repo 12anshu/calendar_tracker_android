@@ -74,6 +74,9 @@ interface ExpenseDao {
     @Query("DELETE FROM sms_logs")
     suspend fun clearAllSMSLogs()
 
+    @Query("DELETE FROM merchant_mappings")
+    suspend fun clearAllMerchantMappings()
+
     // Budget Operations
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertBudget(budget: BudgetEntity)

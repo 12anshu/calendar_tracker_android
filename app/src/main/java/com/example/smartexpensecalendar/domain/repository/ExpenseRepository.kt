@@ -31,6 +31,7 @@ interface ExpenseRepository {
     fun getSMSLogsForMonth(year: Int, month: Int): Flow<List<SMSProcessingLog>>
     fun getAllSMSLogs(): Flow<List<SMSProcessingLog>>
     suspend fun clearSMSLogs()
+    suspend fun clearMerchantMappings()
     suspend fun clearAllData()
 
     // Budget operations
