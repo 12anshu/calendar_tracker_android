@@ -99,6 +99,18 @@ class ExpenseRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getAllSMSLogs(): Flow<List<SMSProcessingLog>> {
+        // We'll need a new query in DAO or just use a very wide range
+        // Better to add a proper query in DAO.
+        return dao.getAllSMSLogs().map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override suspend fun clearSMSLogs() {
+        dao.clearAllSMSLogs()
+    }
+
     override suspend fun clearAllData() {
         dao.clearAllExpenses()
         dao.clearAllSMSLogs()

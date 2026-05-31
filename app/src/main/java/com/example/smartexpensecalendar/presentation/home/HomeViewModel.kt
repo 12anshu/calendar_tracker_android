@@ -75,6 +75,16 @@ class HomeViewModel @Inject constructor(
     val processedSMSCount: StateFlow<Int> = repository.getProcessedSMSCount()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
+    val notifications: StateFlow<List<SMSProcessingLog>> = repository.getAllSMSLogs()
+        .map { logs -> logs.filter { it.status == ProcessingStatus.PROCESSED } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun clearNotifications() {
+        viewModelScope.launch {
+            repository.clearSMSLogs()
+        }
+    }
+
     init {
         observeSyncProgress()
         observeMonthSyncStatus()

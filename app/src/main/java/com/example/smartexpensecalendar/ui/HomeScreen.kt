@@ -36,6 +36,7 @@ import com.example.smartexpensecalendar.presentation.home.HomeUiEvent
 import com.example.smartexpensecalendar.presentation.home.HomeViewModel
 import com.example.smartexpensecalendar.ui.components.CalendarView
 import com.example.smartexpensecalendar.ui.components.MonthlySummary
+import com.example.smartexpensecalendar.ui.components.NotificationBottomSheet
 import com.example.smartexpensecalendar.ui.theme.*
 import kotlinx.coroutines.flow.collectLatest
 import java.time.LocalDate
@@ -55,14 +56,16 @@ fun HomeScreen(
     val expenses by viewModel.expenses.collectAsState()
     val syncSummary by viewModel.syncSummary.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+    val notifications by viewModel.notifications.collectAsState()
     val context = LocalContext.current
     
     val snackbarHostState = remember { SnackbarHostState() }
     
-    var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
+    var selectedDate by remember { mutableStateOf<LocalDate?>(LocalDate.now()) }
     var showDetailSheet by remember { mutableStateOf(false) }
     var historicalSyncMonth by remember { mutableStateOf<YearMonth?>(null) }
     var showMonthPicker by remember { mutableStateOf(false) }
+    var showNotifications by remember { mutableStateOf(false) }
 
     // Sliding gesture state
     var swipeOffset by remember { mutableFloatStateOf(0f) }
@@ -126,7 +129,9 @@ fun HomeScreen(
             snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 FintechHeader(
-                    onResetClick = { viewModel.resetAndSync() }
+                    onResetClick = { viewModel.resetAndSync() },
+                    notificationCount = notifications.size,
+                    onNotificationClick = { showNotifications = true }
                 )
             }
         ) { padding ->
@@ -267,7 +272,18 @@ fun HomeScreen(
         if (showDetailSheet && selectedDate != null) {
             ExpenseDetailBottomSheet(
                 date = selectedDate!!,
-                onDismiss = { showDetailSheet = false }
+                onDismiss = { 
+                    showDetailSheet = false 
+                    selectedDate = LocalDate.now()
+                }
+            )
+        }
+
+        if (showNotifications) {
+            NotificationBottomSheet(
+                notifications = notifications,
+                onClearAll = { viewModel.clearNotifications() },
+                onDismiss = { showNotifications = false }
             )
         }
     }
@@ -275,7 +291,9 @@ fun HomeScreen(
 
 @Composable
 fun FintechHeader(
-    onResetClick: () -> Unit
+    onResetClick: () -> Unit,
+    notificationCount: Int = 0,
+    onNotificationClick: () -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -357,17 +375,30 @@ fun FintechHeader(
 
         Box {
             IconButton(
-                onClick = { },
+                onClick = onNotificationClick,
                 modifier = Modifier
                     .size(36.dp)
                     .clip(RoundedCornerShape(18.dp))
             ) {
-                Icon(
-                    Icons.Outlined.Notifications,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
+                BadgedBox(
+                    badge = {
+                        if (notificationCount > 0) {
+                            Badge(
+                                containerColor = ColorTransport,
+                                contentColor = Color.White
+                            ) {
+                                Text(notificationCount.toString())
+                            }
+                        }
+                    }
+                ) {
+                    Icon(
+                        Icons.Outlined.Notifications,
+                        contentDescription = "Notifications",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
     }

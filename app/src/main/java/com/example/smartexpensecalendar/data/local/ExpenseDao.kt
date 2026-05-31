@@ -62,6 +62,9 @@ interface ExpenseDao {
     @Query("SELECT COUNT(*) FROM sms_logs")
     fun getProcessedSMSCount(): Flow<Int>
 
+    @Query("SELECT * FROM sms_logs ORDER BY date DESC")
+    fun getAllSMSLogs(): Flow<List<SMSLogEntity>>
+
     @Query("SELECT * FROM sms_logs WHERE date >= :startMillis AND date <= :endMillis")
     fun getSMSLogsForRange(startMillis: Long, endMillis: Long): Flow<List<SMSLogEntity>>
 

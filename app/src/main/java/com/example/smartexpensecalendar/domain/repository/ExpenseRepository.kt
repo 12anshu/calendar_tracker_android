@@ -29,6 +29,8 @@ interface ExpenseRepository {
     suspend fun isSMSSimilarProcessed(body: String): Boolean
     fun getProcessedSMSCount(): Flow<Int>
     fun getSMSLogsForMonth(year: Int, month: Int): Flow<List<SMSProcessingLog>>
+    fun getAllSMSLogs(): Flow<List<SMSProcessingLog>>
+    suspend fun clearSMSLogs()
     suspend fun clearAllData()
 
     // Budget operations
