@@ -2,6 +2,7 @@ package com.example.smartexpensecalendar.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,11 +28,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.smartexpensecalendar.R
 import com.example.smartexpensecalendar.presentation.home.HomeUiEvent
 import com.example.smartexpensecalendar.presentation.home.HomeViewModel
 import com.example.smartexpensecalendar.ui.components.CalendarView
@@ -187,7 +190,7 @@ fun HomeScreen(
                             DropdownMenu(
                                 expanded = showMonthPicker,
                                 onDismissRequest = { showMonthPicker = false },
-                                modifier = Modifier.background(SurfaceGlass)
+                                modifier = Modifier.background(BackgroundEnd)
                             ) {
                                 val current = YearMonth.now()
                                 (-12..12).forEach { offset ->
@@ -243,6 +246,7 @@ fun HomeScreen(
                     yearMonth = selectedMonth,
                     expenses = expenses,
                     selectedDate = selectedDate,
+                    currencySymbol = uiState.currencySymbol,
                     onDateClick = { date ->
                         selectedDate = date
                         showDetailSheet = true
@@ -256,6 +260,7 @@ fun HomeScreen(
                     expenses = expenses,
                     syncSummary = syncSummary,
                     totalBudget = uiState.totalBudget,
+                    currencySymbol = uiState.currencySymbol,
                     onExportCSV = { viewModel.exportCSV() },
                     onAnalyticsClick = { navController.navigate(Screen.SpendingAnalysis.route) },
                     modifier = Modifier.weight(1f)
@@ -299,94 +304,77 @@ fun FintechHeader(
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Top
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box {
-            IconButton(
-                onClick = { showMenu = true },
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White.copy(alpha = 0.05f))
-                    .border(
-                        1.dp,
-                        Color.White.copy(alpha = 0.08f),
-                        RoundedCornerShape(12.dp)
-                    )
-            ) {
-                Icon(
-                    Icons.Default.Menu,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
-
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false },
-                modifier = Modifier.background(SurfaceGlass)
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Auto-Categorization Rules", color = TextPrimary) },
-                    onClick = {
-                        showMenu = false
-                        onManageRulesClick()
-                    },
-                    leadingIcon = {
-                        Icon(Icons.Default.AutoFixHigh, contentDescription = null, tint = CyanGlow)
-                    }
-                )
-                Divider(color = SurfaceGlassBright)
-                DropdownMenuItem(
-                    text = { Text("Reset Database & Sync", color = Color.Red) },
-                    onClick = {
-                        showMenu = false
-                        onResetClick()
-                    },
-                    leadingIcon = {
-                        Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.Red)
-                    }
-                )
-            }
-        }
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 4.dp)
+        // Top Row: Menu, Logo, and Notifications
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Smart Expense Calendar",
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            Color.White,
-                            Color(0xFF2DD4BF)
+            Box {
+                IconButton(
+                    onClick = { showMenu = true },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White.copy(alpha = 0.05f))
+                        .border(
+                            1.dp,
+                            Color.White.copy(alpha = 0.08f),
+                            RoundedCornerShape(12.dp)
                         )
-                    ),
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.8).sp
-                )
+                ) {
+                    Icon(
+                        Icons.Default.Menu,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    modifier = Modifier.background(BackgroundEnd)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Auto-Categorization Rules", color = TextPrimary) },
+                        onClick = {
+                            showMenu = false
+                            onManageRulesClick()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.AutoFixHigh, contentDescription = null, tint = CyanGlow)
+                        }
+                    )
+                    HorizontalDivider(color = SurfaceGlassBright)
+                    DropdownMenuItem(
+                        text = { Text("Reset Database & Sync", color = Color.Red) },
+                        onClick = {
+                            showMenu = false
+                            onResetClick()
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.Red)
+                        }
+                    )
+                }
+            }
+
+            // Logo in the center of the top row
+            Image(
+                painter = painterResource(id = R.drawable.app_logo),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(12.dp))
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "Track. Understand. Save Smarter.",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    color = Color(0xFF94A3B8),
-                    letterSpacing = 0.3.sp
-                )
-            )
-        }
-
-        Box {
             IconButton(
                 onClick = onNotificationClick,
                 modifier = Modifier
@@ -413,6 +401,32 @@ fun FintechHeader(
                     )
                 }
             }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Center Aligned Title Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Smart ",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.5).sp
+                )
+            )
+            Text(
+                text = "Expense Tracker",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    color = CyanGlow,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.5).sp
+                )
+            )
         }
     }
 }
@@ -455,8 +469,8 @@ fun FintechBottomNav(
             FintechNavItem(Icons.Default.AccountBalanceWallet, "Budget", false) {
                 navController.navigate(Screen.Budget.route)
             }
-            FintechNavItem(Icons.Default.Person, "Profile", false) {
-                // navController.navigate(Screen.Profile.route)
+            FintechNavItem(Icons.Default.Person, "Profile", isSelected = false) {
+                navController.navigate(Screen.Profile.route)
             }
         }
     }

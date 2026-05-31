@@ -29,19 +29,25 @@ data class InsightsUiState(
     val topMerchants: List<MerchantSpend> = emptyList(),
     val upiVsCard: Map<String, Double> = emptyMap(), // "UPI" vs "Card"
     val isLoading: Boolean = false,
-    val selectedMonth: YearMonth = YearMonth.now()
+    val selectedMonth: YearMonth = YearMonth.now(),
+    val currencySymbol: String = "₹"
 )
 
 @HiltViewModel
 class InsightsViewModel @Inject constructor(
-    private val repository: ExpenseRepository
+    private val repository: ExpenseRepository,
+    private val dataStoreManager: com.example.smartexpensecalendar.data.local.DataStoreManager
 ) : ViewModel() {
 
     private val _selectedMonth = MutableStateFlow(YearMonth.now())
     val selectedMonth = _selectedMonth.asStateFlow()
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val uiState: StateFlow<InsightsUiState> = _selectedMonth.flatMapLatest { month ->
+    val uiState: StateFlow<InsightsUiState> = combine(
+        _selectedMonth,
+        dataStoreManager.currencySymbol
+    ) { month, symbol -> month to symbol }
+    .flatMapLatest { (month, symbol) ->
         repository.getExpensesForMonth(month.year, month.monthValue).map { expenses ->
             val debitExpenses = expenses.filter { 
                 it.type == TransactionType.DEBIT && it.status == TransactionStatus.COMPLETED 
@@ -74,7 +80,8 @@ class InsightsViewModel @Inject constructor(
                 categoryBreakdown = catBreakdown,
                 topMerchants = topMerchants,
                 upiVsCard = mapOf("UPI" to upiTotal, "Card" to cardTotal),
-                selectedMonth = month
+                selectedMonth = month,
+                currencySymbol = symbol
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), InsightsUiState())

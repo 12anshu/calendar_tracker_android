@@ -19,12 +19,16 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ExpenseDetailViewModel @Inject constructor(
-    private val repository: ExpenseRepository
+    private val repository: ExpenseRepository,
+    private val dataStoreManager: com.example.smartexpensecalendar.data.local.DataStoreManager
 ) : ViewModel() {
 
     val categories: StateFlow<List<String>> = repository.getCustomCategories()
         .map { custom -> DefaultCategories.list + custom }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DefaultCategories.list)
+
+    val currencySymbol: StateFlow<String> = dataStoreManager.currencySymbol
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "₹")
 
     fun addCustomCategory(name: String) {
         viewModelScope.launch {

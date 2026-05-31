@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -162,7 +163,7 @@ fun TransactionsScreen(
                             DropdownMenu(
                                 expanded = showMonthPicker,
                                 onDismissRequest = { showMonthPicker = false },
-                                modifier = Modifier.background(SurfaceGlass)
+                                modifier = Modifier.background(BackgroundEnd)
                             ) {
                                 val current = YearMonth.now()
                                 (-12..12).forEach { offset ->
@@ -214,7 +215,7 @@ fun TransactionsScreen(
 
                 uiState.transactions.keys.sortedDescending().forEach { date ->
                     stickyHeader {
-                        TransactionDateHeader(date, uiState.transactions[date]?.sumOf { if (it.type == TransactionType.DEBIT) it.amount else 0.0 } ?: 0.0)
+                        TransactionDateHeader(date, uiState.transactions[date]?.sumOf { if (it.type == TransactionType.DEBIT) it.amount else 0.0 } ?: 0.0, uiState.currencySymbol)
                     }
 
                     items(uiState.transactions[date] ?: emptyList()) { expense ->
@@ -222,6 +223,7 @@ fun TransactionsScreen(
                             expense = expense,
                             categories = uiState.categories,
                             isEditing = editingExpenseId == expense.id,
+                            currencySymbol = uiState.currencySymbol,
                             onEditToggle = { isEditing ->
                                 editingExpenseId = if (isEditing) expense.id else null
                             },
@@ -279,7 +281,7 @@ fun TransactionsScreen(
 }
 
 @Composable
-fun TransactionDateHeader(date: LocalDate, totalDebit: Double) {
+fun TransactionDateHeader(date: LocalDate, totalDebit: Double, currencySymbol: String = "₹") {
     val formatter = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy")
     val isToday = date == LocalDate.now()
     val isYesterday = date == LocalDate.now().minusDays(1)
@@ -306,7 +308,7 @@ fun TransactionDateHeader(date: LocalDate, totalDebit: Double) {
         )
         if (totalDebit > 0) {
             Text(
-                text = "₹${formatIndianCurrency(totalDebit)}",
+                text = "$currencySymbol${formatIndianCurrency(totalDebit)}",
                 style = MaterialTheme.typography.labelLarge,
                 color = TextSecondary,
                 fontWeight = FontWeight.Bold
@@ -320,6 +322,7 @@ fun TransactionItem(
     expense: Expense,
     categories: List<String>,
     isEditing: Boolean,
+    currencySymbol: String = "₹",
     onEditToggle: (Boolean) -> Unit,
     onDelete: () -> Unit,
     onEdit: (Double, String, Boolean) -> Unit,
@@ -465,7 +468,7 @@ fun TransactionItem(
 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = "${if (expense.type == TransactionType.DEBIT) "-" else "+"}₹${formatIndianCurrency(expense.amount)}",
+                        text = "${if (expense.type == TransactionType.DEBIT) "-" else "+"} $currencySymbol${formatIndianCurrency(expense.amount)}",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.ExtraBold,
                         color = if (expense.type == TransactionType.DEBIT) TextPrimary else ColorGroceries

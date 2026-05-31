@@ -22,12 +22,14 @@ data class TransactionsUiState(
     val selectedCategory: String? = null,
     val selectedType: TransactionType? = null,
     val selectedMonth: YearMonth = YearMonth.now(),
-    val categories: List<String> = DefaultCategories.list
+    val categories: List<String> = DefaultCategories.list,
+    val currencySymbol: String = "₹"
 )
 
 @HiltViewModel
 class TransactionsViewModel @Inject constructor(
-    private val repository: ExpenseRepository
+    private val repository: ExpenseRepository,
+    private val dataStoreManager: com.example.smartexpensecalendar.data.local.DataStoreManager
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -44,9 +46,12 @@ class TransactionsViewModel @Inject constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<TransactionsUiState> = combine(
-        _selectedMonth, _searchQuery, _selectedCategory, _selectedType, repository.getCustomCategories()
-    ) { month, query, category, type, customCats ->
-        DataQuery(month, query, category, type, DefaultCategories.list + customCats)
+        combine(_selectedMonth, _searchQuery, _selectedCategory) { m, q, c -> Triple(m, q, c) },
+        combine(_selectedType, repository.getCustomCategories(), dataStoreManager.currencySymbol) { t, cc, s -> Triple(t, cc, s) }
+    ) { part1, part2 ->
+        val (month, query, category) = part1
+        val (type, customCats, symbol) = part2
+        DataQuery(month, query, category, type, DefaultCategories.list + customCats, symbol)
     }.flatMapLatest { query ->
         repository.getExpensesForMonth(query.month.year, query.month.monthValue)
             .map { list ->
@@ -67,7 +72,8 @@ class TransactionsViewModel @Inject constructor(
                     selectedCategory = query.category,
                     selectedType = query.type,
                     selectedMonth = query.month,
-                    categories = query.categories
+                    categories = query.categories,
+                    currencySymbol = query.symbol
                 )
             }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TransactionsUiState())
@@ -117,6 +123,7 @@ class TransactionsViewModel @Inject constructor(
         val query: String,
         val category: String?,
         val type: TransactionType?,
-        val categories: List<String>
+        val categories: List<String>,
+        val symbol: String
     )
 }

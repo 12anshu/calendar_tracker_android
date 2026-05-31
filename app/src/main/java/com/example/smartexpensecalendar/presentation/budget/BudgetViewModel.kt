@@ -23,12 +23,14 @@ data class CategoryBudgetState(
 data class BudgetUiState(
     val totalBudget: Double = 0.0,
     val totalSpent: Double = 0.0,
-    val categoryBudgets: List<CategoryBudgetState> = emptyList()
+    val categoryBudgets: List<CategoryBudgetState> = emptyList(),
+    val currencySymbol: String = "₹"
 )
 
 @HiltViewModel
 class BudgetViewModel @Inject constructor(
-    private val repository: ExpenseRepository
+    private val repository: ExpenseRepository,
+    private val dataStoreManager: com.example.smartexpensecalendar.data.local.DataStoreManager
 ) : ViewModel() {
 
     private val _selectedMonth = MutableStateFlow(YearMonth.now())
@@ -37,9 +39,10 @@ class BudgetViewModel @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<BudgetUiState> = combine(
         _selectedMonth,
-        repository.getCustomCategories()
-    ) { month, customCats -> month to (DefaultCategories.list + customCats) }
-    .flatMapLatest { (month, categories) ->
+        repository.getCustomCategories(),
+        dataStoreManager.currencySymbol
+    ) { month, customCats, symbol -> Triple(month, (DefaultCategories.list + customCats), symbol) }
+    .flatMapLatest { (month, categories, symbol) ->
         repository.getBudgetsForMonth(month)
             .flatMapLatest { budgets ->
                 repository.getExpensesForMonth(month.year, month.monthValue).map { expenses ->
@@ -56,7 +59,7 @@ class BudgetViewModel @Inject constructor(
                         CategoryBudgetState(category, spent, budget)
                     }
 
-                    BudgetUiState(totalBudget, totalSpent, categoryStates)
+                    BudgetUiState(totalBudget, totalSpent, categoryStates, symbol)
                 }
             }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BudgetUiState())

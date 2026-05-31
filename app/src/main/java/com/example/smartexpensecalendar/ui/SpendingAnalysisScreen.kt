@@ -67,14 +67,14 @@ fun SpendingAnalysisScreen(
             }
 
             items(uiState.categoryBudgets.filter { it.budget > 0 || it.spent > 0 }) { state ->
-                AnalysisCategoryCard(state)
+                AnalysisCategoryCard(state, uiState.currencySymbol)
             }
         }
     }
 }
 
 @Composable
-fun AnalysisCategoryCard(state: CategoryBudgetState) {
+fun AnalysisCategoryCard(state: CategoryBudgetState, currencySymbol: String = "₹") {
     val categoryColor = getCategoryColor(state.category)
     val progress = if (state.budget > 0) (state.spent / state.budget).toFloat().coerceIn(0f, 1.2f) else 0f
     val isOverBudget = progress > 1.0f
@@ -128,12 +128,12 @@ fun AnalysisCategoryCard(state: CategoryBudgetState) {
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
-                    text = "Spent: ₹${formatIndianCurrency(state.spent)}",
+                    text = "Spent: $currencySymbol${formatIndianCurrency(state.spent)}",
                     color = TextSecondary,
                     fontSize = 12.sp
                 )
                 Text(
-                    text = "Limit: ₹${formatIndianCurrency(state.budget)}",
+                    text = "Limit: $currencySymbol${formatIndianCurrency(state.budget)}",
                     color = TextSecondary,
                     fontSize = 12.sp
                 )

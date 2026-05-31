@@ -48,6 +48,7 @@ fun ExpenseDetailBottomSheet(
 ) {
     val expensesRaw by viewModel.getExpensesForDate(date).collectAsState(initial = emptyList())
     val categories by viewModel.categories.collectAsState()
+    val currencySymbol by viewModel.currencySymbol.collectAsState()
     val expenses = expensesRaw.filter { 
         it.type == com.example.smartexpensecalendar.domain.model.TransactionType.DEBIT &&
         it.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.COMPLETED
@@ -138,7 +139,7 @@ fun ExpenseDetailBottomSheet(
                         Spacer(modifier = Modifier.height(24.dp))
 
                         Text(
-                            text = "₹${"%,.0f".format(expenses.sumOf { it.amount })}",
+                            text = "$currencySymbol${"%,.0f".format(expenses.sumOf { it.amount })}",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.ExtraBold,
                             color = CyanGlow
@@ -217,6 +218,7 @@ fun ExpenseDetailBottomSheet(
                             expense = expense,
                             categories = categories,
                             isEditing = editingExpenseId == expense.id,
+                            currencySymbol = currencySymbol,
                             onEditToggle = { isEditing ->
                                 editingExpenseId = if (isEditing) expense.id else null
                                 if (isEditing) showAddSection = false
@@ -252,6 +254,7 @@ fun ExpenseRow(
     expense: Expense,
     categories: List<String>,
     isEditing: Boolean,
+    currencySymbol: String = "₹",
     onEditToggle: (Boolean) -> Unit,
     onDelete: () -> Unit,
     onEdit: (Double, String, Boolean) -> Unit,
@@ -390,7 +393,7 @@ fun ExpenseRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = "₹${"%,.0f".format(expense.amount)}",
+                            text = "$currencySymbol${"%,.0f".format(expense.amount)}",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.ExtraBold,
                             color = TextPrimary

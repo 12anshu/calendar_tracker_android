@@ -4,19 +4,36 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.example.smartexpensecalendar.ui.BudgetDetailScreen
 import com.example.smartexpensecalendar.ui.HomeScreen
 import com.example.smartexpensecalendar.ui.SpendingAnalysisScreen
 import com.example.smartexpensecalendar.ui.TransactionsScreen
 import com.example.smartexpensecalendar.ui.InsightsScreen
 import com.example.smartexpensecalendar.ui.MerchantRulesScreen
+import com.example.smartexpensecalendar.ui.AuthScreen
+import com.example.smartexpensecalendar.ui.ProfileScreen
+import com.example.smartexpensecalendar.ui.SplashScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Home.route
+        startDestination = Screen.Splash.route
     ) {
+        composable(Screen.Splash.route) {
+            SplashScreen(navController = navController)
+        }
+        composable(
+            route = Screen.Auth.route,
+            arguments = listOf(navArgument("force") { type = NavType.BoolType; defaultValue = false })
+        ) { backStackEntry ->
+            val force = backStackEntry.arguments?.getBoolean("force") ?: false
+            AuthScreen(navController = navController, forceShow = force)
+        }
         composable(Screen.Home.route) {
             HomeScreen(navController = navController)
         }
@@ -34,6 +51,9 @@ fun NavGraph(navController: NavHostController) {
         }
         composable(Screen.MerchantRules.route) {
             MerchantRulesScreen(navController = navController)
+        }
+        composable(Screen.Profile.route) {
+            ProfileScreen(navController = navController)
         }
     }
 }

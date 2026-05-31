@@ -33,7 +33,8 @@ data class HomeUiState(
     val expensesFound: Int = 0,
     val lastSyncTime: Long? = null,
     val pendingSyncMonth: YearMonth? = null,
-    val totalBudget: Double = 0.0
+    val totalBudget: Double = 0.0,
+    val currencySymbol: String = "₹"
 )
 
 @HiltViewModel
@@ -89,7 +90,15 @@ class HomeViewModel @Inject constructor(
         observeSyncProgress()
         observeMonthSyncStatus()
         observeBudget()
+        observeCurrency()
     }
+
+    private fun observeCurrency() {
+        dataStoreManager.currencySymbol.onEach { symbol ->
+            _uiState.update { it.copy(currencySymbol = symbol) }
+        }.launchIn(viewModelScope)
+    }
+
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeBudget() {

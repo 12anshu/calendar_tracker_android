@@ -31,6 +31,7 @@ fun MonthlySummary(
     expenses: List<Expense>,
     syncSummary: SyncSummary? = null,
     totalBudget: Double = 0.0,
+    currencySymbol: String = "₹",
     onExportCSV: () -> Unit = {},
     onExportJSON: () -> Unit = {},
     onImportJSON: () -> Unit = {},
@@ -50,6 +51,7 @@ fun MonthlySummary(
         AnalyticsCard(
             totalAmount = totalMonth,
             budget = totalBudget,
+            currencySymbol = currencySymbol,
             onCardClick = onAnalyticsClick
         )
     }
@@ -59,6 +61,7 @@ fun MonthlySummary(
 fun AnalyticsCard(
     totalAmount: Double,
     budget: Double,
+    currencySymbol: String = "₹",
     onCardClick: () -> Unit
 ) {
     val budgetUsedPercentage = if (budget > 0) ((totalAmount / budget) * 100).coerceAtMost(100.0) else 0.0
@@ -94,7 +97,7 @@ fun AnalyticsCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 Text(
-                    text = "₹${formatIndianCurrency(totalAmount)}",
+                    text = "$currencySymbol${formatIndianCurrency(totalAmount)}",
                     color = TextPrimary,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
@@ -150,7 +153,7 @@ fun AnalyticsCard(
                 )
                 if (budget > 0) {
                     Text(
-                        text = "₹${formatIndianCurrency(budget)}",
+                        text = "$currencySymbol${formatIndianCurrency(budget)}",
                         color = TextPrimary,
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.bodyMedium
@@ -184,7 +187,7 @@ fun AnalyticsCard(
                 )
                 if (budget > 0) {
                     Text(
-                        text = "₹${formatIndianCurrency(kotlin.math.abs(remaining))}",
+                        text = "$currencySymbol${formatIndianCurrency(kotlin.math.abs(remaining))}",
                         color = if (remaining >= 0) ColorGroceries else ColorTransport,
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.bodyMedium
@@ -200,6 +203,7 @@ fun AnalyticsCard(
         }
     }
 }
+
 
 @Composable
 fun BudgetDonut(

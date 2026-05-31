@@ -43,29 +43,42 @@ fun InsightsScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Box {
-                        TextButton(onClick = { showMonthPicker = true }) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "${uiState.selectedMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${uiState.selectedMonth.year} Insights",
-                                    color = TextPrimary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Icon(Icons.Default.KeyboardArrowDown, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+                    Column {
+                        Text(
+                            text = "S.M.A.R.T Insights",
+                            color = CyanGlow,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                        Box {
+                            TextButton(
+                                onClick = { showMonthPicker = true },
+                                contentPadding = PaddingValues(0.dp),
+                                modifier = Modifier.height(24.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "${uiState.selectedMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${uiState.selectedMonth.year}",
+                                        color = TextPrimary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Icon(Icons.Default.KeyboardArrowDown, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+                                }
                             }
-                        }
-                        DropdownMenu(
-                            expanded = showMonthPicker,
-                            onDismissRequest = { showMonthPicker = false },
-                            modifier = Modifier.background(SurfaceGlass)
-                        ) {
-                            val current = YearMonth.now()
-                            (-12..12).forEach { offset ->
-                                val month = current.plusMonths(offset.toLong())
-                                DropdownMenuItem(
-                                    text = { Text("${month.month.name} ${month.year}", color = TextPrimary) },
-                                    onClick = { viewModel.setMonth(month); showMonthPicker = false }
-                                )
+                            DropdownMenu(
+                                expanded = showMonthPicker,
+                                onDismissRequest = { showMonthPicker = false },
+                                modifier = Modifier.background(BackgroundEnd)
+                            ) {
+                                val current = YearMonth.now()
+                                (-12..12).forEach { offset ->
+                                    val month = current.plusMonths(offset.toLong())
+                                    DropdownMenuItem(
+                                        text = { Text("${month.month.name} ${month.year}", color = TextPrimary) },
+                                        onClick = { viewModel.setMonth(month); showMonthPicker = false }
+                                    )
+                                }
                             }
                         }
                     }
@@ -85,12 +98,12 @@ fun InsightsScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
             // Summary Card
             item {
-                TotalSpendCard(uiState.totalSpent)
+                TotalSpendCard(uiState.totalSpent, uiState.currencySymbol)
             }
 
             // Category Breakdown Section
@@ -99,7 +112,7 @@ fun InsightsScreen(
             }
             
             items(uiState.categoryBreakdown) { item ->
-                CategoryProgressItem(item)
+                CategoryProgressItem(item, uiState.currencySymbol)
             }
 
             // Top Merchants Section
@@ -108,20 +121,20 @@ fun InsightsScreen(
             }
 
             items(uiState.topMerchants) { merchant ->
-                MerchantListItem(merchant)
+                MerchantListItem(merchant, uiState.currencySymbol)
             }
 
             // Payment Mode Split
             item {
                 SectionHeader("Payment Modes")
-                PaymentModeCard(uiState.upiVsCard)
+                PaymentModeCard(uiState.upiVsCard, uiState.currencySymbol)
             }
         }
     }
 }
 
 @Composable
-fun TotalSpendCard(amount: Double) {
+fun TotalSpendCard(amount: Double, currencySymbol: String = "₹") {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -138,7 +151,7 @@ fun TotalSpendCard(amount: Double) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Total Spending", color = TextSecondary, style = MaterialTheme.typography.labelLarge)
             Text(
-                "₹${formatIndianCurrency(amount)}",
+                "$currencySymbol${formatIndianCurrency(amount)}",
                 color = TextPrimary,
                 fontSize = 32.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -160,7 +173,7 @@ fun SectionHeader(title: String) {
 }
 
 @Composable
-fun CategoryProgressItem(item: CategorySpend) {
+fun CategoryProgressItem(item: CategorySpend, currencySymbol: String = "₹") {
     val color = getCategoryColor(item.category)
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -174,7 +187,7 @@ fun CategoryProgressItem(item: CategorySpend) {
                 Text(item.category, color = TextPrimary, fontWeight = FontWeight.Medium)
             }
             Text(
-                "₹${formatIndianCurrency(item.amount)}",
+                "$currencySymbol${formatIndianCurrency(item.amount)}",
                 color = TextPrimary,
                 fontWeight = FontWeight.Bold
             )
@@ -204,7 +217,7 @@ fun CategoryProgressItem(item: CategorySpend) {
 }
 
 @Composable
-fun MerchantListItem(merchant: MerchantSpend) {
+fun MerchantListItem(merchant: MerchantSpend, currencySymbol: String = "₹") {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -219,7 +232,7 @@ fun MerchantListItem(merchant: MerchantSpend) {
             Text("${merchant.count} transactions", color = TextSecondary, fontSize = 12.sp)
         }
         Text(
-            "₹${formatIndianCurrency(merchant.amount)}",
+            "$currencySymbol${formatIndianCurrency(merchant.amount)}",
             color = TextPrimary,
             fontWeight = FontWeight.Bold
         )
@@ -227,7 +240,7 @@ fun MerchantListItem(merchant: MerchantSpend) {
 }
 
 @Composable
-fun PaymentModeCard(split: Map<String, Double>) {
+fun PaymentModeCard(split: Map<String, Double>, currencySymbol: String = "₹") {
     val upi = split["UPI"] ?: 0.0
     val card = split["Card"] ?: 0.0
     val total = upi + card
@@ -246,11 +259,11 @@ fun PaymentModeCard(split: Map<String, Double>) {
         ) {
             Column {
                 Text("UPI / Digital", color = TextSecondary, fontSize = 12.sp)
-                Text("₹${formatIndianCurrency(upi)}", color = CyanGlow, fontWeight = FontWeight.Bold)
+                Text("$currencySymbol${formatIndianCurrency(upi)}", color = CyanGlow, fontWeight = FontWeight.Bold)
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text("Card / Others", color = TextSecondary, fontSize = 12.sp)
-                Text("₹${formatIndianCurrency(card)}", color = TextPrimary, fontWeight = FontWeight.Bold)
+                Text("$currencySymbol${formatIndianCurrency(card)}", color = TextPrimary, fontWeight = FontWeight.Bold)
             }
         }
         Spacer(modifier = Modifier.height(16.dp))

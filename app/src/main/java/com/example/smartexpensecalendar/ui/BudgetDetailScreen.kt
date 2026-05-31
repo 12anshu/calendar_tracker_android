@@ -68,7 +68,7 @@ fun BudgetDetailScreen(
                         DropdownMenu(
                             expanded = showMonthPicker,
                             onDismissRequest = { showMonthPicker = false },
-                            modifier = Modifier.background(SurfaceGlass)
+                            modifier = Modifier.background(BackgroundEnd)
                         ) {
                             val current = YearMonth.now()
                             (-12..12).forEach { offset ->
@@ -112,6 +112,7 @@ fun BudgetDetailScreen(
                 BudgetOverviewCard(
                     totalSpent = uiState.totalSpent,
                     totalBudget = uiState.totalBudget,
+                    currencySymbol = uiState.currencySymbol,
                     onEditClick = { showEditDialog = "Total" }
                 )
             }
@@ -129,6 +130,7 @@ fun BudgetDetailScreen(
             items(uiState.categoryBudgets) { categoryState ->
                 CategoryBudgetCard(
                     state = categoryState,
+                    currencySymbol = uiState.currencySymbol,
                     onEditClick = { showEditDialog = categoryState.category }
                 )
             }
@@ -167,7 +169,7 @@ fun BudgetDetailScreen(
                         value = editValue,
                         onValueChange = { editValue = it },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        label = { Text("Amount (₹)") },
+                        label = { Text("Amount (${uiState.currencySymbol})") },
                         textStyle = MaterialTheme.typography.bodyLarge.copy(color = TextPrimary, fontWeight = FontWeight.Bold),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = CyanGlow,
@@ -206,6 +208,7 @@ fun BudgetDetailScreen(
 fun BudgetOverviewCard(
     totalSpent: Double,
     totalBudget: Double,
+    currencySymbol: String = "₹",
     onEditClick: () -> Unit
 ) {
     val progress = if (totalBudget > 0) (totalSpent / totalBudget).toFloat().coerceIn(0f, 1f) else 0f
@@ -230,7 +233,7 @@ fun BudgetOverviewCard(
             ) {
                 Column {
                     Text("Monthly Budget", color = TextSecondary, style = MaterialTheme.typography.labelMedium)
-                    Text("₹${formatIndianCurrency(totalBudget)}", color = TextPrimary, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+                    Text("$currencySymbol${formatIndianCurrency(totalBudget)}", color = TextPrimary, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
                 }
                 IconButton(
                     onClick = onEditClick,
@@ -255,7 +258,7 @@ fun BudgetOverviewCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Spent: ₹${formatIndianCurrency(totalSpent)}", color = TextSecondary, style = MaterialTheme.typography.labelSmall)
+                Text("Spent: $currencySymbol${formatIndianCurrency(totalSpent)}", color = TextSecondary, style = MaterialTheme.typography.labelSmall)
                 Text("${(progress * 100).toInt()}% Used", color = if (progress > 0.9f) ColorTransport else CyanGlow, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
             }
         }
@@ -265,6 +268,7 @@ fun BudgetOverviewCard(
 @Composable
 fun CategoryBudgetCard(
     state: CategoryBudgetState,
+    currencySymbol: String = "₹",
     onEditClick: () -> Unit
 ) {
     val categoryColor = getCategoryColor(state.category)
@@ -295,7 +299,7 @@ fun CategoryBudgetCard(
                     modifier = Modifier.clickable { onEditClick() }
                 ) {
                     Text(
-                        text = if (state.budget > 0) "₹${formatIndianCurrency(state.budget)}" else "Set Budget",
+                        text = if (state.budget > 0) "$currencySymbol${formatIndianCurrency(state.budget)}" else "Set Budget",
                         color = if (state.budget > 0) TextSecondary else CyanGlow,
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -321,7 +325,7 @@ fun CategoryBudgetCard(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "Spent ₹${formatIndianCurrency(state.spent)} of ₹${formatIndianCurrency(state.budget)}",
+                    "Spent $currencySymbol${formatIndianCurrency(state.spent)} of $currencySymbol${formatIndianCurrency(state.budget)}",
                     color = TextSecondary,
                     fontSize = 11.sp
                 )
@@ -329,3 +333,4 @@ fun CategoryBudgetCard(
         }
     }
 }
+

@@ -1,6 +1,10 @@
 package com.example.smartexpensecalendar.ui.navigation
 
 sealed class Screen(val route: String) {
+    object Splash : Screen("splash")
+    object Auth : Screen("auth?force={force}") {
+        fun createRoute(force: Boolean = false) = "auth?force=$force"
+    }
     object Home : Screen("home")
     object SpendingAnalysis : Screen("spending_analysis") // Comparison (Analytics Card click)
     object Insights : Screen("insights")         // Behavior (Bottom Nav)

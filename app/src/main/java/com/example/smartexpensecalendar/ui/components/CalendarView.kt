@@ -38,6 +38,7 @@ fun CalendarView(
     expenses: List<Expense>,
     onDateClick: (LocalDate) -> Unit,
     selectedDate: LocalDate? = null,
+    currencySymbol: String = "₹",
     modifier: Modifier = Modifier
 ) {
     val daysInMonth = yearMonth.lengthOfMonth()
@@ -84,6 +85,7 @@ fun CalendarView(
                     day = day,
                     totalAmount = totalAmount,
                     categories = categories,
+                    currencySymbol = currencySymbol,
                     isSelected = date == selectedDate,
                     isToday = date == LocalDate.now(),
                     onClick = { onDateClick(date) }
@@ -98,6 +100,7 @@ fun CalendarDayCell(
     day: Int,
     totalAmount: Double,
     categories: List<String>,
+    currencySymbol: String = "₹",
     isSelected: Boolean,
     isToday: Boolean,
     onClick: () -> Unit
@@ -200,7 +203,7 @@ fun CalendarDayCell(
 
             if (totalAmount > 0) {
                 Text(
-                    text = "₹${"%.0f".format(totalAmount)}",
+                    text = "$currencySymbol${"%.0f".format(totalAmount)}",
                     style = MaterialTheme.typography.labelSmall,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.ExtraBold,
@@ -210,39 +213,6 @@ fun CalendarDayCell(
             } else {
                 Spacer(modifier = Modifier.height(8.dp))
             }
-
-//            Row(
-//                modifier = Modifier.padding(bottom = 1.dp),
-//                horizontalArrangement = Arrangement.spacedBy(2.dp)
-//            ) {
-//                categories.take(3).forEach { category ->
-//                    Box(
-//                        modifier = Modifier
-//                            .size(5.dp)
-//                            .background(getCategoryColor(category), shape = CircleShape)
-//                    )
-//                }
-//            }
         }
-
-//        if (isSelected) {
-//            Surface(
-////                color = CyanGlow,
-//                shape = CircleShape,
-//                modifier = Modifier
-//                    .align(Alignment.TopEnd)
-////                    .offset(x = 2.dp, y = (2).dp)
-//                    .size(18.dp)
-//                    .shadow(4.dp, CircleShape)
-////                    .padding(horizontal = 4.dp, vertical = 8.dp)
-//            ) {
-//                Icon(
-//                    imageVector = Icons.Default.Add,
-//                    contentDescription = null,
-//                    tint = BackgroundStart,
-//                    modifier = Modifier.padding(0.dp)
-//                )
-//            }
-//        }
     }
 }
