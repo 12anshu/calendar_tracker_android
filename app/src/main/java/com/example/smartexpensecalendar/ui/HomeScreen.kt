@@ -130,6 +130,7 @@ fun HomeScreen(
             topBar = {
                 FintechHeader(
                     onResetClick = { viewModel.resetAndSync() },
+                    onManageRulesClick = { navController.navigate(Screen.MerchantRules.route) },
                     notificationCount = notifications.size,
                     onNotificationClick = { showNotifications = true }
                 )
@@ -292,6 +293,7 @@ fun HomeScreen(
 @Composable
 fun FintechHeader(
     onResetClick: () -> Unit,
+    onManageRulesClick: () -> Unit = {},
     notificationCount: Int = 0,
     onNotificationClick: () -> Unit = {}
 ) {
@@ -330,6 +332,17 @@ fun FintechHeader(
                 onDismissRequest = { showMenu = false },
                 modifier = Modifier.background(SurfaceGlass)
             ) {
+                DropdownMenuItem(
+                    text = { Text("Auto-Categorization Rules", color = TextPrimary) },
+                    onClick = {
+                        showMenu = false
+                        onManageRulesClick()
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Default.AutoFixHigh, contentDescription = null, tint = CyanGlow)
+                    }
+                )
+                Divider(color = SurfaceGlassBright)
                 DropdownMenuItem(
                     text = { Text("Reset Database & Sync", color = Color.Red) },
                     onClick = {

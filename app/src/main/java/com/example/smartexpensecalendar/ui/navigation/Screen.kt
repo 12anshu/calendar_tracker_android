@@ -7,4 +7,5 @@ sealed class Screen(val route: String) {
     object Budget : Screen("budget")             // Settings (Bottom Nav - replacing Report)
     object Transactions : Screen("transactions")
     object Profile : Screen("profile")
+    object MerchantRules : Screen("merchant_rules")
 }

@@ -22,6 +22,7 @@ interface ExpenseRepository {
     // Merchant Mapping
     suspend fun getCategoryForMerchant(merchant: String): String?
     suspend fun saveMerchantMapping(mapping: MerchantMapping)
+    suspend fun deleteMerchantMapping(mapping: MerchantMapping)
     fun getAllMerchantMappings(): Flow<List<MerchantMapping>>
 
     // SMS Log
@@ -42,4 +43,6 @@ interface ExpenseRepository {
     // Custom Categories
     fun getCustomCategories(): Flow<List<String>>
     suspend fun addCustomCategory(name: String)
+
+    fun getActiveMerchantStats(): Flow<List<com.example.smartexpensecalendar.data.local.ActiveMerchantEntity>>
 }

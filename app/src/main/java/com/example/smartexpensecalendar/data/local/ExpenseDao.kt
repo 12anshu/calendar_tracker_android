@@ -50,6 +50,9 @@ interface ExpenseDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun saveMerchantMapping(mapping: MerchantMappingEntity)
 
+    @Delete
+    suspend fun deleteMerchantMapping(mapping: MerchantMappingEntity)
+
     @Query("SELECT * FROM merchant_mappings")
     fun getAllMerchantMappings(): Flow<List<MerchantMappingEntity>>
 
@@ -96,4 +99,13 @@ interface ExpenseDao {
 
     @Query("SELECT name FROM custom_categories")
     fun getAllCustomCategories(): Flow<List<String>>
+
+    @Query("SELECT merchant, category, COUNT(*) as frequency FROM expenses WHERE merchant IS NOT NULL GROUP BY merchant ORDER BY frequency DESC")
+    fun getActiveMerchantStats(): Flow<List<ActiveMerchantEntity>>
 }
+
+data class ActiveMerchantEntity(
+    val merchant: String,
+    val category: String,
+    val frequency: Int
+)

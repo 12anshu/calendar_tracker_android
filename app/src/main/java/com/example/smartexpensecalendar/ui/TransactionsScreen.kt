@@ -228,8 +228,8 @@ fun TransactionsScreen(
                             onDelete = {
                                 viewModel.deleteExpense(expense)
                             },
-                            onEdit = { amount, category ->
-                                viewModel.updateExpense(expense, amount, category)
+                            onEdit = { amount, category, applyToFuture ->
+                                viewModel.updateExpense(expense, amount, category, applyToFuture)
                                 editingExpenseId = null
                             },
                             onClick = { 
@@ -322,13 +322,14 @@ fun TransactionItem(
     isEditing: Boolean,
     onEditToggle: (Boolean) -> Unit,
     onDelete: () -> Unit,
-    onEdit: (Double, String) -> Unit,
+    onEdit: (Double, String, Boolean) -> Unit,
     onClick: () -> Unit,
     onAddCustomCategory: () -> Unit
 ) {
     val categoryColor = getCategoryColor(expense.category)
     var editAmount by remember(isEditing) { mutableStateOf(expense.amount.toString()) }
     var editCategory by remember(isEditing) { mutableStateOf(expense.category) }
+    var applyToFuture by remember(isEditing) { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
 
     Box(
@@ -397,6 +398,25 @@ fun TransactionItem(
                         )
                     )
                 }
+
+                if (expense.merchant != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 8.dp).clickable { applyToFuture = !applyToFuture }
+                    ) {
+                        Checkbox(
+                            checked = applyToFuture,
+                            onCheckedChange = { applyToFuture = it },
+                            colors = CheckboxDefaults.colors(checkedColor = CyanGlow)
+                        )
+                        Text(
+                            text = "Apply to all future ${expense.merchant} transactions",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                    }
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
@@ -406,7 +426,7 @@ fun TransactionItem(
                         onClick = {
                             val amt = editAmount.toDoubleOrNull()
                             if (amt != null) {
-                                onEdit(amt, editCategory)
+                                onEdit(amt, editCategory, applyToFuture)
                             }
                         }
                     ) { Text("Save", color = CyanGlow) }

@@ -73,6 +73,10 @@ class ExpenseRepositoryImpl @Inject constructor(
         dao.saveMerchantMapping(mapping.toEntity())
     }
 
+    override suspend fun deleteMerchantMapping(mapping: MerchantMapping) {
+        dao.deleteMerchantMapping(mapping.toEntity())
+    }
+
     override fun getAllMerchantMappings(): Flow<List<MerchantMapping>> {
         return dao.getAllMerchantMappings().map { entities ->
             entities.map { it.toDomain() }
@@ -157,5 +161,9 @@ class ExpenseRepositoryImpl @Inject constructor(
 
     override suspend fun addCustomCategory(name: String) {
         dao.insertCustomCategory(com.example.smartexpensecalendar.data.local.entity.CustomCategoryEntity(name))
+    }
+
+    override fun getActiveMerchantStats(): Flow<List<com.example.smartexpensecalendar.data.local.ActiveMerchantEntity>> {
+        return dao.getActiveMerchantStats()
     }
 }

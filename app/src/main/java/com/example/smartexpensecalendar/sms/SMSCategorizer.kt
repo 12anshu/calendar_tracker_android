@@ -8,7 +8,7 @@ import javax.inject.Singleton
 class SMSCategorizer @Inject constructor(
     private val repository: ExpenseRepository
 ) {
-    private val defaultMappings = mapOf(
+    val defaultMappings = mapOf(
         "swiggy" to "Food",
         "zomato" to "Food",
         "bundl" to "Food",

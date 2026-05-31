@@ -9,6 +9,7 @@ import com.example.smartexpensecalendar.ui.HomeScreen
 import com.example.smartexpensecalendar.ui.SpendingAnalysisScreen
 import com.example.smartexpensecalendar.ui.TransactionsScreen
 import com.example.smartexpensecalendar.ui.InsightsScreen
+import com.example.smartexpensecalendar.ui.MerchantRulesScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -30,6 +31,9 @@ fun NavGraph(navController: NavHostController) {
         }
         composable(Screen.Insights.route) {
             InsightsScreen(navController = navController)
+        }
+        composable(Screen.MerchantRules.route) {
+            MerchantRulesScreen(navController = navController)
         }
     }
 }

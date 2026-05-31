@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.smartexpensecalendar.domain.model.DefaultCategories
 import com.example.smartexpensecalendar.domain.model.Expense
+import com.example.smartexpensecalendar.domain.model.MerchantMapping
 import com.example.smartexpensecalendar.domain.model.TransactionType
 import com.example.smartexpensecalendar.domain.repository.ExpenseRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -93,16 +94,15 @@ class TransactionsViewModel @Inject constructor(
         }
     }
 
-    fun updateExpense(expense: Expense, newAmount: Double, newCategory: String) {
+    fun updateExpense(expense: Expense, newAmount: Double, newCategory: String, applyToFuture: Boolean = false) {
         viewModelScope.launch {
             repository.upsertExpense(expense.copy(amount = newAmount, category = newCategory))
             
-            // Learn from user: DISABLED - merchant can have multiple categories
-            /*
-            expense.merchant?.let { merchant ->
-                repository.saveMerchantMapping(MerchantMapping(merchant.lowercase(), newCategory))
+            if (applyToFuture) {
+                expense.merchant?.let { merchant ->
+                    repository.saveMerchantMapping(MerchantMapping(merchant.lowercase(), newCategory))
+                }
             }
-            */
         }
     }
 
