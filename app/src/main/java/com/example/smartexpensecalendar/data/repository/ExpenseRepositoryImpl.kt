@@ -133,4 +133,12 @@ class ExpenseRepositoryImpl @Inject constructor(
     override suspend fun getBudgetForCategory(month: java.time.YearMonth, category: String): Double {
         return dao.getBudgetForCategory(month.toString(), category) ?: 0.0
     }
+
+    override fun getCustomCategories(): Flow<List<String>> {
+        return dao.getAllCustomCategories()
+    }
+
+    override suspend fun addCustomCategory(name: String) {
+        dao.insertCustomCategory(com.example.smartexpensecalendar.data.local.entity.CustomCategoryEntity(name))
+    }
 }

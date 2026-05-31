@@ -28,6 +28,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.smartexpensecalendar.presentation.budget.BudgetViewModel
 import com.example.smartexpensecalendar.presentation.budget.CategoryBudgetState
+import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.ui.theme.*
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
 import java.time.YearMonth
@@ -272,9 +273,9 @@ fun CategoryBudgetCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(SurfaceGlass)
-            .border(1.dp, SurfaceGlassBright, RoundedCornerShape(16.dp))
+            .border(1.dp, SurfaceGlassBright, RoundedCornerShape(12.dp))
             .padding(16.dp)
     ) {
         Column {
@@ -284,7 +285,7 @@ fun CategoryBudgetCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(12.dp).background(categoryColor, CircleShape))
+                    CategoryIconView(category = state.category, size = 32.dp, iconSize = 16.dp)
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(state.category, color = TextPrimary, fontWeight = FontWeight.Bold)
                 }

@@ -9,6 +9,7 @@ object DefaultCategories {
     val list = listOf(
         "Food",
         "Groceries",
+        "UPI / Digital",
         "Online Shopping",
         "Bill Payment",
         "Travel",
@@ -17,6 +18,11 @@ object DefaultCategories {
         "Medical",
         "Utilities",
         "Rent",
+        "Investments",
+        "Insurance",
+        "EMI",
+        "Loan",
+        "Subscription",
         "Miscellaneous"
     )
 }

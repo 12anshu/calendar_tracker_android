@@ -8,6 +8,7 @@ import com.example.smartexpensecalendar.ui.BudgetDetailScreen
 import com.example.smartexpensecalendar.ui.HomeScreen
 import com.example.smartexpensecalendar.ui.SpendingAnalysisScreen
 import com.example.smartexpensecalendar.ui.TransactionsScreen
+import com.example.smartexpensecalendar.ui.InsightsScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -28,7 +29,7 @@ fun NavGraph(navController: NavHostController) {
             TransactionsScreen(navController = navController)
         }
         composable(Screen.Insights.route) {
-            // Placeholder for Insights Screen
+            InsightsScreen(navController = navController)
         }
     }
 }

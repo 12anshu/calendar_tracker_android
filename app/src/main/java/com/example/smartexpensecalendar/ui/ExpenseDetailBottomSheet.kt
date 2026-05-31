@@ -32,6 +32,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.smartexpensecalendar.domain.model.DefaultCategories
 import com.example.smartexpensecalendar.domain.model.Expense
 import com.example.smartexpensecalendar.presentation.detail.ExpenseDetailViewModel
+import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.ui.theme.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -45,6 +46,7 @@ fun ExpenseDetailBottomSheet(
     viewModel: ExpenseDetailViewModel = hiltViewModel()
 ) {
     val expensesRaw by viewModel.getExpensesForDate(date).collectAsState(initial = emptyList())
+    val categories by viewModel.categories.collectAsState()
     val expenses = expensesRaw.filter { 
         it.type == com.example.smartexpensecalendar.domain.model.TransactionType.DEBIT &&
         it.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.COMPLETED
@@ -55,6 +57,46 @@ fun ExpenseDetailBottomSheet(
     val snackbarHostState = remember { SnackbarHostState() }
     
     var showAddSection by remember { mutableStateOf(false) }
+    var editingExpenseId by remember { mutableStateOf<Long?>(null) }
+    var showAddCategoryDialog by remember { mutableStateOf(false) }
+
+    if (showAddCategoryDialog) {
+        var newCategoryName by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showAddCategoryDialog = false },
+            title = { Text("Add Custom Category", color = TextPrimary) },
+            text = {
+                OutlinedTextField(
+                    value = newCategoryName,
+                    onValueChange = { newCategoryName = it },
+                    label = { Text("Category Name") },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = CyanGlow,
+                        unfocusedBorderColor = SurfaceGlassBright
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (newCategoryName.isNotBlank()) {
+                            viewModel.addCustomCategory(newCategoryName.trim())
+                            showAddCategoryDialog = false
+                        }
+                    }
+                ) {
+                    Text("Add", color = CyanGlow)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddCategoryDialog = false }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            },
+            containerColor = BackgroundEnd
+        )
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -125,10 +167,14 @@ fun ExpenseDetailBottomSheet(
                 ) {
                     Column {
                         Spacer(modifier = Modifier.height(20.dp))
-                        AddExpenseSection(onAdd = { amount, category ->
-                            viewModel.addExpense(amount, category, date)
-                            showAddSection = false
-                        })
+                        AddExpenseSection(
+                            categories = categories,
+                            onAdd = { amount, category ->
+                                viewModel.addExpense(amount, category, date)
+                                showAddSection = false
+                            },
+                            onAddCustomCategory = { showAddCategoryDialog = true }
+                        )
                     }
                 }
 
@@ -168,6 +214,12 @@ fun ExpenseDetailBottomSheet(
                     items(expenses) { expense ->
                         ExpenseRow(
                             expense = expense,
+                            categories = categories,
+                            isEditing = editingExpenseId == expense.id,
+                            onEditToggle = { isEditing ->
+                                editingExpenseId = if (isEditing) expense.id else null
+                                if (isEditing) showAddSection = false
+                            },
                             onDelete = {
                                 scope.launch {
                                     viewModel.deleteExpense(expense)
@@ -183,7 +235,9 @@ fun ExpenseDetailBottomSheet(
                             },
                             onEdit = { amount, category ->
                                 viewModel.updateExpense(expense, amount, category)
-                            }
+                                editingExpenseId = null
+                            },
+                            onAddCustomCategory = { showAddCategoryDialog = true }
                         )
                     }
                 }
@@ -193,10 +247,17 @@ fun ExpenseDetailBottomSheet(
 }
 
 @Composable
-fun ExpenseRow(expense: Expense, onDelete: () -> Unit, onEdit: (Double, String) -> Unit) {
-    var isEditing by remember { mutableStateOf(false) }
-    var editAmount by remember { mutableStateOf(expense.amount.toString()) }
-    var editCategory by remember { mutableStateOf(expense.category) }
+fun ExpenseRow(
+    expense: Expense,
+    categories: List<String>,
+    isEditing: Boolean,
+    onEditToggle: (Boolean) -> Unit,
+    onDelete: () -> Unit,
+    onEdit: (Double, String) -> Unit,
+    onAddCustomCategory: () -> Unit
+) {
+    var editAmount by remember(isEditing) { mutableStateOf(expense.amount.toString()) }
+    var editCategory by remember(isEditing) { mutableStateOf(expense.category) }
     var expanded by remember { mutableStateOf(false) }
 
     val categoryColor = getCategoryColor(expense.category)
@@ -229,12 +290,26 @@ fun ExpenseRow(expense: Expense, onDelete: () -> Unit, onEdit: (Double, String) 
                             onDismissRequest = { expanded = false },
                             modifier = Modifier.background(BackgroundEnd)
                         ) {
-                            DefaultCategories.list.forEach { cat ->
+                            categories.forEach { cat ->
                                 DropdownMenuItem(
-                                    text = { Text(cat, color = TextPrimary) }, 
+                                    text = { 
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            CategoryIconView(category = cat, size = 24.dp, iconSize = 14.dp)
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(cat, color = TextPrimary) 
+                                        }
+                                    }, 
                                     onClick = { editCategory = cat; expanded = false }
                                 )
                             }
+                            HorizontalDivider(color = SurfaceGlassBright)
+                            DropdownMenuItem(
+                                text = { Text("+ Add Custom", color = CyanGlow) },
+                                onClick = { 
+                                    expanded = false
+                                    onAddCustomCategory()
+                                }
+                            )
                         }
                     }
                     OutlinedTextField(
@@ -253,13 +328,12 @@ fun ExpenseRow(expense: Expense, onDelete: () -> Unit, onEdit: (Double, String) 
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    TextButton(onClick = { isEditing = false }) { Text("Cancel", color = TextSecondary) }
+                    TextButton(onClick = { onEditToggle(false) }) { Text("Cancel", color = TextSecondary) }
                     TextButton(
                         onClick = {
                             val amt = editAmount.toDoubleOrNull()
                             if (amt != null) {
                                 onEdit(amt, editCategory)
-                                isEditing = false
                             }
                         }
                     ) { Text("Save", color = CyanGlow) }
@@ -272,21 +346,8 @@ fun ExpenseRow(expense: Expense, onDelete: () -> Unit, onEdit: (Double, String) 
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Category Icon/Indicator
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(categoryColor.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(categoryColor)
-                        )
-                    }
+                    // Unified Category Icon
+                    CategoryIconView(category = expense.category)
 
                     Spacer(modifier = Modifier.width(12.dp))
 
@@ -314,7 +375,7 @@ fun ExpenseRow(expense: Expense, onDelete: () -> Unit, onEdit: (Double, String) 
                             color = TextPrimary
                         )
                         Row {
-                            IconButton(onClick = { isEditing = true }, modifier = Modifier.size(24.dp)) {
+                            IconButton(onClick = { onEditToggle(true) }, modifier = Modifier.size(24.dp)) {
                                 Icon(Icons.Default.Edit, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
                             }
                             IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
@@ -329,10 +390,20 @@ fun ExpenseRow(expense: Expense, onDelete: () -> Unit, onEdit: (Double, String) 
 }
 
 @Composable
-fun AddExpenseSection(onAdd: (Double, String) -> Unit) {
+fun AddExpenseSection(
+    categories: List<String>,
+    onAdd: (Double, String) -> Unit,
+    onAddCustomCategory: () -> Unit
+) {
     var amount by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf(DefaultCategories.list.first()) }
+    var category by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(categories) {
+        if (category.isEmpty() && categories.isNotEmpty()) {
+            category = categories.first()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -375,12 +446,26 @@ fun AddExpenseSection(onAdd: (Double, String) -> Unit) {
                     onDismissRequest = { expanded = false },
                     modifier = Modifier.background(BackgroundEnd)
                 ) {
-                    DefaultCategories.list.forEach { cat ->
+                    categories.forEach { cat ->
                         DropdownMenuItem(
-                            text = { Text(cat, color = TextPrimary) }, 
+                            text = { 
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    CategoryIconView(category = cat, size = 24.dp, iconSize = 14.dp)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(cat, color = TextPrimary) 
+                                }
+                            }, 
                             onClick = { category = cat; expanded = false }
                         )
                     }
+                    HorizontalDivider(color = SurfaceGlassBright)
+                    DropdownMenuItem(
+                        text = { Text("+ Add Custom", color = CyanGlow) },
+                        onClick = { 
+                            expanded = false
+                            onAddCustomCategory()
+                        }
+                    )
                 }
             }
             

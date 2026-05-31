@@ -109,8 +109,14 @@ class SMSSyncWorker @AssistedInject constructor(
                         "Settlement" 
                     else if (parsed.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.REFUNDED)
                         "Refund"
-                    else
-                        categorizer.categorize(parsed.merchant)
+                    else {
+                        val initialCat = categorizer.categorize(parsed.merchant)
+                        if (initialCat == "Miscellaneous" && body.lowercase().contains("upi")) {
+                            "UPI / Digital"
+                        } else {
+                            initialCat
+                        }
+                    }
 
                     val localDate = Instant.ofEpochMilli(date)
                         .atZone(ZoneId.systemDefault())

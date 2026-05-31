@@ -405,7 +405,7 @@ fun FintechBottomNav(
                     restoreState = true
                 }
             }
-            FintechNavItem(Icons.Default.AutoGraph, "Insights", false) {
+            FintechNavItem(Icons.Default.AutoGraph, "Insights", isSelected = false) {
                 navController.navigate(Screen.Insights.route)
             }
             FintechNavItem(Icons.Default.AccountBalanceWallet, "Budget", false) {

@@ -35,7 +35,11 @@ class BudgetViewModel @Inject constructor(
     val selectedMonth: StateFlow<YearMonth> = _selectedMonth.asStateFlow()
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val uiState: StateFlow<BudgetUiState> = _selectedMonth.flatMapLatest { month ->
+    val uiState: StateFlow<BudgetUiState> = combine(
+        _selectedMonth,
+        repository.getCustomCategories()
+    ) { month, customCats -> month to (DefaultCategories.list + customCats) }
+    .flatMapLatest { (month, categories) ->
         repository.getBudgetsForMonth(month)
             .flatMapLatest { budgets ->
                 repository.getExpensesForMonth(month.year, month.monthValue).map { expenses ->
@@ -46,7 +50,7 @@ class BudgetViewModel @Inject constructor(
                     val totalBudget = budgets["Total"] ?: 0.0
                     val totalSpent = debitExpenses.sumOf { it.amount }
 
-                    val categoryStates = DefaultCategories.list.map { category ->
+                    val categoryStates = categories.map { category ->
                         val spent = debitExpenses.filter { it.category == category }.sumOf { it.amount }
                         val budget = budgets[category] ?: 0.0
                         CategoryBudgetState(category, spent, budget)

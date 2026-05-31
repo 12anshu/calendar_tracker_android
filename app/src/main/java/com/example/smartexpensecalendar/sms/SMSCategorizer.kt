@@ -40,6 +40,8 @@ class SMSCategorizer @Inject constructor(
         "rent" to "Rent",
         "neft" to "Transfer",
         "ach" to "Transfer",
+        "upi" to "UPI / Digital",
+        "vpa" to "UPI / Digital",
         "meal card" to "Groceries"
     )
 

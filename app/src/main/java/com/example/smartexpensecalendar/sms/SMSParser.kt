@@ -140,12 +140,23 @@ object SMSParser {
         // 5. Extract Merchant
         var merchant = extractMerchant(body)
         
+        // If the merchant extracted is just a bank name, we should try again or null it 
+        // to let the bank fallback logic handle it more cleanly or keep searching.
+        if (merchant != null && isJustBankName(merchant)) {
+            merchant = null
+        }
+
         // Handle NEFT / ACH / Bank-as-Merchant cases
-        if (merchant == null || merchant.contains("Bank", ignoreCase = true)) {
+        if (merchant == null) {
             merchant = identifyBankSource(body)
         }
 
         return ParsedSMS(finalAmount, merchant, true, type, status, accountSuffix)
+    }
+
+    private fun isJustBankName(name: String): Boolean {
+        val banks = listOf("ICICI", "HDFC", "SBI", "AXIS", "KOTAK", "PNB", "YES BANK", "IDFC")
+        return banks.any { name.equals(it, ignoreCase = true) || name.equals("$it Bank", ignoreCase = true) }
     }
 
     private fun identifyBankSource(body: String): String {
@@ -184,10 +195,11 @@ object SMSParser {
         for (patternStr in patterns) {
             val pattern = Pattern.compile(patternStr, Pattern.CASE_INSENSITIVE)
             val matcher = pattern.matcher(body)
-            if (matcher.find()) {
+            // Strategy: Iterate through ALL matches for this pattern.
+            // If the first match is a date (e.g., 'on 28-May'), keep looking for a better one (e.g., 'on OPENAI').
+            while (matcher.find()) {
                 val rawMerchant = matcher.group(1)?.trim()
                 if (!rawMerchant.isNullOrBlank()) {
-                    // Avoid taking date or limit as merchant
                     val cleaned = cleanMerchant(rawMerchant)
                     if (cleaned != null && !isDateOrLimit(cleaned)) {
                         return cleaned
@@ -214,6 +226,14 @@ object SMSParser {
 
     private fun isDateOrLimit(text: String): Boolean {
         val lower = text.lowercase()
-        return lower.contains("limit") || lower.contains("avl") || lower.contains("202") || lower.contains("balance")
+        // Check for common date patterns like 28-May, 28/05, 2024
+        val datePattern = ".*\\d{1,2}[-/](?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\\d{1,2}).*".toRegex()
+        
+        return lower.contains("limit") || 
+               lower.contains("avl") || 
+               lower.contains("202") || 
+               lower.contains("balance") ||
+               lower.matches(datePattern) ||
+               text.all { it.isDigit() || it == '-' || it == '/' || it == '.' }
     }
 }

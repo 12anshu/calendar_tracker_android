@@ -23,6 +23,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.smartexpensecalendar.presentation.budget.BudgetViewModel
 import com.example.smartexpensecalendar.presentation.budget.CategoryBudgetState
+import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.ui.theme.*
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
 
@@ -93,7 +94,7 @@ fun AnalysisCategoryCard(state: CategoryBudgetState) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(10.dp).background(categoryColor, CircleShape))
+                    CategoryIconView(category = state.category, size = 32.dp, iconSize = 16.dp)
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(state.category, color = TextPrimary, fontWeight = FontWeight.Bold)
                 }

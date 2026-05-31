@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smartexpensecalendar.domain.model.Expense
 import com.example.smartexpensecalendar.presentation.home.SyncSummary
+import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.ui.theme.*
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
 
@@ -264,16 +265,9 @@ fun PremiumCategoryCard(category: String, amount: Double, total: Double) {
         verticalAlignment = Alignment.CenterVertically
     )
     {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .background(categoryColor.copy(alpha = 0.1f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(modifier = Modifier.size(8.dp).background(categoryColor, CircleShape))
-        }
+        CategoryIconView(category = category, size = 32.dp, iconSize = 16.dp, shape = RoundedCornerShape(6.dp))
 
-        Spacer(modifier = Modifier.width(0.dp))
+        Spacer(modifier = Modifier.width(8.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Row(

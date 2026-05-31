@@ -24,6 +24,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
@@ -35,14 +37,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.smartexpensecalendar.domain.model.DefaultCategories
+import com.example.smartexpensecalendar.domain.model.Expense
 import com.example.smartexpensecalendar.domain.model.TransactionType
 import com.example.smartexpensecalendar.presentation.transactions.TransactionsViewModel
+import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.ui.theme.*
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
 import java.time.LocalDate
@@ -66,12 +71,52 @@ fun TransactionsScreen(
     val focusRequester = remember { FocusRequester() }
 
     var selectedSmsForDetail by remember { mutableStateOf<String?>(null) }
+    var editingExpenseId by remember { mutableStateOf<Long?>(null) }
+    var showAddCategoryDialog by remember { mutableStateOf(false) }
 
     // Sync local search query with ViewModel state (e.g., when search is cleared externally)
     LaunchedEffect(uiState.searchQuery) {
         if (uiState.searchQuery != searchQueryLocal) {
             searchQueryLocal = uiState.searchQuery
         }
+    }
+
+    if (showAddCategoryDialog) {
+        var newCategoryName by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showAddCategoryDialog = false },
+            title = { Text("Add Custom Category", color = TextPrimary) },
+            text = {
+                OutlinedTextField(
+                    value = newCategoryName,
+                    onValueChange = { newCategoryName = it },
+                    label = { Text("Category Name") },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = CyanGlow,
+                        unfocusedBorderColor = SurfaceGlassBright
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (newCategoryName.isNotBlank()) {
+                            viewModel.addCustomCategory(newCategoryName.trim())
+                            showAddCategoryDialog = false
+                        }
+                    }
+                ) {
+                    Text("Add", color = CyanGlow)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddCategoryDialog = false }) {
+                    Text("Close", color = TextSecondary)
+                }
+            },
+            containerColor = BackgroundEnd
+        )
     }
 
     Scaffold(
@@ -175,9 +220,22 @@ fun TransactionsScreen(
                     items(uiState.transactions[date] ?: emptyList()) { expense ->
                         TransactionItem(
                             expense = expense,
+                            categories = uiState.categories,
+                            isEditing = editingExpenseId == expense.id,
+                            onEditToggle = { isEditing ->
+                                editingExpenseId = if (isEditing) expense.id else null
+                            },
+                            onDelete = {
+                                viewModel.deleteExpense(expense)
+                            },
+                            onEdit = { amount, category ->
+                                viewModel.updateExpense(expense, amount, category)
+                                editingExpenseId = null
+                            },
                             onClick = { 
                                 selectedSmsForDetail = expense.originalSmsBody ?: "Manual transaction - No SMS available"
-                            }
+                            },
+                            onAddCustomCategory = { showAddCategoryDialog = true }
                         )
                     }
                 }
@@ -189,6 +247,7 @@ fun TransactionsScreen(
         FilterBottomSheet(
             selectedCategory = uiState.selectedCategory,
             selectedType = uiState.selectedType,
+            categories = uiState.categories,
             onDismiss = { showFilterSheet = false },
             onApply = { cat, type ->
                 viewModel.setCategory(cat)
@@ -257,59 +316,157 @@ fun TransactionDateHeader(date: LocalDate, totalDebit: Double) {
 }
 
 @Composable
-fun TransactionItem(expense: com.example.smartexpensecalendar.domain.model.Expense, onClick: () -> Unit) {
+fun TransactionItem(
+    expense: Expense,
+    categories: List<String>,
+    isEditing: Boolean,
+    onEditToggle: (Boolean) -> Unit,
+    onDelete: () -> Unit,
+    onEdit: (Double, String) -> Unit,
+    onClick: () -> Unit,
+    onAddCustomCategory: () -> Unit
+) {
     val categoryColor = getCategoryColor(expense.category)
-    
-    Row(
+    var editAmount by remember(isEditing) { mutableStateOf(expense.amount.toString()) }
+    var editCategory by remember(isEditing) { mutableStateOf(expense.category) }
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(categoryColor.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(modifier = Modifier.size(8.dp).background(categoryColor, CircleShape))
-            }
-            
-            Spacer(modifier = Modifier.width(12.dp))
-            
-            Column {
-                Text(
-                    text = expense.merchant ?: "Transaction",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
-                    maxLines = 1
-                )
-                Text(
-                    text = expense.category,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = TextSecondary
-                )
-            }
-        }
-        
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                text = "${if (expense.type == TransactionType.DEBIT) "-" else "+"}₹${formatIndianCurrency(expense.amount)}",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.ExtraBold,
-                color = if (expense.type == TransactionType.DEBIT) TextPrimary else ColorGroceries
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(SurfaceGlass)
+            .border(
+                1.dp, 
+                if (isEditing) CyanGlow.copy(alpha = 0.5f) else Color.Transparent, 
+                RoundedCornerShape(12.dp)
             )
-            if (expense.accountSuffix != null) {
-                Text(
-                    text = "XX${expense.accountSuffix}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextSecondary
-                )
+    ) {
+        if (isEditing) {
+            Column(modifier = Modifier.padding(12.dp).fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(modifier = Modifier.weight(1.2f)) {
+                        OutlinedButton(
+                            onClick = { expanded = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+                            border = ButtonDefaults.outlinedButtonBorder.copy(brush = SolidColor(SurfaceGlassBright))
+                        ) {
+                            Text(editCategory, fontSize = 12.sp, maxLines = 1)
+                        }
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false },
+                            modifier = Modifier.background(BackgroundEnd)
+                        ) {
+                            categories.forEach { cat ->
+                                DropdownMenuItem(
+                                    text = { 
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            CategoryIconView(category = cat, size = 24.dp, iconSize = 14.dp)
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(cat, color = TextPrimary) 
+                                        }
+                                    },
+                                    onClick = { editCategory = cat; expanded = false }
+                                )
+                            }
+                            HorizontalDivider(color = SurfaceGlassBright)
+                            DropdownMenuItem(
+                                text = { Text("+ Add Custom", color = CyanGlow) },
+                                onClick = {
+                                    expanded = false
+                                    onAddCustomCategory()
+                                }
+                            )
+                        }
+                    }
+                    OutlinedTextField(
+                        value = editAmount,
+                        onValueChange = { editAmount = it },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = TextPrimary),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = CyanGlow,
+                            unfocusedBorderColor = SurfaceGlassBright
+                        )
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = { onEditToggle(false) }) { Text("Cancel", color = TextSecondary) }
+                    TextButton(
+                        onClick = {
+                            val amt = editAmount.toDoubleOrNull()
+                            if (amt != null) {
+                                onEdit(amt, editCategory)
+                            }
+                        }
+                    ) { Text("Save", color = CyanGlow) }
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onClick() }
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    // Unified Category Icon
+                    CategoryIconView(category = expense.category, size = 42.dp, iconSize = 20.dp)
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column {
+                        Text(
+                            text = expense.merchant ?: "Transaction",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = expense.category,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextSecondary
+                        )
+                    }
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "${if (expense.type == TransactionType.DEBIT) "-" else "+"}₹${formatIndianCurrency(expense.amount)}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = if (expense.type == TransactionType.DEBIT) TextPrimary else ColorGroceries
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (expense.accountSuffix != null) {
+                            Text(
+                                text = "XX${expense.accountSuffix}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextSecondary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        IconButton(onClick = { onEditToggle(true) }, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TextSecondary, modifier = Modifier.size(16.dp))
+                        }
+                        IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = ColorTransport, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
             }
         }
     }
@@ -322,6 +479,7 @@ fun TransactionItem(expense: com.example.smartexpensecalendar.domain.model.Expen
 fun FilterBottomSheet(
     selectedCategory: String?,
     selectedType: TransactionType?,
+    categories: List<String>,
     onDismiss: () -> Unit,
     onApply: (String?, TransactionType?) -> Unit
 ) {
@@ -390,11 +548,17 @@ fun FilterBottomSheet(
                     onClick = { tempCategory = null },
                     label = { Text("All Categories") }
                 )
-                DefaultCategories.list.forEach { category ->
+                categories.forEach { category ->
                     FilterChip(
                         selected = tempCategory == category,
                         onClick = { tempCategory = category },
-                        label = { Text(category) }
+                        label = { 
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CategoryIconView(category = category, size = 18.dp, iconSize = 10.dp)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(category) 
+                            }
+                        }
                     )
                 }
             }

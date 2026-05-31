@@ -35,4 +35,8 @@ interface ExpenseRepository {
     suspend fun upsertBudget(month: java.time.YearMonth, category: String, amount: Double)
     fun getBudgetsForMonth(month: java.time.YearMonth): Flow<Map<String, Double>>
     suspend fun getBudgetForCategory(month: java.time.YearMonth, category: String): Double
+    
+    // Custom Categories
+    fun getCustomCategories(): Flow<List<String>>
+    suspend fun addCustomCategory(name: String)
 }

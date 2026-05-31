@@ -83,4 +83,11 @@ interface ExpenseDao {
 
     @Query("SELECT amount FROM budgets WHERE month = :month AND category = :category LIMIT 1")
     suspend fun getBudgetForCategory(month: String, category: String): Double?
+
+    // Custom Categories
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertCustomCategory(category: com.example.smartexpensecalendar.data.local.entity.CustomCategoryEntity)
+
+    @Query("SELECT name FROM custom_categories")
+    fun getAllCustomCategories(): Flow<List<String>>
 }

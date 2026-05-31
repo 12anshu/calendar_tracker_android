@@ -2,6 +2,7 @@ package com.example.smartexpensecalendar.presentation.transactions
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.smartexpensecalendar.domain.model.DefaultCategories
 import com.example.smartexpensecalendar.domain.model.Expense
 import com.example.smartexpensecalendar.domain.model.TransactionType
 import com.example.smartexpensecalendar.domain.repository.ExpenseRepository
@@ -19,7 +20,8 @@ data class TransactionsUiState(
     val searchQuery: String = "",
     val selectedCategory: String? = null,
     val selectedType: TransactionType? = null,
-    val selectedMonth: YearMonth = YearMonth.now()
+    val selectedMonth: YearMonth = YearMonth.now(),
+    val categories: List<String> = DefaultCategories.list
 )
 
 @HiltViewModel
@@ -41,9 +43,9 @@ class TransactionsViewModel @Inject constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<TransactionsUiState> = combine(
-        _selectedMonth, _searchQuery, _selectedCategory, _selectedType
-    ) { month, query, category, type ->
-        DataQuery(month, query, category, type)
+        _selectedMonth, _searchQuery, _selectedCategory, _selectedType, repository.getCustomCategories()
+    ) { month, query, category, type, customCats ->
+        DataQuery(month, query, category, type, DefaultCategories.list + customCats)
     }.flatMapLatest { query ->
         repository.getExpensesForMonth(query.month.year, query.month.monthValue)
             .map { list ->
@@ -63,7 +65,8 @@ class TransactionsViewModel @Inject constructor(
                     searchQuery = query.query,
                     selectedCategory = query.category,
                     selectedType = query.type,
-                    selectedMonth = query.month
+                    selectedMonth = query.month,
+                    categories = query.categories
                 )
             }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TransactionsUiState())
@@ -90,10 +93,30 @@ class TransactionsViewModel @Inject constructor(
         }
     }
 
+    fun updateExpense(expense: Expense, newAmount: Double, newCategory: String) {
+        viewModelScope.launch {
+            repository.upsertExpense(expense.copy(amount = newAmount, category = newCategory))
+            
+            // Learn from user: DISABLED - merchant can have multiple categories
+            /*
+            expense.merchant?.let { merchant ->
+                repository.saveMerchantMapping(MerchantMapping(merchant.lowercase(), newCategory))
+            }
+            */
+        }
+    }
+
+    fun addCustomCategory(name: String) {
+        viewModelScope.launch {
+            repository.addCustomCategory(name)
+        }
+    }
+
     private data class DataQuery(
         val month: YearMonth,
         val query: String,
         val category: String?,
-        val type: TransactionType?
+        val type: TransactionType?,
+        val categories: List<String>
     )
 }
