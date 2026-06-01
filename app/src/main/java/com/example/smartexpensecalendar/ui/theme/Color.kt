@@ -35,3 +35,5 @@ val CalendarTextMedium = Color(0xFFFFE082)
 val CalendarTextSmall = Color(0xFF86EFAC)
 
 val ProgressColor = Color(0xFF008080)
+
+val PremiumGold = Color(0xFFFFC107)

@@ -359,7 +359,7 @@ fun FintechHeader(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Top Row: Menu, Logo, and Notifications
+        // Top Row: Menu, Upgrade button, and Notifications
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -424,6 +424,49 @@ fun FintechHeader(
 //                    .clip(RoundedCornerShape(12.dp))
 //            )
 
+            // Upgrade Badge
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(CyanGlow.copy(alpha = 0.15f), Color.Transparent)
+                        )
+                    )
+                    .border(
+                        1.dp,
+                        PrimaryAccent.copy(alpha = 0.4f),
+                        RoundedCornerShape(18.dp)
+                    )
+                    .clickable{
+                        onUpgradeClick()
+                    }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+            {
+                Row(
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        Icons.Default.MilitaryTech,
+                        contentDescription = "SMART Premium",
+                        tint = PremiumGold,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text(
+                        "Upgrade",
+                        color = CyanGlow,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.5).sp
+                    )
+                }
+            }
+
             IconButton(
                 onClick = onNotificationClick,
                 modifier = Modifier
@@ -451,42 +494,11 @@ fun FintechHeader(
                 }
             }
         }
-
-//        Spacer(modifier = Modifier.height(12.dp))
-
             // Center Aligned Title Row
             AppLogoText(
                 textStyle = MaterialTheme.typography.headlineLarge,
                 showTagline = false
             )
-
-            // PRO Badge
-            Surface(
-                onClick = onUpgradeClick,
-                color = PrimaryAccent.copy(alpha = 0.15f),
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, PrimaryAccent.copy(alpha = 0.3f)),
-                modifier = Modifier.padding(start = 12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Star,
-                        contentDescription = null,
-                        tint = CyanGlow,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        "PRO",
-                        color = CyanGlow,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                }
-            }
         }
     }
 
