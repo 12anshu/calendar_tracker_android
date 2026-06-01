@@ -49,6 +49,8 @@ import com.example.smartexpensecalendar.domain.model.Expense
 import com.example.smartexpensecalendar.domain.model.TransactionType
 import com.example.smartexpensecalendar.presentation.transactions.TransactionsViewModel
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
+import com.example.smartexpensecalendar.ui.components.MonthYearPicker
+import com.example.smartexpensecalendar.ui.components.CategoryGridPicker
 import com.example.smartexpensecalendar.ui.theme.*
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
 import java.time.LocalDate
@@ -160,19 +162,12 @@ fun TransactionsScreen(
                                     Icon(Icons.Default.KeyboardArrowDown, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
                                 }
                             }
-                            DropdownMenu(
-                                expanded = showMonthPicker,
-                                onDismissRequest = { showMonthPicker = false },
-                                modifier = Modifier.background(BackgroundEnd)
-                            ) {
-                                val current = YearMonth.now()
-                                (-12..12).forEach { offset ->
-                                    val month = current.plusMonths(offset.toLong())
-                                    DropdownMenuItem(
-                                        text = { Text("${month.month.name} ${month.year}", color = TextPrimary) },
-                                        onClick = { viewModel.setMonth(month); showMonthPicker = false }
-                                    )
-                                }
+                            if (showMonthPicker) {
+                                MonthYearPicker(
+                                    initialMonth = uiState.selectedMonth,
+                                    onDismiss = { showMonthPicker = false },
+                                    onConfirm = { viewModel.setMonth(it); showMonthPicker = false }
+                                )
                             }
                         }
                     }
@@ -362,23 +357,16 @@ fun TransactionItem(
                         ) {
                             Text(editCategory, fontSize = 12.sp, maxLines = 1)
                         }
-                        DropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false },
-                            modifier = Modifier.background(BackgroundEnd)
-                        ) {
-                            categories.forEach { cat ->
-                                DropdownMenuItem(
-                                    text = { 
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            CategoryIconView(category = cat, size = 24.dp, iconSize = 14.dp)
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text(cat, color = TextPrimary) 
-                                        }
-                                    },
-                                    onClick = { editCategory = cat; expanded = false }
-                                )
-                            }
+                        if (expanded) {
+                            CategoryGridPicker(
+                                categories = categories,
+                                selectedCategory = editCategory,
+                                onDismiss = { expanded = false },
+                                onSelect = { 
+                                    editCategory = it
+                                    expanded = false 
+                                }
+                            )
                         }
                     }
                     OutlinedTextField(

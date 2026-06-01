@@ -26,6 +26,7 @@ import com.example.smartexpensecalendar.presentation.insights.InsightsViewModel
 import com.example.smartexpensecalendar.presentation.insights.CategorySpend
 import com.example.smartexpensecalendar.presentation.insights.MerchantSpend
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
+import com.example.smartexpensecalendar.ui.components.MonthYearPicker
 import com.example.smartexpensecalendar.ui.theme.*
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
 import java.time.YearMonth
@@ -66,19 +67,12 @@ fun InsightsScreen(
                                     Icon(Icons.Default.KeyboardArrowDown, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
                                 }
                             }
-                            DropdownMenu(
-                                expanded = showMonthPicker,
-                                onDismissRequest = { showMonthPicker = false },
-                                modifier = Modifier.background(BackgroundEnd)
-                            ) {
-                                val current = YearMonth.now()
-                                (-12..12).forEach { offset ->
-                                    val month = current.plusMonths(offset.toLong())
-                                    DropdownMenuItem(
-                                        text = { Text("${month.month.name} ${month.year}", color = TextPrimary) },
-                                        onClick = { viewModel.setMonth(month); showMonthPicker = false }
-                                    )
-                                }
+                            if (showMonthPicker) {
+                                MonthYearPicker(
+                                    initialMonth = uiState.selectedMonth,
+                                    onDismiss = { showMonthPicker = false },
+                                    onConfirm = { viewModel.setMonth(it); showMonthPicker = false }
+                                )
                             }
                         }
                     }

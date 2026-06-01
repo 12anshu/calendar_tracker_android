@@ -39,6 +39,7 @@ import com.example.smartexpensecalendar.presentation.home.HomeUiEvent
 import com.example.smartexpensecalendar.presentation.home.HomeViewModel
 import com.example.smartexpensecalendar.ui.components.CalendarView
 import com.example.smartexpensecalendar.ui.components.MonthlySummary
+import com.example.smartexpensecalendar.ui.components.MonthYearPicker
 import com.example.smartexpensecalendar.ui.components.NotificationBottomSheet
 import com.example.smartexpensecalendar.ui.theme.*
 import kotlinx.coroutines.flow.collectLatest
@@ -187,31 +188,15 @@ fun HomeScreen(
                                     )
                                 }
                             }
-                            DropdownMenu(
-                                expanded = showMonthPicker,
-                                onDismissRequest = { showMonthPicker = false },
-                                modifier = Modifier.background(BackgroundEnd)
-                            ) {
-                                val current = YearMonth.now()
-                                (-12..12).forEach { offset ->
-                                    val month = current.plusMonths(offset.toLong())
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                "${
-                                                    month.month.getDisplayName(
-                                                        DateTextStyle.FULL,
-                                                        Locale.getDefault()
-                                                    )
-                                                } ${month.year}", color = TextPrimary
-                                            )
-                                        },
-                                        onClick = {
-                                            viewModel.setMonth(month)
-                                            showMonthPicker = false
-                                        }
-                                    )
-                                }
+                            if (showMonthPicker) {
+                                MonthYearPicker(
+                                    initialMonth = selectedMonth,
+                                    onDismiss = { showMonthPicker = false },
+                                    onConfirm = { 
+                                        viewModel.setMonth(it)
+                                        showMonthPicker = false 
+                                    }
+                                )
                             }
                         }
                     }

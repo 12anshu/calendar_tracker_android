@@ -34,6 +34,7 @@ import com.example.smartexpensecalendar.domain.model.DefaultCategories
 import com.example.smartexpensecalendar.domain.model.Expense
 import com.example.smartexpensecalendar.presentation.detail.ExpenseDetailViewModel
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
+import com.example.smartexpensecalendar.ui.components.CategoryGridPicker
 import com.example.smartexpensecalendar.ui.theme.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -290,23 +291,16 @@ fun ExpenseRow(
                         ) {
                             Text(editCategory)
                         }
-                        DropdownMenu(
-                            expanded = expanded, 
-                            onDismissRequest = { expanded = false },
-                            modifier = Modifier.background(BackgroundEnd)
-                        ) {
-                            categories.forEach { cat ->
-                                DropdownMenuItem(
-                                    text = { 
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            CategoryIconView(category = cat, size = 24.dp, iconSize = 14.dp)
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text(cat, color = TextPrimary) 
-                                        }
-                                    }, 
-                                    onClick = { editCategory = cat; expanded = false }
-                                )
-                            }
+                        if (expanded) {
+                            CategoryGridPicker(
+                                categories = categories,
+                                selectedCategory = editCategory,
+                                onDismiss = { expanded = false },
+                                onSelect = { 
+                                    editCategory = it
+                                    expanded = false 
+                                }
+                            )
                         }
                     }
                     OutlinedTextField(
@@ -457,29 +451,14 @@ fun AddExpenseSection(
                 ) {
                     Text(category, color = TextPrimary, fontSize = 12.sp)
                 }
-                DropdownMenu(
-                    expanded = expanded, 
-                    onDismissRequest = { expanded = false },
-                    modifier = Modifier.background(BackgroundEnd)
-                ) {
-                    categories.forEach { cat ->
-                        DropdownMenuItem(
-                            text = { 
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    CategoryIconView(category = cat, size = 24.dp, iconSize = 14.dp)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(cat, color = TextPrimary) 
-                                }
-                            }, 
-                            onClick = { category = cat; expanded = false }
-                        )
-                    }
-                    HorizontalDivider(color = SurfaceGlassBright)
-                    DropdownMenuItem(
-                        text = { Text("+ Add Custom", color = CyanGlow) },
-                        onClick = { 
+                if (expanded) {
+                    CategoryGridPicker(
+                        categories = categories,
+                        selectedCategory = category,
+                        onDismiss = { expanded = false },
+                        onSelect = { 
+                            category = it
                             expanded = false
-                            onAddCustomCategory()
                         }
                     )
                 }

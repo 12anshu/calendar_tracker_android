@@ -31,6 +31,8 @@ import androidx.navigation.NavController
 import com.example.smartexpensecalendar.presentation.budget.BudgetViewModel
 import com.example.smartexpensecalendar.presentation.budget.CategoryBudgetState
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
+import com.example.smartexpensecalendar.ui.components.MonthYearPicker
+import com.example.smartexpensecalendar.ui.components.CategoryGridPicker
 import com.example.smartexpensecalendar.ui.theme.*
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
 import java.time.YearMonth
@@ -127,27 +129,12 @@ fun BudgetDetailScreen(
                                 )
                             }
                         }
-                        DropdownMenu(
-                            expanded = showMonthPicker,
-                            onDismissRequest = { showMonthPicker = false },
-                            modifier = Modifier.background(BackgroundEnd)
-                        ) {
-                            val current = YearMonth.now()
-                            (-12..12).forEach { offset ->
-                                val month = current.plusMonths(offset.toLong())
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            "${month.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${month.year}",
-                                            color = TextPrimary
-                                        )
-                                    },
-                                    onClick = {
-                                        viewModel.setMonth(month)
-                                        showMonthPicker = false
-                                    }
-                                )
-                            }
+                        if (showMonthPicker) {
+                            MonthYearPicker(
+                                initialMonth = selectedMonth,
+                                onDismiss = { showMonthPicker = false },
+                                onConfirm = { viewModel.setMonth(it); showMonthPicker = false }
+                            )
                         }
                     }
                 },
@@ -275,30 +262,16 @@ fun BudgetDetailScreen(
                                     Text(selectedCategory)
                                 }
                             }
-                            DropdownMenu(
-                                expanded = expanded,
-                                onDismissRequest = { expanded = false },
-                                modifier = Modifier.background(BackgroundEnd)
-                            ) {
-                                categories.forEach { cat ->
-                                    DropdownMenuItem(
-                                        text = { 
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                CategoryIconView(category = cat, size = 24.dp, iconSize = 14.dp)
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text(cat, color = TextPrimary) 
-                                            }
-                                        },
-                                        onClick = { selectedCategory = cat; expanded = false }
-                                    )
-                                }
-                                HorizontalDivider(color = SurfaceGlassBright)
-                                DropdownMenuItem(
-                                    text = { Text("+ Add Custom", color = CyanGlow) },
-                                    onClick = {
-                                        expanded = false
-                                        showAddCategoryDialog = true
-                                    }
+                            if (expanded) {
+                                CategoryGridPicker(
+                                    categories = categories,
+                                    selectedCategory = selectedCategory,
+                                    onDismiss = { expanded = false },
+                                    onSelect = { 
+                                        selectedCategory = it
+                                        expanded = false 
+                                    },
+                                    onAddCustom = { showAddCategoryDialog = true }
                                 )
                             }
                         }

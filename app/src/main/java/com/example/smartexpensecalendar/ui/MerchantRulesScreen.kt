@@ -29,6 +29,7 @@ import com.example.smartexpensecalendar.presentation.rules.MerchantRulesViewMode
 import com.example.smartexpensecalendar.presentation.rules.MerchantRule
 import com.example.smartexpensecalendar.presentation.rules.RuleSource
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
+import com.example.smartexpensecalendar.ui.components.CategoryGridPicker
 import com.example.smartexpensecalendar.ui.theme.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -251,23 +252,16 @@ fun RuleEditDialog(
                             Text(selectedCategory, fontSize = 14.sp)
                         }
                     }
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                        modifier = Modifier.background(BackgroundEnd)
-                    ) {
-                        categories.forEach { cat ->
-                            DropdownMenuItem(
-                                text = { 
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        CategoryIconView(category = cat, size = 24.dp, iconSize = 14.dp)
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(cat, color = TextPrimary) 
-                                    }
-                                },
-                                onClick = { selectedCategory = cat; expanded = false }
-                            )
-                        }
+                    if (expanded) {
+                        CategoryGridPicker(
+                            categories = categories,
+                            selectedCategory = selectedCategory,
+                            onDismiss = { expanded = false },
+                            onSelect = { 
+                                selectedCategory = it
+                                expanded = false 
+                            }
+                        )
                     }
                 }
             }
@@ -356,19 +350,16 @@ fun AddRuleDialog(
                             Icon(Icons.Default.KeyboardArrowDown, null, modifier = Modifier.size(20.dp))
                         }
                     }
-                    DropdownMenu(expanded = categoryExpanded, onDismissRequest = { categoryExpanded = false }, modifier = Modifier.background(BackgroundEnd)) {
-                        categories.forEach { cat ->
-                            DropdownMenuItem(
-                                text = { 
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        CategoryIconView(category = cat, size = 24.dp, iconSize = 14.dp)
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(cat, color = TextPrimary) 
-                                    }
-                                },
-                                onClick = { selectedCategory = cat; categoryExpanded = false }
-                            )
-                        }
+                    if (categoryExpanded) {
+                        CategoryGridPicker(
+                            categories = categories,
+                            selectedCategory = selectedCategory,
+                            onDismiss = { categoryExpanded = false },
+                            onSelect = { 
+                                selectedCategory = it
+                                categoryExpanded = false 
+                            }
+                        )
                     }
                 }
             }
