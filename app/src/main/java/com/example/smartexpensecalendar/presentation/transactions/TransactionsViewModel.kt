@@ -38,6 +38,14 @@ class TransactionsViewModel @Inject constructor(
     private val _selectedMonth = MutableStateFlow(YearMonth.now())
     val selectedMonth = _selectedMonth.asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            dataStoreManager.selectedMonth.collect { month ->
+                month?.let { _selectedMonth.value = it }
+            }
+        }
+    }
+
     private val _selectedCategory = MutableStateFlow<String?>(null)
     val selectedCategory = _selectedCategory.asStateFlow()
 
@@ -83,7 +91,9 @@ class TransactionsViewModel @Inject constructor(
     }
 
     fun setMonth(month: YearMonth) {
-        _selectedMonth.value = month
+        viewModelScope.launch {
+            dataStoreManager.saveSelectedMonth(month)
+        }
     }
 
     fun setCategory(category: String?) {

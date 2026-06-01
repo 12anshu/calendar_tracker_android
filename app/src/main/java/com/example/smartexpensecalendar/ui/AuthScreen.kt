@@ -27,6 +27,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.smartexpensecalendar.R
 import com.example.smartexpensecalendar.presentation.auth.AuthViewModel
+import com.example.smartexpensecalendar.ui.components.AppLogoText
 import com.example.smartexpensecalendar.ui.navigation.Screen
 import com.example.smartexpensecalendar.ui.theme.*
 
@@ -77,19 +78,9 @@ fun AuthScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text(
-                text = "SMART Expense Tracker",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-
-            Text(
-                text = "Turn Expenses Into Insights",
-                style = MaterialTheme.typography.bodyMedium,
-                color = CyanGlow,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(top = 8.dp)
+            AppLogoText(
+                textStyle = MaterialTheme.typography.headlineLarge,
+                showTagline = true
             )
 
             Spacer(modifier = Modifier.height(48.dp))

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.smartexpensecalendar.R
+import com.example.smartexpensecalendar.ui.components.AppLogoText
 import com.example.smartexpensecalendar.ui.navigation.Screen
 import com.example.smartexpensecalendar.ui.theme.*
 import kotlinx.coroutines.delay
@@ -64,7 +65,7 @@ fun SplashScreen(navController: NavController) {
                 painter = painterResource(id = R.drawable.app_logo),
                 contentDescription = "Logo",
                 modifier = Modifier
-                    .size(140.dp)
+                    .size(250.dp)
                     .scale(scale.value)
                     .alpha(alpha.value)
                     .clip(RoundedCornerShape(28.dp))
@@ -72,23 +73,9 @@ fun SplashScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text(
-                text = "SMART Expense Tracker",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary,
-                modifier = Modifier.alpha(alpha.value)
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = "Spend • Monitor • Analyze • Refine • Thrive",
-                style = MaterialTheme.typography.bodySmall,
-                color = CyanGlow,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 0.5.sp,
-                modifier = Modifier.alpha(alpha.value)
+            AppLogoText(
+                textStyle = MaterialTheme.typography.headlineLarge,
+                showTagline = true
             )
         }
     }

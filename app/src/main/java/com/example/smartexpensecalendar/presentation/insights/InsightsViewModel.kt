@@ -8,6 +8,7 @@ import com.example.smartexpensecalendar.domain.repository.ExpenseRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import java.time.YearMonth
 import javax.inject.Inject
 
@@ -41,6 +42,14 @@ class InsightsViewModel @Inject constructor(
 
     private val _selectedMonth = MutableStateFlow(YearMonth.now())
     val selectedMonth = _selectedMonth.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            dataStoreManager.selectedMonth.collect { month ->
+                month?.let { _selectedMonth.value = it }
+            }
+        }
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<InsightsUiState> = combine(
@@ -87,6 +96,8 @@ class InsightsViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), InsightsUiState())
 
     fun setMonth(month: YearMonth) {
-        _selectedMonth.value = month
+        viewModelScope.launch {
+            dataStoreManager.saveSelectedMonth(month)
+        }
     }
 }

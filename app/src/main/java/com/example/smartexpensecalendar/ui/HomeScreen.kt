@@ -49,6 +49,7 @@ import java.time.format.TextStyle as DateTextStyle
 import java.util.*
 
 import androidx.navigation.NavController
+import com.example.smartexpensecalendar.ui.components.AppLogoText
 import com.example.smartexpensecalendar.ui.navigation.Screen
 
 @Composable
@@ -114,14 +115,6 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-//            .background(Brush.linearGradient(
-//                colors = listOf(
-//                    Color(0xFF020617),
-//                    Color(0xFF071427),
-//                    Color(0xFF0F172A)
-//                )
-//            )
-//        )
             .background(
                 Brush.verticalGradient(
                     listOf(CyanGlow.copy(alpha = 0.1f), CyanGlow.copy(alpha = 0.1f))
@@ -352,13 +345,13 @@ fun FintechHeader(
             }
 
             // Logo in the center of the top row
-            Image(
-                painter = painterResource(id = R.drawable.app_logo),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(12.dp))
-            )
+//            Image(
+//                painter = painterResource(id = R.mipmap.ic_launcher),
+//                contentDescription = null,
+//                modifier = Modifier
+//                    .size(80.dp)
+//                    .clip(RoundedCornerShape(12.dp))
+//            )
 
             IconButton(
                 onClick = onNotificationClick,
@@ -388,31 +381,13 @@ fun FintechHeader(
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+//        Spacer(modifier = Modifier.height(12.dp))
 
         // Center Aligned Title Row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Smart ",
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.5).sp
-                )
-            )
-            Text(
-                text = "Expense Tracker",
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    color = CyanGlow,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.5).sp
-                )
-            )
-        }
+        AppLogoText(
+            textStyle = MaterialTheme.typography.headlineLarge,
+            showTagline = false
+        )
     }
 }
 

@@ -36,6 +36,14 @@ class BudgetViewModel @Inject constructor(
     private val _selectedMonth = MutableStateFlow(YearMonth.now())
     val selectedMonth: StateFlow<YearMonth> = _selectedMonth.asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            dataStoreManager.selectedMonth.collect { month ->
+                month?.let { _selectedMonth.value = it }
+            }
+        }
+    }
+
     val categories: StateFlow<List<String>> = repository.getCustomCategories()
         .map { custom -> DefaultCategories.list + custom }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DefaultCategories.list)
@@ -69,7 +77,9 @@ class BudgetViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BudgetUiState())
 
     fun setMonth(yearMonth: YearMonth) {
-        _selectedMonth.value = yearMonth
+        viewModelScope.launch {
+            dataStoreManager.saveSelectedMonth(yearMonth)
+        }
     }
 
     fun updateBudget(category: String, amount: Double) {
