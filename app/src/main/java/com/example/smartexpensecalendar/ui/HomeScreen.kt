@@ -2,6 +2,7 @@ package com.example.smartexpensecalendar.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -50,6 +51,7 @@ import java.util.*
 
 import androidx.navigation.NavController
 import com.example.smartexpensecalendar.ui.components.AppLogoText
+import com.example.smartexpensecalendar.ui.components.SyncProgressCard
 import com.example.smartexpensecalendar.ui.navigation.Screen
 
 @Composable
@@ -197,26 +199,28 @@ fun HomeScreen(
                         modifier = Modifier
                             .clip(RoundedCornerShape(18.dp))
                             .background(
-                                CyanGlow
+                                Brush.verticalGradient(
+                                    listOf(CyanGlow.copy(alpha = 0.15f), Color.Transparent)
+                                )
                             )
                             .border(
                                 1.dp,
                                 PrimaryAccent.copy(alpha = 0.4f),
                                 RoundedCornerShape(18.dp)
                             )
-                            .clickable(
-                                enabled = !uiState.isSyncing
-                            ) {
+                            .clickable(enabled = !uiState.isSyncing) {
                                 viewModel.syncSelectedMonth()
                             }
                             .padding(horizontal = 12.dp, vertical = 8.dp)
-                    )
-                        {
-                            Text("Sync",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = Color(0xFF02131F))
-                        }
+                    ) {
+                        Text(
+                            text = if (uiState.isSyncing) "Syncing..." else "Sync",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (uiState.isSyncing) CyanGlow.copy(alpha = 0.5f) else CyanGlow,
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -269,6 +273,29 @@ fun HomeScreen(
                 onClearAll = { viewModel.clearNotifications() },
                 onDismiss = { showNotifications = false }
             )
+        }
+
+        // Sync Progress Overlay
+        AnimatedVisibility(
+            visible = uiState.isSyncing,
+            enter = fadeIn() + scaleIn(),
+            exit = fadeOut() + scaleOut(),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .clickable(enabled = false) {}, // Block interaction with background
+                contentAlignment = Alignment.Center
+            ) {
+                SyncProgressCard(
+                    modifier = Modifier
+                        .padding(32.dp)
+                        .shadow(24.dp, RoundedCornerShape(24.dp)),
+                    statusText = "Scanned ${uiState.totalRead} SMS, found ${uiState.expensesFound} expenses"
+                )
+            }
         }
     }
 }

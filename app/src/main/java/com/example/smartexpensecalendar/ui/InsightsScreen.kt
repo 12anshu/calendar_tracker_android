@@ -45,13 +45,13 @@ fun InsightsScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text(
-                            text = "S.M.A.R.T Insights",
-                            color = CyanGlow,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        )
+//                        Text(
+//                            text = "S.M.A.R.T Insights",
+//                            color = CyanGlow,
+//                            fontSize = 12.sp,
+//                            fontWeight = FontWeight.Bold,
+//                            letterSpacing = 1.sp
+//                        )
                         Box {
                             TextButton(
                                 onClick = { showMonthPicker = true },
