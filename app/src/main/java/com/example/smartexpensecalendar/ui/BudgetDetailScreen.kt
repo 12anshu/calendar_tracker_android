@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
@@ -20,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -41,8 +43,68 @@ fun BudgetDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val selectedMonth by viewModel.selectedMonth.collectAsState()
+    val categories by viewModel.categories.collectAsState()
     var showEditDialog by remember { mutableStateOf<String?>(null) } // Category name or "Total"
     var showMonthPicker by remember { mutableStateOf(false) }
+    var showAddCategoryDialog by remember { mutableStateOf(false) }
+
+    if (showAddCategoryDialog) {
+        var newCategoryName by remember { mutableStateOf("") }
+        var initialBudget by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { showAddCategoryDialog = false },
+            title = { Text("Add Custom Category", color = TextPrimary) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = newCategoryName,
+                        onValueChange = { newCategoryName = it },
+                        label = { Text("Category Name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = CyanGlow,
+                            unfocusedBorderColor = SurfaceGlassBright
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = initialBudget,
+                        onValueChange = { initialBudget = it },
+                        label = { Text("Monthly Budget (Optional)") },
+                        placeholder = { Text("0") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = CyanGlow,
+                            unfocusedBorderColor = SurfaceGlassBright
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (newCategoryName.isNotBlank()) {
+                            val budget = initialBudget.toDoubleOrNull() ?: 0.0
+                            viewModel.addCustomCategory(newCategoryName.trim(), budget)
+                            showAddCategoryDialog = false
+                        }
+                    }
+                ) {
+                    Text("Add & Set", color = CyanGlow)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddCategoryDialog = false }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            },
+            containerColor = BackgroundEnd
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -117,13 +179,43 @@ fun BudgetDetailScreen(
                 )
             }
 
+            // Category Budgets Header with Small Add Action
             item {
-                Text(
-                    text = "Category Budgets",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = TextPrimary,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Category Budgets",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    // Small, Subtle Add Button
+                    TextButton(
+                        onClick = { showAddCategoryDialog = true },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                tint = CyanGlow,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Add New",
+                                color = CyanGlow,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
             }
 
             // Category List
@@ -146,6 +238,9 @@ fun BudgetDetailScreen(
             )
         }
         
+        var selectedCategory by remember { mutableStateOf(showEditDialog!!) }
+        var expanded by remember { mutableStateOf(false) }
+
         AlertDialog(
             onDismissRequest = { showEditDialog = null },
             containerColor = BackgroundEnd,
@@ -153,7 +248,7 @@ fun BudgetDetailScreen(
             textContentColor = TextSecondary,
             title = { 
                 Text(
-                    text = "Set Budget for ${showEditDialog}",
+                    text = if (showEditDialog == "Total") "Set Monthly Budget" else "Set Category Budget",
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp
                 ) 
@@ -161,10 +256,54 @@ fun BudgetDetailScreen(
             text = {
                 Column {
                     Text(
-                        text = "Enter the monthly limit for this category.",
+                        text = "Enter the monthly limit for your selected category.",
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
+                    
+                    if (showEditDialog != "Total") {
+                        Box(modifier = Modifier.padding(bottom = 16.dp)) {
+                            OutlinedButton(
+                                onClick = { expanded = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+                                border = ButtonDefaults.outlinedButtonBorder.copy(brush = SolidColor(SurfaceGlassBright))
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    CategoryIconView(category = selectedCategory, size = 24.dp, iconSize = 14.dp)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(selectedCategory)
+                                }
+                            }
+                            DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false },
+                                modifier = Modifier.background(BackgroundEnd)
+                            ) {
+                                categories.forEach { cat ->
+                                    DropdownMenuItem(
+                                        text = { 
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                CategoryIconView(category = cat, size = 24.dp, iconSize = 14.dp)
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(cat, color = TextPrimary) 
+                                            }
+                                        },
+                                        onClick = { selectedCategory = cat; expanded = false }
+                                    )
+                                }
+                                HorizontalDivider(color = SurfaceGlassBright)
+                                DropdownMenuItem(
+                                    text = { Text("+ Add Custom", color = CyanGlow) },
+                                    onClick = {
+                                        expanded = false
+                                        showAddCategoryDialog = true
+                                    }
+                                )
+                            }
+                        }
+                    }
+
                     OutlinedTextField(
                         value = editValue,
                         onValueChange = { editValue = it },
@@ -186,7 +325,7 @@ fun BudgetDetailScreen(
                 Button(
                     onClick = {
                         val amount = editValue.toDoubleOrNull() ?: 0.0
-                        viewModel.updateBudget(showEditDialog!!, amount)
+                        viewModel.updateBudget(selectedCategory, amount)
                         showEditDialog = null
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = CyanGlow, contentColor = BackgroundStart),

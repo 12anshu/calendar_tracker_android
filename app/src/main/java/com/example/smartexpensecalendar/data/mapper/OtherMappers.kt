@@ -6,8 +6,8 @@ import com.example.smartexpensecalendar.domain.model.MerchantMapping
 import com.example.smartexpensecalendar.domain.model.ProcessingStatus
 import com.example.smartexpensecalendar.domain.model.SMSProcessingLog
 
-fun MerchantMappingEntity.toDomain() = MerchantMapping(merchantKeyword, category)
-fun MerchantMapping.toEntity() = MerchantMappingEntity(merchantKeyword, category)
+fun MerchantMappingEntity.toDomain() = MerchantMapping(merchantKeyword, category, createdAt)
+fun MerchantMapping.toEntity() = MerchantMappingEntity(merchantKeyword, category, createdAt)
 
 fun SMSLogEntity.toDomain() = SMSProcessingLog(
     smsId, sender, body, date, ProcessingStatus.valueOf(status), failureReason, parsedAmount, parsedMerchant

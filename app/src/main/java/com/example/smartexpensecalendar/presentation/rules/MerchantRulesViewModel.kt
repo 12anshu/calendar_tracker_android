@@ -69,6 +69,16 @@ class MerchantRulesViewModel @Inject constructor(
         .map { custom -> DefaultCategories.list + custom }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DefaultCategories.list)
 
+    val unmappedMerchants: StateFlow<List<String>> = combine(
+        repository.getActiveMerchantStats(),
+        repository.getAllMerchantMappings()
+    ) { active, rules ->
+        val mappedKeywords = rules.map { it.merchantKeyword.lowercase() }.toSet()
+        active.map { it.merchant }
+            .filter { it.lowercase() !in mappedKeywords }
+            .distinct()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     fun deleteRule(rule: MerchantRule) {
         if (rule.source == RuleSource.CUSTOM) {
             viewModelScope.launch {
@@ -80,6 +90,12 @@ class MerchantRulesViewModel @Inject constructor(
     fun updateRule(keyword: String, newCategory: String) {
         viewModelScope.launch {
             repository.saveMerchantMapping(MerchantMapping(keyword.lowercase(), newCategory))
+        }
+    }
+
+    fun addCustomCategory(name: String) {
+        viewModelScope.launch {
+            repository.addCustomCategory(name)
         }
     }
 }

@@ -7,8 +7,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +30,9 @@ import com.example.smartexpensecalendar.presentation.rules.MerchantRule
 import com.example.smartexpensecalendar.presentation.rules.RuleSource
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.ui.theme.*
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +42,10 @@ fun MerchantRulesScreen(
 ) {
     val rules by viewModel.rules.collectAsState()
     val categories by viewModel.categories.collectAsState()
+    val unmappedMerchants by viewModel.unmappedMerchants.collectAsState()
+    
     var editingRule by remember { mutableStateOf<MerchantRule?>(null) }
+    var showAddRuleDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -46,6 +54,11 @@ fun MerchantRulesScreen(
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showAddRuleDialog = true }) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Rule", tint = CyanGlow)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = BackgroundStart)
@@ -108,6 +121,18 @@ fun MerchantRulesScreen(
             onSave = { newCat ->
                 viewModel.updateRule(editingRule!!.keyword, newCat)
                 editingRule = null
+            }
+        )
+    }
+
+    if (showAddRuleDialog) {
+        AddRuleDialog(
+            merchants = unmappedMerchants,
+            categories = categories,
+            onDismiss = { showAddRuleDialog = false },
+            onSave = { merchant, category ->
+                viewModel.updateRule(merchant, category)
+                showAddRuleDialog = false
             }
         )
     }
@@ -258,6 +283,108 @@ fun RuleEditDialog(
         },
         dismissButton = {
             TextButton(onClick = { onDismiss() }) {
+                Text("Cancel", color = TextSecondary)
+            }
+        }
+    )
+}
+
+@Composable
+fun AddRuleDialog(
+    merchants: List<String>,
+    categories: List<String>,
+    onDismiss: () -> Unit,
+    onSave: (String, String) -> Unit
+) {
+    var selectedMerchant by remember { mutableStateOf(if (merchants.isNotEmpty()) merchants.first() else "") }
+    var selectedCategory by remember { mutableStateOf(if (categories.isNotEmpty()) categories.first() else "") }
+    var merchantExpanded by remember { mutableStateOf(false) }
+    var categoryExpanded by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = BackgroundEnd,
+        title = { Text("Add New Rule", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                Text("Select a merchant keyword from your SMS and assign its permanent category.", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Merchant Picker
+                Text("Merchant Keyword", color = TextSecondary, style = MaterialTheme.typography.labelSmall)
+                Spacer(modifier = Modifier.height(8.dp))
+                Box {
+                    OutlinedButton(
+                        onClick = { merchantExpanded = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+                        border = ButtonDefaults.outlinedButtonBorder.copy(brush = SolidColor(SurfaceGlassBright))
+                    ) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text(if (selectedMerchant.isBlank()) "No merchants found" else selectedMerchant.uppercase(), fontSize = 14.sp, maxLines = 1)
+                            Icon(Icons.Default.KeyboardArrowDown, null, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                    DropdownMenu(expanded = merchantExpanded, onDismissRequest = { merchantExpanded = false }, modifier = Modifier.background(BackgroundEnd)) {
+                        if (merchants.isEmpty()) {
+                            DropdownMenuItem(text = { Text("No unmapped merchants detected", color = TextSecondary) }, onClick = { })
+                        }
+                        merchants.forEach { m ->
+                            DropdownMenuItem(text = { Text(m.uppercase(), color = TextPrimary) }, onClick = { selectedMerchant = m; merchantExpanded = false })
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Category Picker
+                Text("Assigned Category", color = TextSecondary, style = MaterialTheme.typography.labelSmall)
+                Spacer(modifier = Modifier.height(8.dp))
+                Box {
+                    OutlinedButton(
+                        onClick = { categoryExpanded = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+                        border = ButtonDefaults.outlinedButtonBorder.copy(brush = SolidColor(SurfaceGlassBright))
+                    ) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CategoryIconView(category = selectedCategory, size = 24.dp, iconSize = 14.dp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(selectedCategory, fontSize = 14.sp)
+                            }
+                            Icon(Icons.Default.KeyboardArrowDown, null, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                    DropdownMenu(expanded = categoryExpanded, onDismissRequest = { categoryExpanded = false }, modifier = Modifier.background(BackgroundEnd)) {
+                        categories.forEach { cat ->
+                            DropdownMenuItem(
+                                text = { 
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        CategoryIconView(category = cat, size = 24.dp, iconSize = 14.dp)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(cat, color = TextPrimary) 
+                                    }
+                                },
+                                onClick = { selectedCategory = cat; categoryExpanded = false }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { if (selectedMerchant.isNotBlank()) onSave(selectedMerchant, selectedCategory) },
+                enabled = selectedMerchant.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = CyanGlow, contentColor = BackgroundStart),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Create Rule", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
                 Text("Cancel", color = TextSecondary)
             }
         }

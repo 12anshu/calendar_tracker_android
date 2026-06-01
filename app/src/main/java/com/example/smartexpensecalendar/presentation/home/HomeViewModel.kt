@@ -124,8 +124,9 @@ class HomeViewModel @Inject constructor(
 
     fun resetAndSync() {
         viewModelScope.launch {
-            repository.clearAllData()
-            dataStoreManager.clearSyncStatus()
+            val currentMonth = _selectedMonth.value
+            repository.clearMonthData(currentMonth)
+            dataStoreManager.clearSyncStatusForMonth(currentMonth.toString())
             syncSelectedMonth()
         }
     }

@@ -354,7 +354,7 @@ fun FintechHeader(
                     )
                     HorizontalDivider(color = SurfaceGlassBright)
                     DropdownMenuItem(
-                        text = { Text("Reset Database & Sync", color = Color.Red) },
+                        text = { Text("Reset Current Month & Sync", color = Color.Red) },
                         onClick = {
                             showMenu = false
                             onResetClick()

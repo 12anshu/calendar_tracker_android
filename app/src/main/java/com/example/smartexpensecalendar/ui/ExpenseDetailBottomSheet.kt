@@ -307,14 +307,6 @@ fun ExpenseRow(
                                     onClick = { editCategory = cat; expanded = false }
                                 )
                             }
-                            HorizontalDivider(color = SurfaceGlassBright)
-                            DropdownMenuItem(
-                                text = { Text("+ Add Custom", color = CyanGlow) },
-                                onClick = { 
-                                    expanded = false
-                                    onAddCustomCategory()
-                                }
-                            )
                         }
                     }
                     OutlinedTextField(

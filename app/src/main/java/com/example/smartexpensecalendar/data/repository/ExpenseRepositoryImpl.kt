@@ -125,6 +125,16 @@ class ExpenseRepositoryImpl @Inject constructor(
         dao.clearAllMerchantMappings()
     }
 
+    override suspend fun clearMonthData(yearMonth: java.time.YearMonth) {
+        val monthPrefix = String.format("%04d-%02d", yearMonth.year, yearMonth.monthValue)
+        val startMillis = yearMonth.atDay(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val endMillis = yearMonth.atEndOfMonth().atTime(23, 59, 59).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        
+        dao.deleteExpensesForMonth(monthPrefix)
+        dao.deleteSMSLogsForRange(startMillis, endMillis)
+        dao.deleteMerchantMappingsForRange(startMillis, endMillis)
+    }
+
     override suspend fun upsertBudget(month: java.time.YearMonth, category: String, amount: Double) {
         dao.upsertBudget(com.example.smartexpensecalendar.data.local.entity.BudgetEntity(month.toString(), category, amount))
     }

@@ -80,6 +80,15 @@ interface ExpenseDao {
     @Query("DELETE FROM merchant_mappings")
     suspend fun clearAllMerchantMappings()
 
+    @Query("DELETE FROM expenses WHERE date LIKE :monthPrefix || '%'")
+    suspend fun deleteExpensesForMonth(monthPrefix: String)
+
+    @Query("DELETE FROM sms_logs WHERE date >= :startMillis AND date <= :endMillis")
+    suspend fun deleteSMSLogsForRange(startMillis: Long, endMillis: Long)
+
+    @Query("DELETE FROM merchant_mappings WHERE createdAt >= :startMillis AND createdAt <= :endMillis")
+    suspend fun deleteMerchantMappingsForRange(startMillis: Long, endMillis: Long)
+
     // Budget Operations
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertBudget(budget: BudgetEntity)

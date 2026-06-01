@@ -34,6 +34,7 @@ interface ExpenseRepository {
     suspend fun clearSMSLogs()
     suspend fun clearMerchantMappings()
     suspend fun clearAllData()
+    suspend fun clearMonthData(yearMonth: java.time.YearMonth)
 
     // Budget operations
     suspend fun upsertBudget(month: java.time.YearMonth, category: String, amount: Double)

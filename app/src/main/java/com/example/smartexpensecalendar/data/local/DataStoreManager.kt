@@ -101,6 +101,13 @@ class DataStoreManager @Inject constructor(
             preferences.remove(SYNCED_MONTHS)
         }
     }
+
+    suspend fun clearSyncStatusForMonth(yearMonth: String) {
+        context.dataStore.edit { preferences ->
+            val current = preferences[SYNCED_MONTHS] ?: emptySet()
+            preferences[SYNCED_MONTHS] = current - yearMonth
+        }
+    }
 }
 
 data class UserProfile(

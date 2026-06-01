@@ -36,6 +36,10 @@ class BudgetViewModel @Inject constructor(
     private val _selectedMonth = MutableStateFlow(YearMonth.now())
     val selectedMonth: StateFlow<YearMonth> = _selectedMonth.asStateFlow()
 
+    val categories: StateFlow<List<String>> = repository.getCustomCategories()
+        .map { custom -> DefaultCategories.list + custom }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DefaultCategories.list)
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<BudgetUiState> = combine(
         _selectedMonth,
@@ -71,6 +75,15 @@ class BudgetViewModel @Inject constructor(
     fun updateBudget(category: String, amount: Double) {
         viewModelScope.launch {
             repository.upsertBudget(_selectedMonth.value, category, amount)
+        }
+    }
+
+    fun addCustomCategory(name: String, initialBudget: Double = 0.0) {
+        viewModelScope.launch {
+            repository.addCustomCategory(name)
+            if (initialBudget > 0) {
+                repository.upsertBudget(_selectedMonth.value, name, initialBudget)
+            }
         }
     }
 }

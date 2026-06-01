@@ -6,5 +6,6 @@ package com.example.smartexpensecalendar.domain.model
  */
 data class MerchantMapping(
     val merchantKeyword: String,
-    val category: String
+    val category: String,
+    val createdAt: Long = System.currentTimeMillis()
 )
