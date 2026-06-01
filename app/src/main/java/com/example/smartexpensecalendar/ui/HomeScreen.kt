@@ -1,5 +1,6 @@
 package com.example.smartexpensecalendar.ui
 
+import android.annotation.SuppressLint
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -49,6 +50,7 @@ import com.example.smartexpensecalendar.ui.components.CalendarView
 import com.example.smartexpensecalendar.ui.components.MonthlySummary
 import com.example.smartexpensecalendar.ui.components.MonthYearPicker
 import com.example.smartexpensecalendar.ui.components.NotificationBottomSheet
+import com.example.smartexpensecalendar.ui.components.PremiumFeatureCard
 import com.example.smartexpensecalendar.ui.theme.*
 import kotlinx.coroutines.flow.collectLatest
 import java.time.LocalDate
@@ -61,6 +63,7 @@ import com.example.smartexpensecalendar.ui.components.AppLogoText
 import com.example.smartexpensecalendar.ui.components.SyncProgressCard
 import com.example.smartexpensecalendar.ui.navigation.Screen
 
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
@@ -131,165 +134,189 @@ fun HomeScreen(
                 )
             }
         ) { padding ->
-            Column(
+            BoxWithConstraints(
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize()
-                    .graphicsLayer {
-                        translationX = swipeOffset
-                    }
-                    .pointerInput(Unit) {
-                        detectHorizontalDragGestures(
-                            onDragEnd = {
-                                val threshold = size.width / 4f // Dynamic threshold
-                                if (swipeOffset > threshold) {
-                                    // Dragged from Left to Right (positive offset) -> Previous Month
-                                    viewModel.prevMonth()
-                                } else if (swipeOffset < -threshold) {
-                                    // Dragged from Right to Left (negative offset) -> Next Month
-                                    viewModel.nextMonth()
-                                }
-                                swipeOffset = 0f
-                                /*
-                                coroutineScope.launch {
-                                    animate(
-                                        initialValue = swipeOffset,
-                                        targetValue = 0f,
-                                        animationSpec = androidx.compose.animation.core.spring(
-                                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioLowBouncy,
-                                            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
-                                        )
-                                    ) { value, _ ->
-                                        swipeOffset = value
-                                    }
-                                }
-                                */
-                            },
-                            onDragCancel = {
-                                swipeOffset = 0f
-                                /*
-                                coroutineScope.launch {
-                                    animate(
-                                        initialValue = swipeOffset,
-                                        targetValue = 0f
-                                    ) { value, _ ->
-                                        swipeOffset = value
-                                    }
-                                }
-                                */
-                            },
-                            onHorizontalDrag = { change, dragAmount ->
-                                change.consume()
-                                swipeOffset += dragAmount
-                            }
-                        )
-                    }
             ) {
-                // Month Selector Row
-                Row(
+                val isSmallScreen = maxHeight < 600.dp
+
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Box {
-                            TextButton(
-                                onClick = { showMonthPicker = true },
-                                contentPadding = PaddingValues(0.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = "${
-                                            selectedMonth.month.getDisplayName(
-                                                DateTextStyle.FULL,
-                                                Locale.getDefault()
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            translationX = swipeOffset
+                        }
+                        .pointerInput(Unit) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    val threshold = size.width / 4f // Dynamic threshold
+                                    if (swipeOffset > threshold) {
+                                        // Dragged from Left to Right (positive offset) -> Previous Month
+                                        viewModel.prevMonth()
+                                    } else if (swipeOffset < -threshold) {
+                                        // Dragged from Right to Left (negative offset) -> Next Month
+                                        viewModel.nextMonth()
+                                    }
+                                    swipeOffset = 0f
+                                    /*
+                                    coroutineScope.launch {
+                                        animate(
+                                            initialValue = swipeOffset,
+                                            targetValue = 0f,
+                                            animationSpec = androidx.compose.animation.core.spring(
+                                                dampingRatio = androidx.compose.animation.core.Spring.DampingRatioLowBouncy,
+                                                stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
                                             )
-                                        } ${selectedMonth.year}",
-                                        style = MaterialTheme.typography.headlineMedium.copy(
-                                            fontWeight = FontWeight.ExtraBold,
-                                            color = Color.White,
-                                            letterSpacing = (-0.5).sp
+                                        ) { value, _ ->
+                                            swipeOffset = value
+                                        }
+                                    }
+                                    */
+                                },
+                                onDragCancel = {
+                                    swipeOffset = 0f
+                                    /*
+                                    coroutineScope.launch {
+                                        animate(
+                                            initialValue = swipeOffset,
+                                            targetValue = 0f
+                                        ) { value, _ ->
+                                            swipeOffset = value
+                                        }
+                                    }
+                                    */
+                                },
+                                onHorizontalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    swipeOffset += dragAmount
+                                }
+                            )
+                        }
+                ) {
+                    // Month Selector Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Box {
+                                TextButton(
+                                    onClick = { showMonthPicker = true },
+                                    contentPadding = PaddingValues(0.dp)
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = "${
+                                                selectedMonth.month.getDisplayName(
+                                                    DateTextStyle.FULL,
+                                                    Locale.getDefault()
+                                                )
+                                            } ${selectedMonth.year}",
+                                            style = MaterialTheme.typography.headlineMedium.copy(
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = Color.White,
+                                                letterSpacing = (-0.5).sp
+                                            )
                                         )
-                                    )
 
-                                    Spacer(modifier = Modifier.width(4.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
 
-                                    Icon(
-                                        imageVector = Icons.Default.KeyboardArrowDown,
-                                        contentDescription = null,
-                                        tint = Color(0xFF94A3B8)
+                                        Icon(
+                                            imageVector = Icons.Default.KeyboardArrowDown,
+                                            contentDescription = null,
+                                            tint = Color(0xFF94A3B8)
+                                        )
+                                    }
+                                }
+                                if (showMonthPicker) {
+                                    MonthYearPicker(
+                                        initialMonth = selectedMonth,
+                                        onDismiss = { showMonthPicker = false },
+                                        onConfirm = { 
+                                            viewModel.setMonth(it)
+                                            showMonthPicker = false 
+                                        }
                                     )
                                 }
-                            }
-                            if (showMonthPicker) {
-                                MonthYearPicker(
-                                    initialMonth = selectedMonth,
-                                    onDismiss = { showMonthPicker = false },
-                                    onConfirm = { 
-                                        viewModel.setMonth(it)
-                                        showMonthPicker = false 
-                                    }
-                                )
                             }
                         }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(CyanGlow.copy(alpha = 0.15f), Color.Transparent)
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(CyanGlow.copy(alpha = 0.15f), Color.Transparent)
+                                    )
                                 )
+                                .border(
+                                    1.dp,
+                                    PrimaryAccent.copy(alpha = 0.4f),
+                                    RoundedCornerShape(18.dp)
+                                )
+                                .clickable(enabled = !uiState.isSyncing) {
+                                    viewModel.syncSelectedMonth()
+                                }
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = if (uiState.isSyncing) "Syncing..." else "Sync",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (uiState.isSyncing) CyanGlow.copy(alpha = 0.5f) else CyanGlow,
+                                fontWeight = FontWeight.Bold,
                             )
-                            .border(
-                                1.dp,
-                                PrimaryAccent.copy(alpha = 0.4f),
-                                RoundedCornerShape(18.dp)
-                            )
-                            .clickable(enabled = !uiState.isSyncing) {
-                                viewModel.syncSelectedMonth()
-                            }
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = if (uiState.isSyncing) "Syncing..." else "Sync",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (uiState.isSyncing) CyanGlow.copy(alpha = 0.5f) else CyanGlow,
-                            fontWeight = FontWeight.Bold,
+                        }
+                    }
+
+                    if (!isSmallScreen) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        PremiumFeatureCard(
+                            onClick = { navController.navigate(Screen.Subscription.route) },
+                            modifier = Modifier.padding(horizontal = 8.dp)
                         )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    } else {
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    CalendarView(
+                        yearMonth = selectedMonth,
+                        expenses = expenses,
+                        selectedDate = selectedDate,
+                        currencySymbol = uiState.currencySymbol,
+                        onDateClick = { date ->
+                            selectedDate = date
+                            showDetailSheet = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    MonthlySummary(
+                        expenses = expenses,
+                        selectedMonth = selectedMonth,
+                        previousMonthTotal = previousMonthTotal,
+                        syncSummary = syncSummary,
+                        totalBudget = uiState.totalBudget,
+                        currencySymbol = uiState.currencySymbol,
+                        onExportCSV = { viewModel.exportCSV() },
+                        onAnalyticsClick = { navController.navigate(Screen.SpendingAnalysis.route) },
+                        onBudgetClick = { navController.navigate(Screen.Budget.route) },
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    if (isSmallScreen) {
+                        PremiumFeatureCard(
+                            onClick = { navController.navigate(Screen.Subscription.route) },
+                            modifier = Modifier.padding(8.dp)
+                        )
+                        Spacer(modifier = Modifier.height(82.dp)) // Nav height
                     }
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                CalendarView(
-                    yearMonth = selectedMonth,
-                    expenses = expenses,
-                    selectedDate = selectedDate,
-                    currencySymbol = uiState.currencySymbol,
-                    onDateClick = { date ->
-                        selectedDate = date
-                        showDetailSheet = true
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                MonthlySummary(
-                    expenses = expenses,
-                    selectedMonth = selectedMonth,
-                    previousMonthTotal = previousMonthTotal,
-                    syncSummary = syncSummary,
-                    totalBudget = uiState.totalBudget,
-                    currencySymbol = uiState.currencySymbol,
-                    onExportCSV = { viewModel.exportCSV() },
-                    onAnalyticsClick = { navController.navigate(Screen.SpendingAnalysis.route) },
-                    onBudgetClick = { navController.navigate(Screen.Budget.route) },
-                    modifier = Modifier.weight(1f)
-                )
             }
         }
 
@@ -494,13 +521,15 @@ fun FintechHeader(
                 }
             }
         }
-            // Center Aligned Title Row
-            AppLogoText(
-                textStyle = MaterialTheme.typography.headlineLarge,
-                showTagline = false
-            )
-        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        // Center Aligned Title Row
+        AppLogoText(
+            textStyle = MaterialTheme.typography.headlineLarge,
+            showTagline = false
+        )
     }
+}
 
 
 @Composable

@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.smartexpensecalendar.presentation.profile.ProfileViewModel
+import com.example.smartexpensecalendar.ui.components.PremiumFeatureCard
 import com.example.smartexpensecalendar.ui.navigation.Screen
 import com.example.smartexpensecalendar.ui.theme.*
 
@@ -64,6 +65,13 @@ fun ProfileScreen(
                     name = uiState.profile.name,
                     email = uiState.profile.email,
                     authType = uiState.profile.authType
+                )
+            }
+
+            // 1.5 Premium Promo
+            item {
+                PremiumFeatureCard(
+                    onClick = { navController.navigate(Screen.Subscription.route) }
                 )
             }
 
