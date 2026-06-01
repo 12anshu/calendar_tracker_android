@@ -8,59 +8,115 @@ import javax.inject.Singleton
 class SMSCategorizer @Inject constructor(
     private val repository: ExpenseRepository
 ) {
+
     val defaultMappings = mapOf(
+
+        // Food
         "swiggy" to "Food",
         "zomato" to "Food",
-        "bundl" to "Food",
+        "dominos" to "Food",
+        "kfc" to "Food",
+        "mcdonalds" to "Food",
+        "eatclub" to "Food",
+        "faasos" to "Food",
+        "behrouz" to "Food",
+        "starbucks" to "Food",
+
+        // Travel
         "uber" to "Travel",
         "ola" to "Travel",
+        "rapido" to "Travel",
+        "irctc" to "Travel",
+        "makemytrip" to "Travel",
+
+        // Shopping
         "amazon" to "Online Shopping",
         "flipkart" to "Online Shopping",
+        "myntra" to "Online Shopping",
+        "ajio" to "Online Shopping",
+
+        // Groceries
         "bigbasket" to "Groceries",
         "blinkit" to "Groceries",
         "zepto" to "Groceries",
-        "cheq" to "Bill Payment",
+        "dmart" to "Groceries",
+        "reliance fresh" to "Groceries",
+
+        // Utilities
         "airtel" to "Bill Payment",
         "jio" to "Bill Payment",
-        "vi " to "Bill Payment",
+        "vi" to "Bill Payment",
         "electricity" to "Utilities",
         "water" to "Utilities",
         "gas" to "Utilities",
-        "petrol" to "Fuel",
+
+        // Fuel
         "fuel" to "Fuel",
+        "petrol" to "Fuel",
         "shell" to "Fuel",
+        "hpcl" to "Fuel",
+        "iocl" to "Fuel",
+        "indianoil" to "Fuel",
+        "bharat petroleum" to "Fuel",
+
+        // Medical
+        "apollo" to "Medical",
         "hospital" to "Medical",
         "pharmacy" to "Medical",
-        "apollo" to "Medical",
+        "1mg" to "Medical",
+        "netmeds" to "Medical",
+        "pharmeasy" to "Medical",
+
+        // Entertainment
         "netflix" to "Entertainment",
         "spotify" to "Entertainment",
+        "hotstar" to "Entertainment",
+        "prime video" to "Entertainment",
+        "youtube" to "Entertainment",
         "bookmyshow" to "Entertainment",
         "pvr" to "Entertainment",
-        "flat" to "Rent",
+
+        // Rent
         "rent" to "Rent",
+        "flat" to "Rent",
+
+        // Transfers
         "neft" to "Transfer",
         "ach" to "Transfer",
-        "upi" to "UPI / Digital",
-        "vpa" to "UPI / Digital",
+        "imps" to "Transfer",
+        "rtgs" to "Transfer",
+
+        // Meal Card
         "meal card" to "Groceries"
     )
 
     suspend fun categorize(merchant: String?): String {
-        if (merchant == null) return "Miscellaneous"
 
-        val merchantLower = merchant.lowercase()
+        if (merchant.isNullOrBlank())
+            return "Miscellaneous"
 
-        // 0. Special Hardcoded Rules
-        if (merchantLower.contains("neft") || merchantLower.contains("ach")) return "Transfer"
-        if (merchantLower.contains("meal card")) return "Groceries"
+        val normalized =
+            MerchantNormalizer.normalize(merchant)
 
-        // 1. Check user-defined mappings in DB
-        val savedCategory = repository.getCategoryForMerchant(merchantLower)
-        if (savedCategory != null) return savedCategory
+        // User mapping first
+        val savedCategory =
+            repository.getCategoryForMerchant(
+                normalized
+            )
 
-        // 2. Check default keyword mappings
+        if (savedCategory != null)
+            return savedCategory
+
+        // Default mappings
+        defaultMappings[normalized]?.let {
+            return it
+        }
+
+        // Contains fallback
         for ((keyword, category) in defaultMappings) {
-            if (merchantLower.contains(keyword)) return category
+
+            if (normalized.contains(keyword))
+                return category
         }
 
         return "Miscellaneous"

@@ -84,7 +84,18 @@ fun ProfileScreen(
                 )
             }
 
-            // 3. Cloud & Data
+            // 3. Subscription Section
+            item { ProfileSectionHeader("Plan & Billing") }
+            item {
+                PreferenceItem(
+                    title = "Manage Subscription",
+                    subtitle = "Current Plan: FREE • Tap to upgrade",
+                    icon = Icons.Default.WorkspacePremium,
+                    onClick = { navController.navigate(Screen.Subscription.route) }
+                )
+            }
+
+            // 4. Cloud & Data
             item { ProfileSectionHeader("Cloud & Data") }
             item {
                 PreferenceItem(

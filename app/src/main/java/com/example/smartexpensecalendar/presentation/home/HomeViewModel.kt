@@ -34,6 +34,7 @@ data class HomeUiState(
     val lastSyncTime: Long? = null,
     val pendingSyncMonth: YearMonth? = null,
     val totalBudget: Double = 0.0,
+    val previousMonthTotal: Double = 0.0,
     val currencySymbol: String = "₹"
 )
 
@@ -192,6 +193,17 @@ class HomeViewModel @Inject constructor(
             else list.filter { it.category.contains(query, ignoreCase = true) || it.merchant?.contains(query, ignoreCase = true) == true }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val previousMonthTotal: StateFlow<Double> = _selectedMonth.flatMapLatest { month ->
+        val prev = month.minusMonths(1)
+        repository.getExpensesForMonth(prev.year, prev.monthValue).map { list ->
+            list.filter { 
+                it.type == com.example.smartexpensecalendar.domain.model.TransactionType.DEBIT &&
+                it.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.COMPLETED
+            }.sumOf { it.amount }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query

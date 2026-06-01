@@ -111,7 +111,7 @@ class SMSSyncWorker @AssistedInject constructor(
                         "Refund"
                     else {
                         val initialCat = categorizer.categorize(parsed.merchant)
-                        if (initialCat == "Miscellaneous" && body.lowercase().contains("upi")) {
+                        if (initialCat == "Miscellaneous" &&  parsed.paymentMethod == "UPI") {
                             "UPI / Digital"
                         } else {
                             initialCat

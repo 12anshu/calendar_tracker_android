@@ -3,6 +3,7 @@ package com.example.smartexpensecalendar.ui
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -63,6 +64,7 @@ fun HomeScreen(
     val expenses by viewModel.expenses.collectAsState()
     val syncSummary by viewModel.syncSummary.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+    val previousMonthTotal by viewModel.previousMonthTotal.collectAsState()
     val notifications by viewModel.notifications.collectAsState()
     val context = LocalContext.current
     
@@ -131,7 +133,8 @@ fun HomeScreen(
                     onResetClick = { viewModel.resetAndSync() },
                     onManageRulesClick = { navController.navigate(Screen.MerchantRules.route) },
                     notificationCount = notifications.size,
-                    onNotificationClick = { showNotifications = true }
+                    onNotificationClick = { showNotifications = true },
+                    onUpgradeClick = { navController.navigate(Screen.Subscription.route) }
                 )
             }
         ) { padding ->
@@ -240,11 +243,14 @@ fun HomeScreen(
 
                 MonthlySummary(
                     expenses = expenses,
+                    selectedMonth = selectedMonth,
+                    previousMonthTotal = previousMonthTotal,
                     syncSummary = syncSummary,
                     totalBudget = uiState.totalBudget,
                     currencySymbol = uiState.currencySymbol,
                     onExportCSV = { viewModel.exportCSV() },
                     onAnalyticsClick = { navController.navigate(Screen.SpendingAnalysis.route) },
+                    onBudgetClick = { navController.navigate(Screen.Budget.route) },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -305,7 +311,8 @@ fun FintechHeader(
     onResetClick: () -> Unit,
     onManageRulesClick: () -> Unit = {},
     notificationCount: Int = 0,
-    onNotificationClick: () -> Unit = {}
+    onNotificationClick: () -> Unit = {},
+    onUpgradeClick: () -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -410,13 +417,42 @@ fun FintechHeader(
 
 //        Spacer(modifier = Modifier.height(12.dp))
 
-        // Center Aligned Title Row
-        AppLogoText(
-            textStyle = MaterialTheme.typography.headlineLarge,
-            showTagline = false
-        )
+            // Center Aligned Title Row
+            AppLogoText(
+                textStyle = MaterialTheme.typography.headlineLarge,
+                showTagline = false
+            )
+
+            // PRO Badge
+            Surface(
+                onClick = onUpgradeClick,
+                color = PrimaryAccent.copy(alpha = 0.15f),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, PrimaryAccent.copy(alpha = 0.3f)),
+                modifier = Modifier.padding(start = 12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Star,
+                        contentDescription = null,
+                        tint = CyanGlow,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        "PRO",
+                        color = CyanGlow,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+            }
+        }
     }
-}
+
 
 @Composable
 fun FintechBottomNav(

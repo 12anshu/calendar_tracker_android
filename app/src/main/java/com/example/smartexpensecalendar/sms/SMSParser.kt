@@ -1,17 +1,46 @@
 package com.example.smartexpensecalendar.sms
 
+import com.example.smartexpensecalendar.domain.model.TransactionStatus
+import com.example.smartexpensecalendar.domain.model.TransactionType
 import java.util.regex.Pattern
 
 data class ParsedSMS(
     val amount: Double,
     val merchant: String?,
     val isFinancial: Boolean,
-    val type: com.example.smartexpensecalendar.domain.model.TransactionType = com.example.smartexpensecalendar.domain.model.TransactionType.DEBIT,
-    val status: com.example.smartexpensecalendar.domain.model.TransactionStatus = com.example.smartexpensecalendar.domain.model.TransactionStatus.COMPLETED,
+    val paymentMethod: String? = null,
+    val type: TransactionType = TransactionType.DEBIT,
+    val status: TransactionStatus = TransactionStatus.COMPLETED,
     val accountSuffix: String? = null
 )
-
 object SMSParser {
+
+    // Bank Keywords
+    private val bankKeywords = listOf(
+        "hdfc",
+        "icici",
+        "axis",
+        "sbi",
+        "kotak",
+        "yes bank",
+        "idfc",
+        "indusind",
+        "rbl",
+        "federal",
+        "card",
+        "credit card",
+        "debit card"
+    )
+
+    private val merchantPrefixes = listOf(
+        "RAZ*",
+        "PAYTM*",
+        "AMZN*",
+        "AMAZON*",
+        "PHONEPE*",
+        "GPAY*",
+        "GOOGLEPAY*"
+    )
     // Regex for amount: Rs 250, INR 1200, ₹450, 450.00, Rs. 300, INR300, USD 5.90
     private val amountRegex = Pattern.compile(
         "(?i)(?:RS\\.?|INR|₹|Rs\\.?|USD|GBP|EUR)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
@@ -113,21 +142,21 @@ object SMSParser {
         val finalAmount = foundAmount
 
         // 3. Determine Type and Status
-        var type = com.example.smartexpensecalendar.domain.model.TransactionType.DEBIT
-        var status = com.example.smartexpensecalendar.domain.model.TransactionStatus.COMPLETED
+        var type = TransactionType.DEBIT
+        var status = TransactionStatus.COMPLETED
 
         if (settlementKeywords.any { lowercaseBody.contains(it) }) {
-            status = com.example.smartexpensecalendar.domain.model.TransactionStatus.SETTLEMENT
-            type = com.example.smartexpensecalendar.domain.model.TransactionType.CREDIT
+            status = TransactionStatus.SETTLEMENT
+            type = TransactionType.CREDIT
         } else if (refundKeywords.any { lowercaseBody.contains(it) }) {
             status = if (lowercaseBody.contains("failed")) 
-                com.example.smartexpensecalendar.domain.model.TransactionStatus.FAILED 
+                TransactionStatus.FAILED
             else 
-                com.example.smartexpensecalendar.domain.model.TransactionStatus.REFUNDED
-            type = com.example.smartexpensecalendar.domain.model.TransactionType.CREDIT
+                TransactionStatus.REFUNDED
+            type = TransactionType.CREDIT
         } else if (lowercaseBody.contains("received") || lowercaseBody.contains("credited")) {
             // Generic received (might be Salary or P2P)
-            type = com.example.smartexpensecalendar.domain.model.TransactionType.CREDIT
+            type = TransactionType.CREDIT
         }
 
         // 4. Extract Account Suffix
@@ -147,11 +176,41 @@ object SMSParser {
         }
 
         // Handle NEFT / ACH / Bank-as-Merchant cases
-        if (merchant == null) {
-            merchant = identifyBankSource(body)
-        }
+        val paymentMethod = detectPaymentMethod(body)
 
-        return ParsedSMS(finalAmount, merchant, true, type, status, accountSuffix)
+        return ParsedSMS(
+            amount = finalAmount,
+            merchant = merchant,
+            isFinancial = true,
+            paymentMethod = paymentMethod,
+            type = type,
+            status = status,
+            accountSuffix = accountSuffix
+        )
+    }
+
+    private fun detectPaymentMethod(body: String): String? {
+
+        return when {
+
+            body.contains("upi", true) -> "UPI"
+
+            body.contains("credit card", true) -> "Credit Card"
+
+            body.contains("debit card", true) -> "Debit Card"
+
+            body.contains("card", true) -> "Card"
+
+            body.contains("neft", true) -> "NEFT"
+
+            body.contains("imps", true) -> "IMPS"
+
+            body.contains("rtgs", true) -> "RTGS"
+
+            body.contains("ach", true) -> "ACH"
+
+            else -> null
+        }
     }
 
     private fun isJustBankName(name: String): Boolean {
@@ -170,60 +229,203 @@ object SMSParser {
     }
 
     private fun extractMerchant(body: String): String? {
-        // Special check for NEFT/ACH
-        if (body.contains("NEFT", ignoreCase = true) || body.contains("ACH", ignoreCase = true)) {
-            val type = if (body.contains("NEFT", ignoreCase = true)) "NEFT" else "ACH"
-            return "${identifyBankSource(body)} ($type)"
-        }
 
-        // Handle Meal Card
-        if (body.contains("Meal Card", ignoreCase = true)) {
-            return "Meal Card Transaction"
-        }
+        extractUPIMerchant(body)?.let { return it }
 
-        val patterns = listOf(
-            "(?i)at ([a-zA-Z0-9 *._@]+) on",
-            "(?i)at ([a-zA-Z0-9 *._@]+)\\.",
-            "(?i)spent on ([a-zA-Z0-9 *._@]+)",
-            "(?i)paid to ([a-zA-Z0-9 *._@]+)",
-            "(?i)via ([a-zA-Z0-9 *._@]+)",
-            "(?i)on ([a-zA-Z0-9 *._@]+)",
-            "(?i)For ([a-zA-Z0-9 *._@]+)",
-            "(?i)to ([a-zA-Z0-9 *._@]+)"
-        )
+        extractMerchantFromLines(body)?.let { return it }
 
-        for (patternStr in patterns) {
-            val pattern = Pattern.compile(patternStr, Pattern.CASE_INSENSITIVE)
-            val matcher = pattern.matcher(body)
-            // Strategy: Iterate through ALL matches for this pattern.
-            // If the first match is a date (e.g., 'on 28-May'), keep looking for a better one (e.g., 'on OPENAI').
-            while (matcher.find()) {
-                val rawMerchant = matcher.group(1)?.trim()
-                if (!rawMerchant.isNullOrBlank()) {
-                    val cleaned = cleanMerchant(rawMerchant)
-                    if (cleaned != null && !isDateOrLimit(cleaned)) {
-                        return cleaned
-                    }
-                }
-            }
-        }
-        
+        extractMerchantFromPatterns(body)?.let { return it }
+
+        extractMerchantFromVPA(body)?.let { return it }
+
         return null
     }
 
-    private fun cleanMerchant(merchant: String): String? {
-        var cleaned = merchant.replace("(?i)RAZ\\*|UPI_|WWW|\\.COM|\\.IN|\\.NET|PRIV|LTD|DIGITAL|MARKETPLACE|MARKETPLA|TECHN".toRegex(), " ")
-            .replace("[._*@#]".toRegex(), " ")
-            .trim()
-            .split(" ")
-            .filter { it.length > 1 }
-            .take(3)
-            .joinToString(" ")
-            
-        if (cleaned.isBlank()) return null
-        return cleaned
+    private fun extractUPIMerchant(body: String): String? {
+
+        val pattern = Pattern.compile(
+            "@UPI[_ ]+([A-Za-z0-9 ]+)",
+            Pattern.CASE_INSENSITIVE
+        )
+
+        val matcher = pattern.matcher(body)
+
+        if (matcher.find()) {
+
+            val merchant = matcher.group(1)
+                ?.replace("\\b\\d+\\b$".toRegex(), "")
+                ?.trim()
+
+            return cleanMerchant(merchant)
+        }
+
+        return null
     }
 
+    private fun extractMerchantFromLines(
+        body: String
+    ): String? {
+
+        val lines = body.lines()
+
+        for (line in lines) {
+
+            val text = line.trim()
+
+            if (text.isBlank())
+                continue
+
+            if (merchantPrefixes.any {
+                    text.startsWith(it, true)
+                }) {
+
+                return cleanMerchant(text)
+            }
+
+            if (
+                text.length in 4..40 &&
+                !containsBankKeywords(text) &&
+                !containsDate(text) &&
+                !containsAmount(text)
+            ) {
+
+                if (
+                    text.contains("swiggy", true) ||
+                    text.contains("zomato", true) ||
+                    text.contains("amazon", true) ||
+                    text.contains("flipkart", true) ||
+                    text.contains("bundl", true)
+                ) {
+
+                    return cleanMerchant(text)
+                }
+            }
+        }
+
+        return null
+    }
+
+    private fun extractMerchantFromPatterns(
+        body: String
+    ): String? {
+
+        val patterns = listOf(
+
+            "(?i)at (.+?)(?: on| via|\\.|,|$)",
+
+            "(?i)spent at (.+?)(?: on| via|\\.|,|$)",
+
+            "(?i)paid to (.+?)(?: on| via|\\.|,|$)",
+
+            "(?i)sent to (.+?)(?: on| via|\\.|,|$)",
+
+            "(?i)merchant[: ]+(.+?)(?:\\.|,|$)"
+        )
+
+        for (patternStr in patterns) {
+
+            val matcher =
+                Pattern.compile(patternStr).matcher(body)
+
+            while (matcher.find()) {
+
+                val cleaned =
+                    cleanMerchant(matcher.group(1))
+
+                if (
+                    cleaned != null &&
+                    !isDateOrLimit(cleaned) &&
+                    !containsBankKeywords(cleaned)
+                ) {
+                    return cleaned
+                }
+            }
+        }
+
+        return null
+    }
+
+    private fun extractMerchantFromVPA(
+        body: String
+    ): String? {
+
+        val matcher = Pattern.compile(
+            "\\b([a-zA-Z0-9._-]+)@([a-zA-Z]+)\\b"
+        ).matcher(body)
+
+        if (matcher.find()) {
+
+            val handle =
+                matcher.group(1)?.lowercase() ?: return null
+
+            if (
+                handle.contains("swiggy") ||
+                handle.contains("zomato") ||
+                handle.contains("amazon") ||
+                handle.contains("uber")
+            ) {
+
+                return cleanMerchant(handle)
+            }
+        }
+
+        return null
+    }
+
+    private fun cleanMerchant(
+        merchant: String?
+    ): String? {
+
+        if (merchant.isNullOrBlank())
+            return null
+
+        val cleaned = merchant
+
+            .replace("(?i)RAZ\\*".toRegex(), "")
+            .replace("(?i)PAYTM\\*".toRegex(), "")
+            .replace("(?i)AMZN".toRegex(), "Amazon")
+            .replace("(?i)BUNDL".toRegex(), "Swiggy")
+
+            .replace("(?i)TECHNOLOGIES".toRegex(), "")
+            .replace("(?i)INSTAMART".toRegex(), "")
+            .replace("(?i)PRIVATE".toRegex(), "")
+            .replace("(?i)PVT".toRegex(), "")
+            .replace("(?i)LIMITED".toRegex(), "")
+            .replace("(?i)LTD".toRegex(), "")
+
+            .replace("[._*@#]".toRegex(), " ")
+            .replace("\\s+".toRegex(), " ")
+            .trim()
+
+        return cleaned
+            .split(" ")
+            .take(3)
+            .joinToString(" ")
+            .ifBlank { null }
+    }
+
+    private fun containsBankKeywords(text: String): Boolean {
+
+        val lower = text.lowercase()
+
+        return bankKeywords.any {
+            lower.contains(it)
+        }
+    }
+
+    private fun containsDate(text: String): Boolean {
+
+        return text.matches(
+            ".*\\d{1,2}[-/]\\d{1,2}.*".toRegex()
+        )
+    }
+
+    private fun containsAmount(text: String): Boolean {
+
+        return text.contains(
+            "\\d+(\\.\\d{2})?".toRegex()
+        )
+    }
     private fun isDateOrLimit(text: String): Boolean {
         val lower = text.lowercase()
         // Check for common date patterns like 28-May, 28/05, 2024

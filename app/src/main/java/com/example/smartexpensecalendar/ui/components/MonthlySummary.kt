@@ -25,10 +25,15 @@ import com.example.smartexpensecalendar.presentation.home.SyncSummary
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.ui.theme.*
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
+import java.time.YearMonth
+import java.time.format.TextStyle
+import java.util.Locale
 
 @Composable
 fun MonthlySummary(
     expenses: List<Expense>,
+    selectedMonth: YearMonth,
+    previousMonthTotal: Double = 0.0,
     syncSummary: SyncSummary? = null,
     totalBudget: Double = 0.0,
     currencySymbol: String = "₹",
@@ -36,6 +41,7 @@ fun MonthlySummary(
     onExportJSON: () -> Unit = {},
     onImportJSON: () -> Unit = {},
     onAnalyticsClick: () -> Unit = {},
+    onBudgetClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val totalMonth = expenses.filter { 
@@ -50,9 +56,12 @@ fun MonthlySummary(
     ) {
         AnalyticsCard(
             totalAmount = totalMonth,
+            previousMonthTotal = previousMonthTotal,
+            selectedMonth = selectedMonth,
             budget = totalBudget,
             currencySymbol = currencySymbol,
-            onCardClick = onAnalyticsClick
+            onCardClick = onAnalyticsClick,
+            onBudgetClick = onBudgetClick
         )
     }
 }
@@ -60,12 +69,29 @@ fun MonthlySummary(
 @Composable
 fun AnalyticsCard(
     totalAmount: Double,
+    previousMonthTotal: Double,
+    selectedMonth: YearMonth,
     budget: Double,
     currencySymbol: String = "₹",
-    onCardClick: () -> Unit
+    onCardClick: () -> Unit,
+    onBudgetClick: () -> Unit
 ) {
     val budgetUsedPercentage = if (budget > 0) ((totalAmount / budget) * 100).coerceAtMost(100.0) else 0.0
     val remaining = budget - totalAmount
+    
+    val previousMonth = selectedMonth.minusMonths(1)
+    val prevMonthName = previousMonth.month.getDisplayName(TextStyle.SHORT, Locale.getDefault())
+    
+    val diff = totalAmount - previousMonthTotal
+    val percentageDiff = if (previousMonthTotal > 0) {
+        (kotlin.math.abs(diff) / previousMonthTotal) * 100
+    } else {
+        0.0
+    }
+    
+    val isHigher = diff > 0
+    val diffColor = if (isHigher) ColorTransport else ColorGroceries
+    val arrow = if (isHigher) "▲" else "▼"
 
     Box(
         modifier = Modifier
@@ -107,17 +133,25 @@ fun AnalyticsCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "▲ 12.5%",
-                        color = ColorGroceries,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                    Text(
-                        text = " vs Apr 2026",
-                        color = TextSecondary,
-                        style = MaterialTheme.typography.labelMedium
-                    )
+                    if (previousMonthTotal > 0) {
+                        Text(
+                            text = "$arrow ${"%.1f".format(percentageDiff)}%",
+                            color = diffColor,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                        Text(
+                            text = " vs $prevMonthName ${previousMonth.year}",
+                            color = TextSecondary,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    } else {
+                        Text(
+                            text = "No data for $prevMonthName",
+                            color = TextSecondary,
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
                 }
             }
 
@@ -151,18 +185,24 @@ fun AnalyticsCard(
                     color = TextSecondary,
                     style = MaterialTheme.typography.labelSmall
                 )
-                if (budget > 0) {
-                    Text(
-                        text = "$currencySymbol${formatIndianCurrency(budget)}",
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                } else {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable { onCardClick() }
-                    ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { onBudgetClick() }
+                ) {
+                    if (budget > 0) {
+                        Text(
+                            text = "$currencySymbol${formatIndianCurrency(budget)}",
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = null,
+                            tint = CyanGlow,
+                            modifier = Modifier.size(12.dp).padding(start = 2.dp)
+                        )
+                    } else {
                         Text(
                             text = "Set Budget",
                             color = CyanGlow,
