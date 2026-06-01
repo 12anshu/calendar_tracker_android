@@ -15,5 +15,6 @@ enum class ProcessingStatus {
     PROCESSED,
     SKIPPED,
     FAILED,
-    IGNORED
+    IGNORED,
+    SYNC_COMPLETE
 }

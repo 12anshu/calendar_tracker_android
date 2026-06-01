@@ -77,7 +77,9 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     val notifications: StateFlow<List<SMSProcessingLog>> = repository.getAllSMSLogs()
-        .map { logs -> logs.filter { it.status == ProcessingStatus.PROCESSED } }
+        .map { logs -> 
+            logs.filter { it.status == ProcessingStatus.SYNC_COMPLETE || it.status == ProcessingStatus.PROCESSED } 
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun clearNotifications() {

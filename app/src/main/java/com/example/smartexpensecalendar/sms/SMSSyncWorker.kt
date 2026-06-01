@@ -161,7 +161,7 @@ class SMSSyncWorker @AssistedInject constructor(
 
                     repository.logSMSProcessing(
                         SMSProcessingLog(
-                            id, address, body, date, ProcessingStatus.PROCESSED,
+                            id, address, body, date, ProcessingStatus.IGNORED, // Use IGNORED for individual logs during bulk sync
                             parsedAmount = parsed.amount, parsedMerchant = parsed.merchant
                         )
                     )
@@ -178,6 +178,18 @@ class SMSSyncWorker @AssistedInject constructor(
                     applicationContext,
                     "${java.time.Month.of(syncMonth).name} $syncYear",
                     processedExpenses
+                )
+
+                // Log a sync completion event for the UI notification icon
+                repository.logSMSProcessing(
+                    SMSProcessingLog(
+                        smsId = System.currentTimeMillis(), // Unique ID for the summary log
+                        sender = "SYSTEM",
+                        body = "Successfully synced $processedExpenses expenses for ${java.time.Month.of(syncMonth).name} $syncYear",
+                        date = System.currentTimeMillis(),
+                        status = ProcessingStatus.SYNC_COMPLETE,
+                        parsedAmount = processedExpenses.toDouble() // Using this field to store count for UI
+                    )
                 )
             }
         }
