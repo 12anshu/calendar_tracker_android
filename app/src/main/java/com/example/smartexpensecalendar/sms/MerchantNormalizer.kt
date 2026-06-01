@@ -35,6 +35,11 @@ object MerchantNormalizer {
             // Zepto
             lower.contains("zepto") -> "zepto"
 
+            // Meal Card
+            lower.contains("sodexo") -> "meal card"
+            lower.contains("pluxee") -> "meal card"
+            lower.contains("edenred") -> "meal card"
+
             else -> lower.trim()
         }
     }

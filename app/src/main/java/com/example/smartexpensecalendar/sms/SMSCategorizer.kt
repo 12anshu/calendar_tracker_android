@@ -87,7 +87,7 @@ class SMSCategorizer @Inject constructor(
         "rtgs" to "Transfer",
 
         // Meal Card
-        "meal card" to "Groceries"
+        "meal card" to "Food"
     )
 
     suspend fun categorize(merchant: String?): String {

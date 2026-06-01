@@ -226,8 +226,13 @@ fun AnalyticsCard(
                     style = MaterialTheme.typography.labelSmall
                 )
                 if (budget > 0) {
+                    val remainingText = if (remaining < 0) {
+                        "-$currencySymbol${formatIndianCurrency(kotlin.math.abs(remaining))}"
+                    } else {
+                        "$currencySymbol${formatIndianCurrency(remaining)}"
+                    }
                     Text(
-                        text = "$currencySymbol${formatIndianCurrency(kotlin.math.abs(remaining))}",
+                        text = remainingText,
                         color = if (remaining >= 0) ColorGroceries else ColorTransport,
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.bodyMedium

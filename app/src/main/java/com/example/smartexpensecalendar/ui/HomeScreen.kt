@@ -11,6 +11,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.animation.core.animate
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.CircleShape
@@ -76,21 +82,8 @@ fun HomeScreen(
     var showMonthPicker by remember { mutableStateOf(false) }
     var showNotifications by remember { mutableStateOf(false) }
 
-    // Sliding gesture state
+    val coroutineScope = rememberCoroutineScope()
     var swipeOffset by remember { mutableFloatStateOf(0f) }
-    val draggableState = rememberDraggableState { delta ->
-        swipeOffset += delta
-    }
-
-    LaunchedEffect(swipeOffset) {
-        if (swipeOffset > 150f) {
-            viewModel.prevMonth()
-            swipeOffset = 0f
-        } else if (swipeOffset < -150f) {
-            viewModel.nextMonth()
-            swipeOffset = 0f
-        }
-    }
 
     val createDocumentLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/csv")
@@ -142,11 +135,55 @@ fun HomeScreen(
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize()
-                    .draggable(
-                        state = draggableState,
-                        orientation = Orientation.Horizontal,
-                        onDragStopped = { swipeOffset = 0f }
-                    )
+                    .graphicsLayer {
+                        translationX = swipeOffset
+                    }
+                    .pointerInput(Unit) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = {
+                                val threshold = size.width / 4f // Dynamic threshold
+                                if (swipeOffset > threshold) {
+                                    // Dragged from Left to Right (positive offset) -> Previous Month
+                                    viewModel.prevMonth()
+                                } else if (swipeOffset < -threshold) {
+                                    // Dragged from Right to Left (negative offset) -> Next Month
+                                    viewModel.nextMonth()
+                                }
+                                swipeOffset = 0f
+                                /*
+                                coroutineScope.launch {
+                                    animate(
+                                        initialValue = swipeOffset,
+                                        targetValue = 0f,
+                                        animationSpec = androidx.compose.animation.core.spring(
+                                            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioLowBouncy,
+                                            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                                        )
+                                    ) { value, _ ->
+                                        swipeOffset = value
+                                    }
+                                }
+                                */
+                            },
+                            onDragCancel = {
+                                swipeOffset = 0f
+                                /*
+                                coroutineScope.launch {
+                                    animate(
+                                        initialValue = swipeOffset,
+                                        targetValue = 0f
+                                    ) { value, _ ->
+                                        swipeOffset = value
+                                    }
+                                }
+                                */
+                            },
+                            onHorizontalDrag = { change, dragAmount ->
+                                change.consume()
+                                swipeOffset += dragAmount
+                            }
+                        )
+                    }
             ) {
                 // Month Selector Row
                 Row(

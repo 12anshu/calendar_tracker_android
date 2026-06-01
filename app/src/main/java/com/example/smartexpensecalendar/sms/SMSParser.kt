@@ -230,6 +230,11 @@ object SMSParser {
 
     private fun extractMerchant(body: String): String? {
 
+        // Meal Card should always win first
+        if (isMealCardTransaction(body)) {
+            return "Meal Card Transaction"
+        }
+
         extractUPIMerchant(body)?.let { return it }
 
         extractMerchantFromLines(body)?.let { return it }
@@ -437,5 +442,15 @@ object SMSParser {
                lower.contains("balance") ||
                lower.matches(datePattern) ||
                text.all { it.isDigit() || it == '-' || it == '/' || it == '.' }
+    }
+
+    private fun isMealCardTransaction(body: String): Boolean {
+
+        val lower = body.lowercase()
+
+        return lower.contains("meal card") ||
+                lower.contains("sodexo") ||
+                lower.contains("pluxee") ||
+                lower.contains("edenred")
     }
 }
