@@ -90,10 +90,17 @@ class HomeViewModel @Inject constructor(
     }
 
     init {
+        observeSelectedMonth()
         observeSyncProgress()
         observeMonthSyncStatus()
         observeBudget()
         observeCurrency()
+    }
+
+    private fun observeSelectedMonth() {
+        dataStoreManager.selectedMonth.onEach { month ->
+            month?.let { _selectedMonth.value = it }
+        }.launchIn(viewModelScope)
     }
 
     private fun observeCurrency() {
@@ -210,18 +217,15 @@ class HomeViewModel @Inject constructor(
     }
 
     fun nextMonth() {
-        _selectedMonth.value = _selectedMonth.value.plusMonths(1)
-        saveMonth()
+        saveMonth(_selectedMonth.value.plusMonths(1))
     }
 
     fun prevMonth() {
-        _selectedMonth.value = _selectedMonth.value.minusMonths(1)
-        saveMonth()
+        saveMonth(_selectedMonth.value.minusMonths(1))
     }
 
     fun setMonth(yearMonth: YearMonth) {
-        _selectedMonth.value = yearMonth
-        saveMonth()
+        saveMonth(yearMonth)
     }
 
     fun exportCSV() {
@@ -262,9 +266,9 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun saveMonth() {
+    private fun saveMonth(month: YearMonth) {
         viewModelScope.launch {
-            dataStoreManager.saveSelectedMonth(_selectedMonth.value)
+            dataStoreManager.saveSelectedMonth(month)
         }
     }
 }

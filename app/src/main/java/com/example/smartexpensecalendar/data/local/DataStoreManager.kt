@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.smartexpensecalendar.domain.model.SubscriptionTier
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -25,6 +26,7 @@ class DataStoreManager @Inject constructor(
         val USER_NAME = stringPreferencesKey("user_name")
         val USER_EMAIL = stringPreferencesKey("user_email")
         val AUTH_TYPE = stringPreferencesKey("auth_type") // "GOOGLE", "EMAIL", "LOCAL"
+        val SUBSCRIPTION_TIER = stringPreferencesKey("subscription_tier")
         val AUTO_SYNC_ENABLED = androidx.datastore.preferences.core.booleanPreferencesKey("auto_sync_enabled")
         val HAS_COMPLETED_ONBOARDING = androidx.datastore.preferences.core.booleanPreferencesKey("has_completed_onboarding")
     }
@@ -45,7 +47,8 @@ class DataStoreManager @Inject constructor(
         UserProfile(
             name = preferences[USER_NAME] ?: "Guest User",
             email = preferences[USER_EMAIL] ?: "",
-            authType = preferences[AUTH_TYPE] ?: "LOCAL"
+            authType = preferences[AUTH_TYPE] ?: "LOCAL",
+            subscriptionTier = SubscriptionTier.valueOf(preferences[SUBSCRIPTION_TIER] ?: SubscriptionTier.FREE.name)
         )
     }
 
@@ -81,6 +84,7 @@ class DataStoreManager @Inject constructor(
             preferences[USER_NAME] = profile.name
             preferences[USER_EMAIL] = profile.email
             preferences[AUTH_TYPE] = profile.authType
+            preferences[SUBSCRIPTION_TIER] = profile.subscriptionTier.name
         }
     }
 
@@ -113,5 +117,6 @@ class DataStoreManager @Inject constructor(
 data class UserProfile(
     val name: String,
     val email: String,
-    val authType: String
+    val authType: String,
+    val subscriptionTier: SubscriptionTier = SubscriptionTier.FREE
 )

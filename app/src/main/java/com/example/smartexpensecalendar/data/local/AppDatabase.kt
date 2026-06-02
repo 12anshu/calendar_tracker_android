@@ -7,12 +7,22 @@ import com.example.smartexpensecalendar.data.local.entity.CustomCategoryEntity
 import com.example.smartexpensecalendar.data.local.entity.ExpenseEntity
 import com.example.smartexpensecalendar.data.local.entity.MerchantMappingEntity
 import com.example.smartexpensecalendar.data.local.entity.SMSLogEntity
+import com.example.smartexpensecalendar.data.local.entity.SubscriptionEntity
+import androidx.room.TypeConverters
 
 @Database(
-    entities = [ExpenseEntity::class, MerchantMappingEntity::class, SMSLogEntity::class, BudgetEntity::class, CustomCategoryEntity::class],
-    version = 11,
+    entities = [
+        ExpenseEntity::class, 
+        MerchantMappingEntity::class, 
+        SMSLogEntity::class, 
+        BudgetEntity::class, 
+        CustomCategoryEntity::class,
+        SubscriptionEntity::class
+    ],
+    version = 12,
     exportSchema = false
 )
+@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun expenseDao(): ExpenseDao
 }

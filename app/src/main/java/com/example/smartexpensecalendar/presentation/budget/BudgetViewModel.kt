@@ -37,11 +37,13 @@ class BudgetViewModel @Inject constructor(
     val selectedMonth: StateFlow<YearMonth> = _selectedMonth.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            dataStoreManager.selectedMonth.collect { month ->
-                month?.let { _selectedMonth.value = it }
-            }
-        }
+        observeSelectedMonth()
+    }
+
+    private fun observeSelectedMonth() {
+        dataStoreManager.selectedMonth.onEach { month ->
+            month?.let { _selectedMonth.value = it }
+        }.launchIn(viewModelScope)
     }
 
     val categories: StateFlow<List<String>> = repository.getCustomCategories()
