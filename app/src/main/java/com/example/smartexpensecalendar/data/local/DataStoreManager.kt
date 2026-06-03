@@ -82,7 +82,7 @@ class DataStoreManager @Inject constructor(
     suspend fun saveUserProfile(profile: UserProfile) {
         context.dataStore.edit { preferences ->
             preferences[USER_NAME] = profile.name
-            preferences[USER_EMAIL] = profile.email
+            preferences[USER_EMAIL] = profile.email as String
             preferences[AUTH_TYPE] = profile.authType
             preferences[SUBSCRIPTION_TIER] = profile.subscriptionTier.name
         }
@@ -116,7 +116,7 @@ class DataStoreManager @Inject constructor(
 
 data class UserProfile(
     val name: String,
-    val email: String,
+    val email: String?,
     val authType: String,
     val subscriptionTier: SubscriptionTier = SubscriptionTier.FREE
 )

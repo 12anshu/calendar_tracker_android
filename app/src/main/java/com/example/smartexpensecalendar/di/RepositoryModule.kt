@@ -17,4 +17,10 @@ abstract class RepositoryModule {
     abstract fun bindExpenseRepository(
         expenseRepositoryImpl: ExpenseRepositoryImpl
     ): ExpenseRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(
+        authRepositoryImpl: com.example.smartexpensecalendar.data.repository.AuthRepositoryImpl
+    ): com.example.smartexpensecalendar.domain.repository.AuthRepository
 }

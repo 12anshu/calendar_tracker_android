@@ -28,6 +28,10 @@ import androidx.navigation.NavController
 import com.example.smartexpensecalendar.R
 import com.example.smartexpensecalendar.presentation.auth.AuthViewModel
 import com.example.smartexpensecalendar.ui.components.AppLogoText
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import com.example.smartexpensecalendar.ui.navigation.Screen
 import com.example.smartexpensecalendar.ui.theme.*
 
@@ -38,8 +42,9 @@ fun AuthScreen(
     forceShow: Boolean = false
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showEmailForm by remember { mutableStateOf(false) }
+    var showLoginForm by remember { mutableStateOf(false) }
     var showSkipWarning by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         if (!forceShow) {
@@ -85,23 +90,32 @@ fun AuthScreen(
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            if (!showEmailForm) {
+            if (!showLoginForm) {
                 // Branded Google Button
                 GoogleSignInButton(
-                    onClick = { viewModel.continueWithGoogle() }
+                    onClick = { viewModel.continueWithGoogle(context) }
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 AuthButton(
-                    text = "Sign up with Email",
+                    text = "Login with Email",
                     icon = Icons.Default.Email,
                     containerColor = SurfaceGlass,
                     contentColor = TextPrimary,
-                    onClick = { showEmailForm = true }
+                    onClick = { showLoginForm = true }
                 )
 
                 Spacer(modifier = Modifier.height(32.dp))
+                
+                if (uiState.error != null) {
+                    Text(
+                        text = uiState.error!!,
+                        color = Color.Red,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
 
                 Text(
                     text = "Skip for now (Local Only)",
@@ -113,9 +127,13 @@ fun AuthScreen(
                         .padding(8.dp)
                 )
             } else {
-                EmailSignUpForm(
-                    onBack = { showEmailForm = false },
-                    onSignUp = { name, email -> viewModel.signUpWithEmail(name, email) }
+                EmailLoginForm(
+                    isLoading = uiState.isLoading,
+                    error = uiState.error,
+                    onBack = { showLoginForm = false },
+                    onLogin = { email, password ->
+                        viewModel.login(email, password)
+                    }
                 )
             }
         }
@@ -190,27 +208,20 @@ fun AuthButton(
 }
 
 @Composable
-fun EmailSignUpForm(
+fun EmailLoginForm(
+    isLoading: Boolean,
+    error: String?,
     onBack: () -> Unit,
-    onSignUp: (String, String) -> Unit
+    onLogin: (String, String) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text("Create Account", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-        Spacer(modifier = Modifier.height(16.dp))
+        Text("Welcome", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+        Text("Login to your account", color = TextSecondary, fontSize = 14.sp)
         
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Full Name") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
-        )
-        
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         
         OutlinedTextField(
             value = email,
@@ -218,18 +229,44 @@ fun EmailSignUpForm(
             label = { Text("Email Address") },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow)
+            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
         )
         
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Password") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = CyanGlow),
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (error != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = error, color = Color.Red, style = MaterialTheme.typography.labelSmall)
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
         
         Button(
-            onClick = { onSignUp(name, email) },
+            onClick = { onLogin(email, password) },
             modifier = Modifier.fillMaxWidth().height(56.dp),
+            enabled = !isLoading && email.isNotBlank() && password.isNotBlank(),
             colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Text("Sign Up", fontWeight = FontWeight.Bold)
+            if (isLoading) {
+                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+            } else {
+                Text("Login", fontWeight = FontWeight.Bold)
+            }
         }
         
         TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterHorizontally)) {

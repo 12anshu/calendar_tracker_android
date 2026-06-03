@@ -167,7 +167,7 @@ fun ProfileScreen(
 }
 
 @Composable
-fun IdentityHeader(name: String, email: String, authType: String) {
+fun IdentityHeader(name: String, email: String?, authType: String) {
     val badgeColor = when (authType) {
         "GOOGLE" -> Color(0xFF3B82F6)
         "EMAIL" -> PrimaryAccent
@@ -210,7 +210,9 @@ fun IdentityHeader(name: String, email: String, authType: String) {
 
             Column {
                 Text(name, color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Text(email, color = TextSecondary, fontSize = 14.sp)
+                if (email != null) {
+                    Text(email, color = TextSecondary, fontSize = 14.sp)
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(
                     color = badgeColor.copy(alpha = 0.1f),
