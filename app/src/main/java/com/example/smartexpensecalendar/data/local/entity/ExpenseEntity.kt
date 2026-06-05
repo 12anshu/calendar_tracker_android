@@ -14,6 +14,9 @@ data class ExpenseEntity(
     val category: String,
     val date: String, // Stored as ISO string (Transaction date)
     val merchant: String?,
+    val financialEventType: String,
+    val paymentMethod: String,
+    val confidence: Int,
     val source: String,
     val type: String,   // DEBIT or CREDIT
     val status: String, // COMPLETED, SETTLEMENT, REFUNDED, FAILED

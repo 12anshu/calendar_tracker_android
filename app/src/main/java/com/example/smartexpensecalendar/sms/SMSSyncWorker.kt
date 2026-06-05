@@ -13,6 +13,9 @@ import com.example.smartexpensecalendar.domain.model.SMSProcessingLog
 import com.example.smartexpensecalendar.domain.repository.ExpenseRepository
 import com.example.smartexpensecalendar.data.local.DataStoreManager
 import com.example.smartexpensecalendar.utils.NotificationHelper
+import com.example.smartexpensecalendar.domain.model.PaymentMethod
+import com.example.smartexpensecalendar.sms.merchant.MerchantNormalizer
+import com.example.smartexpensecalendar.sms.sender.SenderValidationEngine
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.time.Instant
@@ -88,6 +91,9 @@ class SMSSyncWorker @AssistedInject constructor(
 
                 val body = it.getString(bodyIndex)
                 val address = it.getString(addressIndex)
+                val senderInfo =
+                    SenderValidationEngine.validate(address)
+
                 val date = it.getLong(dateIndex)
                 val id = it.getLong(idIndex)
 
@@ -103,74 +109,84 @@ class SMSSyncWorker @AssistedInject constructor(
                 }
 
                 val parsed = SMSParser.parse(body)
-                if (parsed != null && parsed.isFinancial) {
-                    processedExpenses++
-                    val category = if (parsed.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.SETTLEMENT) 
-                        "Settlement" 
-                    else if (parsed.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.REFUNDED)
-                        "Refund"
-                    else {
-                        val initialCat = categorizer.categorize(parsed.merchant)
-                        if (initialCat == "Miscellaneous" &&  parsed.paymentMethod == "UPI") {
-                            "UPI / Digital"
-                        } else {
-                            initialCat
-                        }
-                    }
-
-                    val localDate = Instant.ofEpochMilli(date)
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate()
-
-                    // Logical Deduplication: Check if same amount already exists on this day
-                    if (repository.findSimilarExpense(parsed.amount, localDate) != null) {
-                        repository.logSMSProcessing(
-                            SMSProcessingLog(id, address, body, date, ProcessingStatus.IGNORED)
-                        )
-                        continue
-                    }
-
-                    // Reconciliation Logic
-                    var linkedId: Long? = null
-                    if (parsed.type == com.example.smartexpensecalendar.domain.model.TransactionType.CREDIT) {
-                        val match = repository.findMatchingExpense(parsed.amount, localDate, 3)
-                        if (match != null) {
-                            linkedId = match.id
-                            // Update the original debit to match this status
-                            repository.updateExpenseStatus(match.id, parsed.status, null) // We'll set linkedId after we get the new ID
-                        }
-                    }
-
-                    // Each unique financial SMS is a separate record now
-                    repository.upsertExpense(
-                        Expense(
-                            amount = parsed.amount,
-                            category = category,
-                            date = localDate,
-                            merchant = parsed.merchant,
-                            source = ExpenseSource.SMS,
-                            type = parsed.type,
-                            status = parsed.status,
-                            accountSuffix = parsed.accountSuffix,
-                            linkedId = linkedId,
-                            originalSmsId = id,
-                            originalSmsBody = body,
-                            syncDate = System.currentTimeMillis()
-                        )
+                val finalParsed =
+                    SMSParser.parse(body)?.copy(
+                        senderType = senderInfo.senderType
+                    ) ?: continue
+                if (!finalParsed.isFinancial) {
+                    continue
+                }
+                val normalizedMerchant =
+                    MerchantNormalizer.normalize(
+                        finalParsed.merchant
                     )
+                processedExpenses++
+                val category = if (finalParsed.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.SETTLEMENT)
+                    "Settlement"
+                else if (finalParsed.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.REFUNDED)
+                    "Refund"
+                else {
+                    val initialCat = categorizer.categorize(normalizedMerchant)
+                    if (initialCat == "Miscellaneous" &&  finalParsed.paymentMethod == PaymentMethod.UPI) {
+                        "UPI / Digital"
+                    } else {
+                        initialCat
+                    }
+                }
 
-                    repository.logSMSProcessing(
-                        SMSProcessingLog(
-                            id, address, body, date, ProcessingStatus.IGNORED, // Use IGNORED for individual logs during bulk sync
-                            parsedAmount = parsed.amount, parsedMerchant = parsed.merchant
-                        )
-                    )
-                } else {
-                    // Log as ignored to avoid re-parsing
+                val localDate = Instant.ofEpochMilli(date)
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate()
+
+                // Logical Deduplication: Check if same amount already exists on this day
+                if (repository.findSimilarExpense(finalParsed.amount, localDate) != null) {
                     repository.logSMSProcessing(
                         SMSProcessingLog(id, address, body, date, ProcessingStatus.IGNORED)
                     )
+                    continue
                 }
+
+                // Reconciliation Logic
+                var linkedId: Long? = null
+                if (finalParsed.type == com.example.smartexpensecalendar.domain.model.TransactionType.CREDIT) {
+                    val match = repository.findMatchingExpense(finalParsed.amount, localDate, 3)
+                    if (match != null) {
+                        linkedId = match.id
+                        // Update the original debit to match this status
+                        repository.updateExpenseStatus(match.id, finalParsed.status, null) // We'll set linkedId after we get the new ID
+                    }
+                }
+
+                // Each unique financial SMS is a separate record now
+                repository.upsertExpense(
+                    Expense(
+                        amount = finalParsed.amount,
+                        category = category,
+                        date = localDate,
+                        merchant = normalizedMerchant,
+                        financialEventType =
+                            finalParsed.financialEventType,
+                        paymentMethod =
+                            finalParsed.paymentMethod,
+                        confidence =
+                            finalParsed.confidence,
+                        source = ExpenseSource.SMS,
+                        type = finalParsed.type,
+                        status = finalParsed.status,
+                        accountSuffix = finalParsed.accountSuffix,
+                        linkedId = linkedId,
+                        originalSmsId = id,
+                        originalSmsBody = body,
+                        syncDate = System.currentTimeMillis()
+                    )
+                )
+
+                repository.logSMSProcessing(
+                    SMSProcessingLog(
+                        id, address, body, date, ProcessingStatus.IGNORED, // Use IGNORED for individual logs during bulk sync
+                        parsedAmount = finalParsed.amount, parsedMerchant = normalizedMerchant
+                    )
+                )
             }
             
             if (syncYear != -1 && syncMonth != -1 && processedExpenses > 0) {

@@ -10,6 +10,8 @@ import com.example.smartexpensecalendar.domain.model.ExpenseSource
 import com.example.smartexpensecalendar.domain.model.ProcessingStatus
 import com.example.smartexpensecalendar.domain.model.SMSProcessingLog
 import com.example.smartexpensecalendar.domain.repository.ExpenseRepository
+import com.example.smartexpensecalendar.sms.merchant.MerchantNormalizer
+import com.example.smartexpensecalendar.sms.sender.SenderValidationEngine
 import com.example.smartexpensecalendar.utils.NotificationHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -38,6 +40,8 @@ class SMSReceiver : BroadcastReceiver() {
             for (message in messages) {
                 val body = message.displayMessageBody
                 val sender = message.displayOriginatingAddress
+                val senderInfo =
+                    SenderValidationEngine.validate(sender)
                 val timestamp = message.timestampMillis
 
                 processSMS(context, body, sender, timestamp)
@@ -53,77 +57,85 @@ class SMSReceiver : BroadcastReceiver() {
                     return@launch
                 }
 
-                val parsed = SMSParser.parse(body)
-                if (parsed != null && parsed.isFinancial) {
-                    val category = if (parsed.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.SETTLEMENT) 
-                        "Settlement" 
-                    else if (parsed.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.REFUNDED)
-                        "Refund"
-                    else
-                        categorizer.categorize(parsed.merchant)
+                val senderInfo =
+                    SenderValidationEngine.validate(sender)
 
-                    val date = Instant.ofEpochMilli(timestamp)
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate()
-
-                    // Logical Deduplication
-                    if (repository.findSimilarExpense(parsed.amount, date) != null) {
-                        return@launch
-                    }
-
-                    // Reconciliation Logic for real-time
-                    var linkedId: Long? = null
-                    if (parsed.type == com.example.smartexpensecalendar.domain.model.TransactionType.CREDIT) {
-                        val match = repository.findMatchingExpense(parsed.amount, date, 3)
-                        if (match != null) {
-                            linkedId = match.id
-                            repository.updateExpenseStatus(match.id, parsed.status, null)
-                        }
-                    }
-
-                    repository.upsertExpense(
-                        Expense(
-                            amount = parsed.amount,
-                            category = category,
-                            date = date,
-                            merchant = parsed.merchant,
-                            source = ExpenseSource.SMS,
-                            type = parsed.type,
-                            status = parsed.status,
-                            accountSuffix = parsed.accountSuffix,
-                            linkedId = linkedId,
-                            originalSmsId = timestamp // Using timestamp as a simple ID for now
-                        )
-                    )
-
-                    // Show notification for real-time detected expense (Only for completed debits)
-                    if (parsed.type == com.example.smartexpensecalendar.domain.model.TransactionType.DEBIT && 
-                        parsed.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.COMPLETED) {
-                        context?.let {
-                            NotificationHelper.showExpenseNotification(it, parsed.amount, parsed.merchant, category)
-                        }
-                    }
-
-                    repository.logSMSProcessing(
-                        SMSProcessingLog(
-                            smsId = timestamp,
-                            sender = sender,
-                            body = body,
-                            date = timestamp,
-                            status = ProcessingStatus.PROCESSED
-                        )
-                    )
-                } else {
-                    repository.logSMSProcessing(
-                        SMSProcessingLog(
-                            smsId = timestamp,
-                            sender = sender,
-                            body = body,
-                            date = timestamp,
-                            status = ProcessingStatus.SKIPPED
-                        )
-                    )
+                val finalParsed =
+                    SMSParser.parse(body)?.copy(
+                        senderType = senderInfo.senderType
+                    ) ?: return@launch
+                if (!finalParsed.isFinancial) {
+                    return@launch
                 }
+
+                val normalizedMerchant =
+                    MerchantNormalizer.normalize(
+                        finalParsed.merchant
+                    )
+
+                val category = when (finalParsed.status) {
+                    com.example.smartexpensecalendar.domain.model.TransactionStatus.SETTLEMENT -> "Settlement"
+                    com.example.smartexpensecalendar.domain.model.TransactionStatus.REFUNDED -> "Refund"
+                    else -> categorizer.categorize(normalizedMerchant)
+                }
+
+                val date = Instant.ofEpochMilli(timestamp)
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate()
+
+                // Logical Deduplication
+                if (repository.findSimilarExpense(finalParsed.amount, date) != null) {
+                    return@launch
+                }
+
+                // Reconciliation Logic for real-time
+                var linkedId: Long? = null
+                if (finalParsed.type == com.example.smartexpensecalendar.domain.model.TransactionType.CREDIT) {
+                    val match = repository.findMatchingExpense(finalParsed.amount, date, 3)
+                    if (match != null) {
+                        linkedId = match.id
+                        repository.updateExpenseStatus(match.id, finalParsed.status, null)
+                    }
+                }
+
+                repository.upsertExpense(
+                    Expense(
+                        amount = finalParsed.amount,
+                        category = category,
+                        date = date,
+                        merchant = normalizedMerchant,
+                        financialEventType =
+                            finalParsed.financialEventType,
+                        paymentMethod =
+                            finalParsed.paymentMethod,
+                        confidence =
+                            finalParsed.confidence,
+                        source = ExpenseSource.SMS,
+                        type = finalParsed.type,
+                        status = finalParsed.status,
+                        accountSuffix = finalParsed.accountSuffix,
+                        linkedId = linkedId,
+                        originalSmsId = timestamp // Using timestamp as a simple ID for now
+                    )
+                )
+
+                // Show notification for real-time detected expense (Only for completed debits)
+                if (finalParsed.type == com.example.smartexpensecalendar.domain.model.TransactionType.DEBIT &&
+                    finalParsed.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.COMPLETED) {
+                    context?.let {
+                        NotificationHelper.showExpenseNotification(it, finalParsed.amount, normalizedMerchant, category)
+                    }
+                }
+
+                repository.logSMSProcessing(
+                    SMSProcessingLog(
+                        smsId = timestamp,
+                        sender = sender,
+                        body = body,
+                        date = timestamp,
+                        status = ProcessingStatus.PROCESSED
+                    )
+                )
             } catch (e: Exception) {
                 Log.e("SMSReceiver", "Error processing SMS", e)
                 repository.logSMSProcessing(

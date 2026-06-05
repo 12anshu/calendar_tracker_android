@@ -29,6 +29,9 @@ class DataStoreManager @Inject constructor(
         val SUBSCRIPTION_TIER = stringPreferencesKey("subscription_tier")
         val AUTO_SYNC_ENABLED = androidx.datastore.preferences.core.booleanPreferencesKey("auto_sync_enabled")
         val HAS_COMPLETED_ONBOARDING = androidx.datastore.preferences.core.booleanPreferencesKey("has_completed_onboarding")
+        val ACCESS_TOKEN = stringPreferencesKey("access_token")
+        val REFRESH_TOKEN = stringPreferencesKey("refresh_token")
+        val USER_ID = stringPreferencesKey("user_id")
     }
 
     val selectedMonth: Flow<YearMonth?> = context.dataStore.data.map { preferences ->
@@ -52,12 +55,28 @@ class DataStoreManager @Inject constructor(
         )
     }
 
+    val accessToken: Flow<String?> = context.dataStore.data.map { preferences ->
+        preferences[ACCESS_TOKEN]
+    }
+
+    val refreshToken: Flow<String?> = context.dataStore.data.map { preferences ->
+        preferences[REFRESH_TOKEN]
+    }
+
+    val userId: Flow<String?> = context.dataStore.data.map { preferences ->
+        preferences[USER_ID]
+    }
+
     val autoSyncEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[AUTO_SYNC_ENABLED] ?: false
     }
 
     val hasCompletedOnboarding: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[HAS_COMPLETED_ONBOARDING] ?: false
+    }
+
+    val isLoggedIn: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        !preferences[ACCESS_TOKEN].isNullOrBlank()
     }
 
     suspend fun saveSelectedMonth(yearMonth: YearMonth) {
@@ -110,6 +129,26 @@ class DataStoreManager @Inject constructor(
         context.dataStore.edit { preferences ->
             val current = preferences[SYNCED_MONTHS] ?: emptySet()
             preferences[SYNCED_MONTHS] = current - yearMonth
+        }
+    }
+
+    suspend fun saveSession(
+        userId: String,
+        accessToken: String,
+        refreshToken: String
+    ) {
+        context.dataStore.edit { preferences ->
+            preferences[USER_ID] = userId
+            preferences[ACCESS_TOKEN] = accessToken
+            preferences[REFRESH_TOKEN] = refreshToken
+        }
+    }
+
+    suspend fun clearSession() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(USER_ID)
+            preferences.remove(ACCESS_TOKEN)
+            preferences.remove(REFRESH_TOKEN)
         }
     }
 }

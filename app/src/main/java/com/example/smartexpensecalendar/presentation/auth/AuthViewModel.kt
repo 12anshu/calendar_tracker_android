@@ -58,18 +58,43 @@ class AuthViewModel @Inject constructor(
             authRepository.login(email, password, TENANT_SLUG)
                 .onSuccess { response ->
                     val user = response.data?.user
-                    if (user != null) {
+                    val tokens = response.data?.tokens
+
+                    if (user != null && tokens != null) {
+
                         val profile = UserProfile(
                             name = "${user.firstName} ${user.lastName}",
                             email = user.email,
                             authType = user.authType.uppercase(),
                             subscriptionTier = com.example.smartexpensecalendar.domain.model.SubscriptionTier.FREE
                         )
+
+                        // Save user profile
                         dataStoreManager.saveUserProfile(profile)
+
+                        // Save JWT session
+                        dataStoreManager.saveSession(
+                            userId = user.id,
+                            accessToken = tokens.accessToken,
+                            refreshToken = tokens.refreshToken
+                        )
+
                         dataStoreManager.setOnboardingCompleted(true)
-                        _uiState.update { it.copy(isLoading = false, isChoiceMade = true) }
+
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                isChoiceMade = true
+                            )
+                        }
+
                     } else {
-                        _uiState.update { it.copy(isLoading = false, error = "User data missing") }
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = "User or token data missing"
+                            )
+                        }
                     }
                 }
                 .onFailure { e ->
@@ -83,12 +108,12 @@ class AuthViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             
             val credentialManager = CredentialManager.create(context)
-            val serverClientId = "175250766905-bgur5sm29gkshdifn416jb6dn53frhvk.apps.googleusercontent.com"
+            val serverClientId = "175250766905-2n02q395h6e5ch1qh3hd3fur8u5hug0r.apps.googleusercontent.com"
             
             val googleIdOption: GetGoogleIdOption = GetGoogleIdOption.Builder()
                 .setFilterByAuthorizedAccounts(false)
                 .setServerClientId(serverClientId)
-                .setAutoSelectEnabled(true)
+                .setAutoSelectEnabled(false)
                 .build()
 
             val request = GetCredentialRequest.Builder()

@@ -5,6 +5,8 @@ import com.example.smartexpensecalendar.domain.model.Expense
 import com.example.smartexpensecalendar.domain.model.ExpenseSource
 import com.example.smartexpensecalendar.domain.model.TransactionStatus
 import com.example.smartexpensecalendar.domain.model.TransactionType
+import com.example.smartexpensecalendar.domain.model.FinancialEventType
+import com.example.smartexpensecalendar.domain.model.PaymentMethod
 import java.time.LocalDate
 
 fun ExpenseEntity.toDomain(): Expense {
@@ -14,6 +16,15 @@ fun ExpenseEntity.toDomain(): Expense {
         category = category,
         date = LocalDate.parse(date),
         merchant = merchant,
+        financialEventType =
+            FinancialEventType.valueOf(
+                financialEventType
+            ),
+        paymentMethod =
+            PaymentMethod.valueOf(
+                paymentMethod
+            ),
+        confidence = confidence,
         source = ExpenseSource.valueOf(source),
         type = TransactionType.valueOf(type),
         status = TransactionStatus.valueOf(status),
@@ -33,6 +44,12 @@ fun Expense.toEntity(): ExpenseEntity {
         category = category,
         date = date.toString(),
         merchant = merchant,
+        financialEventType =
+            financialEventType.name,
+        paymentMethod =
+            paymentMethod.name,
+        confidence =
+            confidence,
         source = source.name,
         type = type.name,
         status = status.name,

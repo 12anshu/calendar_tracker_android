@@ -36,6 +36,7 @@ fun ProfileScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showCurrencyPicker by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -64,7 +65,8 @@ fun ProfileScreen(
                 IdentityHeader(
                     name = uiState.profile.name,
                     email = uiState.profile.email,
-                    authType = uiState.profile.authType
+                    authType = uiState.profile.authType,
+                    onLoginClick = { navController.navigate(Screen.Auth.createRoute(force = true)) }
                 )
             }
 
@@ -137,12 +139,7 @@ fun ProfileScreen(
             item {
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(
-                    onClick = { 
-                        viewModel.logout()
-                        navController.navigate(Screen.Auth.route) {
-                            popUpTo(0)
-                        }
-                    },
+                    onClick = { showLogoutDialog = true },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = ColorTransport.copy(alpha = 0.1f), contentColor = ColorTransport),
                     shape = RoundedCornerShape(16.dp)
@@ -164,10 +161,32 @@ fun ProfileScreen(
             }
         )
     }
+
+    if (showLogoutDialog) {
+        LogoutConfirmationDialog(
+            authType = uiState.profile.authType,
+            backupStatus = uiState.backupStatus,
+            onDismiss = { showLogoutDialog = false },
+            onLogout = {
+                viewModel.logout {
+                    navController.navigate(Screen.Auth.route) {
+                        popUpTo(0)
+                    }
+                }
+            },
+            onBackupAndLogout = {
+                viewModel.performBackupBeforeLogout {
+                    navController.navigate(Screen.Auth.route) {
+                        popUpTo(0)
+                    }
+                }
+            }
+        )
+    }
 }
 
 @Composable
-fun IdentityHeader(name: String, email: String?, authType: String) {
+fun IdentityHeader(name: String, email: String?, authType: String, onLoginClick: () -> Unit) {
     val badgeColor = when (authType) {
         "GOOGLE" -> Color(0xFF3B82F6)
         "EMAIL" -> PrimaryAccent
@@ -208,9 +227,9 @@ fun IdentityHeader(name: String, email: String?, authType: String) {
 
             Spacer(modifier = Modifier.width(20.dp))
 
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(name, color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                if (email != null) {
+                if (!email.isNullOrBlank()) {
                     Text(email, color = TextSecondary, fontSize = 14.sp)
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -227,8 +246,100 @@ fun IdentityHeader(name: String, email: String?, authType: String) {
                     )
                 }
             }
+
+            if (authType == "LOCAL") {
+                Button(
+                    onClick = onLoginClick,
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Login", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+            }
         }
     }
+}
+
+@Composable
+fun LogoutConfirmationDialog(
+    authType: String,
+    backupStatus: com.example.smartexpensecalendar.presentation.profile.BackupStatus,
+    onDismiss: () -> Unit,
+    onLogout: () -> Unit,
+    onBackupAndLogout: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = BackgroundEnd,
+        title = { Text("Logout & Switch Account", color = TextPrimary) },
+        text = {
+            Column {
+                val message = when (authType) {
+                    "LOCAL" -> "Are you sure? All your local data (expenses, rules) will be PERMANENTLY DELETED as it's not backed up."
+                    "EMAIL" -> "You're logged in with Email. We recommend backing up your data to Google Drive before logging out."
+                    "GOOGLE" -> "Logging out... We'll perform a final backup to your Google Drive to ensure no data is lost."
+                    else -> "Are you sure you want to logout?"
+                }
+                Text(message, color = TextSecondary)
+                
+                if (backupStatus is com.example.smartexpensecalendar.presentation.profile.BackupStatus.InProgress) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = CyanGlow)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Backing up data...", color = CyanGlow)
+                    }
+                }
+                
+                if (backupStatus is com.example.smartexpensecalendar.presentation.profile.BackupStatus.Error) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(backupStatus.message, color = Color.Red, fontSize = 12.sp)
+                }
+            }
+        },
+        confirmButton = {
+            if (backupStatus !is com.example.smartexpensecalendar.presentation.profile.BackupStatus.InProgress) {
+                if (authType == "GOOGLE") {
+                    Button(
+                        onClick = onBackupAndLogout,
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryAccent)
+                    ) {
+                        Text("Backup & Logout")
+                    }
+                } else if (authType == "EMAIL") {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Button(
+                            onClick = onBackupAndLogout,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))
+                        ) {
+                            Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Link Drive & Backup")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextButton(onClick = onLogout) {
+                            Text("Logout Anyway", color = ColorTransport)
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = onLogout,
+                        colors = ButtonDefaults.buttonColors(containerColor = ColorTransport)
+                    ) {
+                        Text("Delete Data & Logout")
+                    }
+                }
+            }
+        },
+        dismissButton = {
+            if (backupStatus !is com.example.smartexpensecalendar.presentation.profile.BackupStatus.InProgress) {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel", color = TextPrimary)
+                }
+            }
+        }
+    )
 }
 
 @Composable

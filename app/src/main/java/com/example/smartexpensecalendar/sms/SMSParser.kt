@@ -2,16 +2,37 @@ package com.example.smartexpensecalendar.sms
 
 import com.example.smartexpensecalendar.domain.model.TransactionStatus
 import com.example.smartexpensecalendar.domain.model.TransactionType
+import com.example.smartexpensecalendar.domain.model.FinancialEventType
+import com.example.smartexpensecalendar.domain.model.PaymentMethod
+import com.example.smartexpensecalendar.domain.model.SenderType
+import com.example.smartexpensecalendar.domain.model.TransactionDirection
+import com.example.smartexpensecalendar.sms.config.SMSKeywordRegistry
 import java.util.regex.Pattern
 
 data class ParsedSMS(
     val amount: Double,
     val merchant: String?,
     val isFinancial: Boolean,
-    val paymentMethod: String? = null,
-    val type: TransactionType = TransactionType.DEBIT,
-    val status: TransactionStatus = TransactionStatus.COMPLETED,
-    val accountSuffix: String? = null
+
+    val paymentMethod: PaymentMethod = PaymentMethod.UNKNOWN,
+
+    val direction: TransactionDirection =
+        TransactionDirection.UNKNOWN,
+
+    val financialEventType: FinancialEventType =
+        FinancialEventType.UNKNOWN,
+
+    val type: TransactionType =
+        TransactionType.DEBIT,
+
+    val status: TransactionStatus =
+        TransactionStatus.COMPLETED,
+
+    val accountSuffix: String? = null,
+
+    val confidence: Int = 0,
+
+    val senderType: SenderType = SenderType.UNKNOWN
 )
 object SMSParser {
 
@@ -54,28 +75,22 @@ object SMSParser {
     )
 
     // Keywords to detect financial messages
-    private val financialKeywords = listOf(
-        "spent", "debited", "paid", "transaction", "successful", "order", "payment", "txn", 
-        "using card", "on card", "purchase", "sent", "transferred", "received", "refunded", "credited"
-    )
+    private val financialKeywords = SMSKeywordRegistry.financialKeywords
 
     // Settlement keywords
-    private val settlementKeywords = listOf("payment received on", "bill payment", "cc payment", "online payment", "credited to your card")
+    private val settlementKeywords = SMSKeywordRegistry.settlementKeywords
     
     // Refund/Failed keywords
-    private val refundKeywords = listOf("refund", "reversed", "credited back", "failed")
+    private val refundKeywords = SMSKeywordRegistry.refundKeywords
 
     // Keywords to ignore (Strict)
-    private val ignoreKeywords = listOf(
-        "otp", "verification", "code", "password", "login", 
-        "total amount due", "minimum amount due", "ignore if paid", "is due", 
-        "statement", "limit", "available balance", "avl limit",
-        "cheq", "repayment", "repaid", "will be auto debited", "autopay facility", 
-        "to deactivate", "balance is low", "low balance", "recharge of"
-    )
+    private val ignoreKeywords = SMSKeywordRegistry.ignoreKeywords
 
     fun parse(body: String): ParsedSMS? {
         val lowercaseBody = body.lowercase()
+
+        val normalizedBody =
+            SMSNormalizer.normalize(body)
 
         // 1. Strict Filter for Non-Transaction Alerts
         if (ignoreKeywords.any { lowercaseBody.contains(it) }) {
@@ -176,41 +191,194 @@ object SMSParser {
         }
 
         // Handle NEFT / ACH / Bank-as-Merchant cases
-        val paymentMethod = detectPaymentMethod(body)
+        val paymentMethod =
+            detectPaymentMethod(normalizedBody)
+
+        val direction =
+            detectDirection(normalizedBody)
+
+        val financialEventType =
+            detectFinancialEventType(
+                normalizedBody,
+                direction
+            )
+
+        val confidence =
+            calculateConfidence(
+                merchant,
+                financialEventType,
+                paymentMethod
+            )
 
         return ParsedSMS(
             amount = finalAmount,
             merchant = merchant,
             isFinancial = true,
+
             paymentMethod = paymentMethod,
+
+            direction = direction,
+
+            financialEventType =
+                financialEventType,
+
             type = type,
+
             status = status,
-            accountSuffix = accountSuffix
+
+            accountSuffix = accountSuffix,
+
+            confidence = confidence
         )
     }
 
-    private fun detectPaymentMethod(body: String): String? {
+    private fun detectPaymentMethod(
+        body: String
+    ): PaymentMethod {
 
         return when {
 
-            body.contains("upi", true) -> "UPI"
+            body.contains("upi", true) ->
+                PaymentMethod.UPI
 
-            body.contains("credit card", true) -> "Credit Card"
+            body.contains("credit card", true) ->
+                PaymentMethod.CREDIT_CARD
 
-            body.contains("debit card", true) -> "Debit Card"
+            body.contains("debit card", true) ->
+                PaymentMethod.DEBIT_CARD
 
-            body.contains("card", true) -> "Card"
+            body.contains("card", true) ->
+                PaymentMethod.CARD
 
-            body.contains("neft", true) -> "NEFT"
+            body.contains("neft", true) ->
+                PaymentMethod.NEFT
 
-            body.contains("imps", true) -> "IMPS"
+            body.contains("imps", true) ->
+                PaymentMethod.IMPS
 
-            body.contains("rtgs", true) -> "RTGS"
+            body.contains("rtgs", true) ->
+                PaymentMethod.RTGS
 
-            body.contains("ach", true) -> "ACH"
+            body.contains("ach", true) ->
+                PaymentMethod.ACH
 
-            else -> null
+            body.contains("cash", true) ->
+                PaymentMethod.CASH
+
+            else ->
+                PaymentMethod.UNKNOWN
         }
+    }
+
+    private fun detectDirection(
+        body: String
+    ): TransactionDirection {
+
+        val lower = body.lowercase()
+
+        return when {
+
+            lower.contains("credited") ||
+                    lower.contains("received") ||
+                    lower.contains("refund") ||
+                    lower.contains("refunded") ->
+
+                TransactionDirection.CREDIT
+
+            lower.contains("debited") ||
+                    lower.contains("spent") ||
+                    lower.contains("paid") ||
+                    lower.contains("purchase") ||
+                    lower.contains("sent") ->
+
+                TransactionDirection.DEBIT
+
+            else ->
+                TransactionDirection.UNKNOWN
+        }
+    }
+
+    private fun detectFinancialEventType(
+        body: String,
+        direction: TransactionDirection
+    ): FinancialEventType {
+
+        val lower = body.lowercase()
+
+        return when {
+
+            lower.contains("salary") ->
+                FinancialEventType.SALARY
+
+            lower.contains("refund") ||
+                    lower.contains("refunded") ||
+                    lower.contains("credited back") ->
+
+                FinancialEventType.REFUND
+
+            lower.contains("cashback") ->
+                FinancialEventType.CASHBACK
+
+            lower.contains("emi") ->
+                FinancialEventType.EMI
+
+            lower.contains("interest") ->
+                FinancialEventType.INTEREST
+
+            lower.contains("credit card payment") ||
+                    lower.contains("cc payment") ||
+                    lower.contains("bill payment") ->
+
+                FinancialEventType.CARD_PAYMENT
+
+            lower.contains("neft") ||
+                    lower.contains("imps") ||
+                    lower.contains("rtgs") ||
+                    lower.contains("transfer") ->
+
+                FinancialEventType.TRANSFER
+
+            direction == TransactionDirection.CREDIT ->
+                FinancialEventType.INCOME
+
+            direction == TransactionDirection.DEBIT ->
+                FinancialEventType.EXPENSE
+
+            else ->
+                FinancialEventType.UNKNOWN
+        }
+    }
+
+    private fun calculateConfidence(
+        merchant: String?,
+        financialEventType: FinancialEventType,
+        paymentMethod: PaymentMethod
+    ): Int {
+
+        var score = 50
+
+        if (!merchant.isNullOrBlank()) {
+            score += 20
+        }
+
+        if (
+            merchant?.contains("swiggy", true) == true ||
+            merchant?.contains("zomato", true) == true ||
+            merchant?.contains("amazon", true) == true ||
+            merchant?.contains("flipkart", true) == true
+        ) {
+            score += 20
+        }
+
+        if (financialEventType != FinancialEventType.UNKNOWN) {
+            score += 5
+        }
+
+        if (paymentMethod != PaymentMethod.UNKNOWN) {
+            score += 5
+        }
+
+        return score.coerceAtMost(100)
     }
 
     private fun isJustBankName(name: String): Boolean {

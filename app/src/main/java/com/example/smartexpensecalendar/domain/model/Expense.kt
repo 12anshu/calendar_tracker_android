@@ -20,6 +20,13 @@ data class Expense(
     val category: String,
     val date: LocalDate, // Transaction date
     val merchant: String?,
+    val financialEventType: FinancialEventType =
+        FinancialEventType.UNKNOWN,
+
+    val paymentMethod: PaymentMethod =
+        PaymentMethod.UNKNOWN,
+
+    val confidence: Int = 0,
     val source: ExpenseSource,
     val type: TransactionType = TransactionType.DEBIT,
     val status: TransactionStatus = TransactionStatus.COMPLETED,
