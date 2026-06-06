@@ -97,7 +97,7 @@ class SMSCategorizer @Inject constructor(
             return "Miscellaneous"
 
         val normalized =
-            MerchantNormalizer.normalize(merchant)
+            MerchantNormalizer.normalize(merchant)!!
 
         // User mapping first
         val savedCategory =

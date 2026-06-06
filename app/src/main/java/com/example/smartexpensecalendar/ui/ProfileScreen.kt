@@ -118,6 +118,17 @@ fun ProfileScreen(
 
             // 4. Support
             item { ProfileSectionHeader("Support") }
+            // Developer Tools (Can be removed in production)
+            // --------------------------------------------------
+            item {
+                PreferenceItem(
+                    title = "Developer Dashboard",
+                    subtitle = "Analyze SMS patterns & detection",
+                    icon = Icons.Default.DeveloperMode,
+                    onClick = { navController.navigate(Screen.DeveloperDashboard.route) }
+                )
+            }
+            // --------------------------------------------------
             item {
                 PreferenceItem(
                     title = "Report a Bug",

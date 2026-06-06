@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.example.smartexpensecalendar.data.local.AppDatabase
 import com.example.smartexpensecalendar.data.local.ExpenseDao
+import com.example.smartexpensecalendar.developer.data.SMSAnalysisDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -29,5 +30,11 @@ object DatabaseModule {
     @Provides
     fun provideExpenseDao(database: AppDatabase): ExpenseDao {
         return database.expenseDao()
+    }
+
+    // DEVELOPER MODULE DAOs
+    @Provides
+    fun provideSMSAnalysisDao(database: AppDatabase): SMSAnalysisDao {
+        return database.smsAnalysisDao()
     }
 }

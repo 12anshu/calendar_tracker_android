@@ -18,6 +18,7 @@ import com.example.smartexpensecalendar.ui.AuthScreen
 import com.example.smartexpensecalendar.ui.ProfileScreen
 import com.example.smartexpensecalendar.ui.SplashScreen
 import com.example.smartexpensecalendar.ui.SubscriptionScreen
+import com.example.smartexpensecalendar.developer.presentation.SMSAnalysisDashboardScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -59,5 +60,12 @@ fun NavGraph(navController: NavHostController) {
         composable(Screen.Subscription.route) {
             SubscriptionScreen(navController = navController)
         }
+
+        // DEVELOPER MODULE ROUTES
+        // --------------------------------------------------
+        composable(Screen.DeveloperDashboard.route) {
+            SMSAnalysisDashboardScreen(navController = navController)
+        }
+        // --------------------------------------------------
     }
 }

@@ -8,6 +8,9 @@ import com.example.smartexpensecalendar.data.local.entity.ExpenseEntity
 import com.example.smartexpensecalendar.data.local.entity.MerchantMappingEntity
 import com.example.smartexpensecalendar.data.local.entity.SMSLogEntity
 import com.example.smartexpensecalendar.data.local.entity.SubscriptionEntity
+import com.example.smartexpensecalendar.developer.data.entity.AnalyzedSMS
+import com.example.smartexpensecalendar.developer.data.entity.MisclassifiedMessage
+import com.example.smartexpensecalendar.developer.data.SMSAnalysisDao
 import androidx.room.TypeConverters
 
 @Database(
@@ -17,12 +20,19 @@ import androidx.room.TypeConverters
         SMSLogEntity::class, 
         BudgetEntity::class, 
         CustomCategoryEntity::class,
-        SubscriptionEntity::class
+        SubscriptionEntity::class,
+
+        // DEVELOPER ENTITIES
+        AnalyzedSMS::class,
+        MisclassifiedMessage::class
     ],
-    version = 13,
+    version = 15,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun expenseDao(): ExpenseDao
+
+    // DEVELOPER DAOs
+    abstract fun smsAnalysisDao(): SMSAnalysisDao
 }

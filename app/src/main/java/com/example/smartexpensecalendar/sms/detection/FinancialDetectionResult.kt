@@ -8,5 +8,13 @@ data class FinancialDetectionResult(
 
     val score: Int,
 
-    val matchedSignals: Set<String>
+    val matchedSignals: Set<String>,
+
+    val matchedKeywords: Set<String> = emptySet(),
+
+    val matchedPatterns: Set<String> = emptySet(),
+
+    val negativeSignals: Set<String> = emptySet(),
+
+    val scoreBreakdown: Map<String, Int> = emptyMap()
 )

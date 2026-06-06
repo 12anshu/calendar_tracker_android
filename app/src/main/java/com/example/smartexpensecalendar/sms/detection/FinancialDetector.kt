@@ -3,7 +3,6 @@ package com.example.smartexpensecalendar.sms.detection
 import com.example.smartexpensecalendar.sms.config.DetectionConstants
 import com.example.smartexpensecalendar.sms.config.SMSKeywordRegistry
 
-
 object FinancialDetector {
 
     fun detect(
@@ -11,263 +10,126 @@ object FinancialDetector {
     ): FinancialDetectionResult {
 
         val text = sms.uppercase()
+        val matchedSignals = mutableSetOf<String>()
+        val matchedKeywords = mutableSetOf<String>()
+        val matchedPatterns = mutableSetOf<String>()
+        val negativeSignals = mutableSetOf<String>()
+        val scoreBreakdown = mutableMapOf<String, Int>()
 
-        var score = 0
+        var totalScore = 0
 
-        val matchedSignals =
-            mutableSetOf<String>()
-
-        score += scoreStrongSignals(
-            text,
-            matchedSignals
-        )
-
-        score += scoreMediumSignals(
-            text,
-            matchedSignals
-        )
-
-        score += scorePatternSignals(
-            text,
-            matchedSignals
-        )
-
-        score += scoreNegativeSignals(
-            text,
-            matchedSignals
-        )
-
-        if (matchedSignals.size >= 3) {
-
-            score +=
-                DetectionConstants.MULTIPLE_SIGNAL_BONUS
-
-            matchedSignals.add(
-                "MULTIPLE_SIGNAL_BONUS"
-            )
-        }
-
-        val confidence =
-            score.coerceIn(0, 100)
-
-        return FinancialDetectionResult(
-
-            isFinancial =
-                score >=
-                        DetectionConstants.FINANCIAL_THRESHOLD,
-
-            confidence =
-                confidence,
-
-            score =
-                score,
-
-            matchedSignals =
-                matchedSignals
-        )
-    }
-
-    private fun scoreStrongSignals(
-        text: String,
-        matchedSignals: MutableSet<String>
-    ): Int {
-
-        var score = 0
-
+        // 1. Strong Keywords
         val strongKeywordGroups = listOf(
-
             SMSKeywordRegistry.expenseKeywords,
-
             SMSKeywordRegistry.incomeKeywords,
-
             SMSKeywordRegistry.transferKeywords,
-
             SMSKeywordRegistry.refundKeywords,
-
             SMSKeywordRegistry.salaryKeywords,
-
             SMSKeywordRegistry.investmentKeywords,
-
             SMSKeywordRegistry.interestKeywords,
-
             SMSKeywordRegistry.cashbackKeywords,
-
             SMSKeywordRegistry.feeKeywords,
-
             SMSKeywordRegistry.emiKeywords,
-
             SMSKeywordRegistry.cardPaymentKeywords
         )
 
         strongKeywordGroups.forEach { keywords ->
-
             keywords.forEach { keyword ->
-
-                if (containsKeyword(
-                        text,
-                        keyword
-                    )
-                ) {
-
-                    score +=
-                        DetectionConstants.STRONG_SIGNAL_SCORE
-
-                    matchedSignals.add(
-                        keyword
-                    )
+                if (containsKeyword(text, keyword)) {
+                    val score = DetectionConstants.STRONG_SIGNAL_SCORE
+                    totalScore += score
+                    matchedSignals.add(keyword)
+                    matchedKeywords.add(keyword)
+                    scoreBreakdown[keyword] = (scoreBreakdown[keyword] ?: 0) + score
                 }
             }
         }
 
-        return score
-    }
-
-    private fun scoreMediumSignals(
-        text: String,
-        matchedSignals: MutableSet<String>
-    ): Int {
-
-        var score = 0
-
-        SMSKeywordRegistry.financialSignals
-            .forEach { keyword ->
-
-                if (
-                    containsKeyword(
-                        text,
-                        keyword
-                    )
-                ) {
-
-                    score +=
-                        DetectionConstants.MEDIUM_SIGNAL_SCORE
-
-                    matchedSignals.add(
-                        keyword
-                    )
-                }
+        // 2. Medium Keywords
+        SMSKeywordRegistry.financialSignals.forEach { keyword ->
+            if (containsKeyword(text, keyword)) {
+                val score = DetectionConstants.MEDIUM_SIGNAL_SCORE
+                totalScore += score
+                matchedSignals.add(keyword)
+                matchedKeywords.add(keyword)
+                scoreBreakdown[keyword] = (scoreBreakdown[keyword] ?: 0) + score
             }
-
-        return score
-    }
-
-    private fun scorePatternSignals(
-        text: String,
-        matchedSignals: MutableSet<String>
-    ): Int {
-
-        var score = 0
-        if (
-            DetectionPatterns
-                .amountRegex
-                .containsMatchIn(text)
-        ) {
-
-            score +=
-                DetectionConstants.AMOUNT_PATTERN_SCORE
-
-            matchedSignals.add(
-                "AMOUNT_PATTERN"
-            )
-        }
-        if (
-            DetectionPatterns
-                .upiRegex
-                .containsMatchIn(text)
-        ) {
-
-            score +=
-                DetectionConstants.UPI_PATTERN_SCORE
-
-            matchedSignals.add(
-                "UPI_PATTERN"
-            )
-        }
-        if (
-            DetectionPatterns
-                .accountPatterns
-                .any {
-                    it.containsMatchIn(text)
-                }
-        ) {
-
-            score +=
-                DetectionConstants.ACCOUNT_PATTERN_SCORE
-
-            matchedSignals.add(
-                "ACCOUNT_PATTERN"
-            )
-        }
-        if (
-            DetectionPatterns
-                .cardPatterns
-                .any {
-                    it.containsMatchIn(text)
-                }
-        ) {
-
-            score +=
-                DetectionConstants.CARD_PATTERN_SCORE
-
-            matchedSignals.add(
-                "CARD_PATTERN"
-            )
-        }
-        if (
-            DetectionPatterns
-                .balancePatterns
-                .any {
-                    it.containsMatchIn(text)
-                }
-        ) {
-
-            score +=
-                DetectionConstants.BALANCE_PATTERN_SCORE
-
-            matchedSignals.add(
-                "BALANCE_PATTERN"
-            )
         }
 
-        return score
-    }
+        // 3. Patterns
+        if (DetectionPatterns.amountRegex.containsMatchIn(text)) {
+            val score = DetectionConstants.AMOUNT_PATTERN_SCORE
+            totalScore += score
+            matchedSignals.add("AMOUNT_PATTERN")
+            matchedPatterns.add("AMOUNT_PATTERN")
+            scoreBreakdown["AMOUNT_PATTERN"] = score
+        }
+        if (DetectionPatterns.upiRegex.containsMatchIn(text)) {
+            val score = DetectionConstants.UPI_PATTERN_SCORE
+            totalScore += score
+            matchedSignals.add("UPI_PATTERN")
+            matchedPatterns.add("UPI_PATTERN")
+            scoreBreakdown["UPI_PATTERN"] = score
+        }
+        if (DetectionPatterns.accountPatterns.any { it.containsMatchIn(text) }) {
+            val score = DetectionConstants.ACCOUNT_PATTERN_SCORE
+            totalScore += score
+            matchedSignals.add("ACCOUNT_PATTERN")
+            matchedPatterns.add("ACCOUNT_PATTERN")
+            scoreBreakdown["ACCOUNT_PATTERN"] = score
+        }
+        if (DetectionPatterns.cardPatterns.any { it.containsMatchIn(text) }) {
+            val score = DetectionConstants.CARD_PATTERN_SCORE
+            totalScore += score
+            matchedSignals.add("CARD_PATTERN")
+            matchedPatterns.add("CARD_PATTERN")
+            scoreBreakdown["CARD_PATTERN"] = score
+        }
+        if (DetectionPatterns.balancePatterns.any { it.containsMatchIn(text) }) {
+            val score = DetectionConstants.BALANCE_PATTERN_SCORE
+            totalScore += score
+            matchedSignals.add("BALANCE_PATTERN")
+            matchedPatterns.add("BALANCE_PATTERN")
+            scoreBreakdown["BALANCE_PATTERN"] = score
+        }
 
-    private fun scoreNegativeSignals(
-        text: String,
-        matchedSignals: MutableSet<String>
-    ): Int {
-
-        var score = 0
-
-        SMSKeywordRegistry
-            .negativeFinancialKeywords
-            .forEach { keyword ->
-
-                if (
-                    containsKeyword(
-                        text,
-                        keyword
-                    )
-                ) {
-
-                    score +=
-                        DetectionConstants
-                            .NEGATIVE_SIGNAL_SCORE
-
-                    matchedSignals.add(
-                        "NEGATIVE:$keyword"
-                    )
-                }
+        // 4. Negative Signals
+        SMSKeywordRegistry.negativeFinancialKeywords.forEach { keyword ->
+            if (containsKeyword(text, keyword)) {
+                val score = DetectionConstants.NEGATIVE_SIGNAL_SCORE
+                totalScore += score
+                matchedSignals.add("NEGATIVE:$keyword")
+                negativeSignals.add(keyword)
+                scoreBreakdown["NEGATIVE:$keyword"] = score
             }
+        }
 
-        return score
+        // 5. Multiple Signal Bonus
+        if (matchedSignals.size >= 3) {
+            val score = DetectionConstants.MULTIPLE_SIGNAL_BONUS
+            totalScore += score
+            matchedSignals.add("MULTIPLE_SIGNAL_BONUS")
+            scoreBreakdown["MULTIPLE_SIGNAL_BONUS"] = score
+        }
+
+        val confidence = totalScore.coerceIn(0, 100)
+
+        return FinancialDetectionResult(
+            isFinancial = totalScore >= DetectionConstants.FINANCIAL_THRESHOLD,
+            confidence = confidence,
+            score = totalScore,
+            matchedSignals = matchedSignals,
+            matchedKeywords = matchedKeywords,
+            matchedPatterns = matchedPatterns,
+            negativeSignals = negativeSignals,
+            scoreBreakdown = scoreBreakdown
+        )
     }
 
     private fun containsKeyword(
         text: String,
         keyword: String
     ): Boolean {
-
         return Regex(
             "\\b${Regex.escape(keyword)}\\b"
         ).containsMatchIn(text)
