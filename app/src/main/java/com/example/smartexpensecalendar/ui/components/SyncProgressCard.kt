@@ -23,10 +23,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.smartexpensecalendar.ui.theme.BackgroundEnd
-import com.example.smartexpensecalendar.ui.theme.CyanGlow
-import com.example.smartexpensecalendar.ui.theme.PrimaryAccent
-import com.example.smartexpensecalendar.ui.theme.TextSecondary
+import com.example.smartexpensecalendar.core.designsystem.theme.BackgroundEnd
+import com.example.smartexpensecalendar.core.designsystem.theme.CyanGlow
+import com.example.smartexpensecalendar.core.designsystem.theme.PrimaryAccent
+import com.example.smartexpensecalendar.core.designsystem.theme.TextSecondary
 
 @Composable
 fun SyncProgressCard(

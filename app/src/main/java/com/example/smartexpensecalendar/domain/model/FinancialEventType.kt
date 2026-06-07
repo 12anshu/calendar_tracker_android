@@ -1,18 +1,35 @@
 package com.example.smartexpensecalendar.domain.model
 
 enum class FinancialEventType {
+
     EXPENSE,
+
     INCOME,
-    TRANSFER,
-    CARD_PAYMENT,
+
     REFUND,
-    SALARY,
-    EMI,
-    INVESTMENT,
+
+    TRANSFER,
+
+    CREDIT_CARD_PAYMENT,
+
+    CREDIT_CARD_SPEND,
+
+    EMI_PAYMENT,
+
     CASH_WITHDRAWAL,
-    INTEREST,
-    CASHBACK,
-    REVERSAL,
-    FEE,
+
+    CASH_DEPOSIT,
+
+    INVESTMENT,
+
     UNKNOWN
+}
+
+fun FinancialEventType.requiresMerchant(): Boolean {
+    return when (this) {
+        FinancialEventType.EXPENSE,
+        FinancialEventType.CREDIT_CARD_SPEND -> true
+
+        else -> false
+    }
 }

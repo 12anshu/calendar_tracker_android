@@ -21,4 +21,16 @@ object DetectionConstants {
     const val BALANCE_PATTERN_SCORE = 15
 
     const val MULTIPLE_SIGNAL_BONUS = 10
+
+    const val MESSAGE_TYPE_KEYWORD_SCORE = 5
+
+    const val MESSAGE_TYPE_PHRASE_SCORE = 10
+
+    const val STRONG_OBLIGATION_SCORE = 50
+
+    const val STRONG_INFORMATION_SCORE = 15
+
+    const val STRONG_PROMOTIONAL_SCORE = 50
+
+    const val MESSAGE_TYPE_MIN_THRESHOLD = 20
 }

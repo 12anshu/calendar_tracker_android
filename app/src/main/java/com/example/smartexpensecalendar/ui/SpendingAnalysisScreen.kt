@@ -24,7 +24,7 @@ import androidx.navigation.NavController
 import com.example.smartexpensecalendar.presentation.budget.BudgetViewModel
 import com.example.smartexpensecalendar.presentation.budget.CategoryBudgetState
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
-import com.example.smartexpensecalendar.ui.theme.*
+import com.example.smartexpensecalendar.core.designsystem.theme.*
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
 
 @OptIn(ExperimentalMaterial3Api::class)

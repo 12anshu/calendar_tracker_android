@@ -27,7 +27,7 @@ import com.example.smartexpensecalendar.presentation.insights.CategorySpend
 import com.example.smartexpensecalendar.presentation.insights.MerchantSpend
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.ui.components.MonthYearPicker
-import com.example.smartexpensecalendar.ui.theme.*
+import com.example.smartexpensecalendar.core.designsystem.theme.*
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
 import java.time.YearMonth
 

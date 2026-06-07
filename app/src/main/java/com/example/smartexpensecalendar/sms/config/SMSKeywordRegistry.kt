@@ -1,4 +1,5 @@
 package com.example.smartexpensecalendar.sms.config
+import com.example.smartexpensecalendar.sms.config.MessageTypeKeywords
 
 object SMSKeywordRegistry {
 
@@ -134,7 +135,12 @@ object SMSKeywordRegistry {
     val cardPaymentKeywords = setOf(
         "PAYMENT RECEIVED",
         "CREDIT CARD PAYMENT",
-        "PAID TOWARDS YOUR CREDIT CARD"
+        "PAID TOWARDS YOUR CREDIT CARD",
+        "PAYMENT RECEIVED TOWARDS YOUR CREDIT CARD",
+        "PAYMENT RECEIVED ON CREDIT CARD",
+        "PAID TOWARDS YOUR CREDIT CARD",
+        "CREDITED TO YOUR CARD ENDING",
+        "ONLINE PAYMENT CREDITED TO YOUR CARD"
     )
 
     val upiKeywords = setOf(
@@ -160,133 +166,47 @@ object SMSKeywordRegistry {
         "AMEX"
     )
 
-    val obligationKeywords = setOf(
-        "DUE",
-        "MINIMUM AMOUNT DUE",
-        "EMI DUE",
-        "REPAYMENT",
-        "PAY BEFORE",
-        "PAYMENT DUE",
-        "OUTSTANDING",
-        "BOUNCE CHARGE",
-        "COLLECT REQUEST",
-        "MANDATE CREATED",
-        "AUTOPAY REGISTRATION"
-    )
-
     val negativeFinancialKeywords = setOf(
         "OTP",
         "LOGIN OTP",
         "VERIFICATION CODE",
         "PASSWORD RESET",
-        "AUTHENTICATION CODE"
-    )
-
-    val transactionKeywords = setOf(
-        "DEBITED",
-        "CREDITED",
-        "SPENT",
-        "PAID",
-        "RECEIVED",
-        "WITHDRAWN",
-        "PURCHASE",
-        "CASHBACK CREDITED",
-        "REFUND PROCESSED",
-        "SPENT",
-        "PURCHASE",
-        "PURCHASED",
-        "POS",
-        "ATM",
-        "ATM WDL",
-        "ATM WITHDRAWAL",
-        "CASH WITHDRAWAL",
-        "UPI PAYMENT",
-        "PAID VIA",
-        "PAID USING",
-        "MERCHANT",
-        "CARD USED",
-        "CARD PURCHASE",
-        "DEBIT TRANSACTION",
-        "CARD",
-        "ON CARD",
-        "BANK CARD",
-        "CREDIT CARD",
-        "DEBIT CARD",
-        "PURCHASE",
-        "POS",
-        "SWIPED",
-        "PAYMENT OF RS",
-        "PAYMENT SUCCESSFUL",
-        "TRANSACTION SUCCESSFUL",
-        "TRANSFER SUCCESSFUL",
-        "REFUND SUCCESSFUL",
+        "AUTHENTICATION CODE",
+        "SECURE CODE",
+        "BOOKING CONFIRMED",
+        "CONSUMED",
+        "VERIFICATION",
+        "LOGIN",
+        "PASSWORD",
+        "ACCESS CODE",
+        "PASSCODE",
+        "TOKEN",
+        "SECRET CODE",
+        "M-PIN",
+        "T-PIN",
+        "VERIFY",
+        "AUTHENTICATE",
+        "AUTHORIZE",
+        "SECURITY CODE",
+        "ONE TIME PASSWORD",
+        "TEMPORARY PASSWORD",
+        "LOGIN ATTEMPT",
+        "OTP IS",
+        "DO NOT SHARE",
+        "SHARE THIS OTP",
+        "CONFIDENTIAL",
+        "PACK VALID",
+        "SMS COST",
+        "CALLCOST",
+        "DURATION",
+        "DATA USED",
+        "REMAINING DATA",
+        "BALANCE EXPIRED",
+        "PLAN EXPIRED",
+        "VALIDITY EXPIRED",
+        "RECHARGE DUE",
         "RECHARGE SUCCESSFUL",
-        "ADDED TO",
-        "TRANSFERRED",
-        "RECEIVED",
-        "WITHDRAWN"
-    )
-
-    val informationKeywords = setOf(
-        "STATEMENT GENERATED",
-        "BALANCE UPDATED",
-        "UPI REGISTRATION",
-        "UPI LINK REQUEST",
-        "CARD UPDATED",
-        "INTEREST UPDATED",
-        "TDS",
-        "E-STATEMENT",
-        "ACCOUNT SUMMARY",
-        "CURRENT BALANCE",
-        "AVAILABLE BALANCE",
-        "CREDIT LIMIT",
-        "ACCOUNT UPDATED",
-        "REGISTRATION",
-        "REGISTERED",
-        "UPI REGISTRATION",
-        "TDS",
-        "TAX DEDUCTED",
-        "STATEMENT GENERATED",
-        "STATEMENT AVAILABLE",
-        "KYC",
-        "KYC UPDATED",
-        "ACCOUNT UPDATED",
-        "PROFILE UPDATED",
-        "MOBILE UPDATED",
-        "EMAIL UPDATED",
-        "CARD ACTIVATED",
-        "CARD BLOCKED",
-        "CARD UNBLOCKED",
-        "SERVICE REQUEST",
-        "STATEMENT",
-        "DUPLICATE STATEMENT",
-        "E-STATEMENT",
-        "CARDMEMBER",
-        "PASSWORD FORMAT",
-        "UPDATED TERMS",
-        "ACCOUNT UPDATED",
-        "ACTIVATION",
-        "ACTIVATED",
-        "REGISTERED",
-        "REGISTRATION",
-        "PIN SET",
-        "PASSWORD RESET",
-        "DEVICE REGISTERED"
-    )
-
-    val promotionalKeywords = setOf(
-        "PRE-APPROVED",
-        "LOAN OFFER",
-        "CASHBACK OFFER",
-        "ELIGIBLE FOR",
-        "LIFETIME FREE",
-        "PERSONAL LOAN",
-        "APPLY NOW",
-        "ELIGIBLE",
-        "UPGRADE YOUR CARD",
-        "INSTANT LOAN",
-        "OFFER",
-        "EXCLUSIVE OFFER"
+        "PACK EXPIRED"
     )
 
     val creditKeywords = setOf(
@@ -309,12 +229,31 @@ object SMSKeywordRegistry {
         "INWARD REMITTANCE",
         "CREDIT TRANSACTION"
     )
+
+    val debitKeywords = setOf(
+        "DEBITED",
+        "SPENT",
+        "PAID",
+        "WITHDRAWN",
+        "PURCHASE",
+        "PURCHASED",
+        "TXN DONE",
+        "PAYMENT SUCCESSFUL",
+        "ATM WDL",
+        "ATM WITHDRAWAL",
+        "CASH WITHDRAWAL",
+        "DEBIT TRANSACTION",
+        "POS",
+        "SWIPED"
+    )
+
     val financialKeywords = financialSignals
 
     val settlementKeywords = cardPaymentKeywords
 
-    val ignoreKeywords = negativeFinancialKeywords +
-            obligationKeywords +
-            promotionalKeywords +
-            informationKeywords
+    val ignoreKeywords =
+        negativeFinancialKeywords +
+                MessageTypeKeywords.obligationKeywords +
+                MessageTypeKeywords.promotionalKeywords +
+                MessageTypeKeywords.informationKeywords
 }

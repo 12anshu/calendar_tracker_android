@@ -26,7 +26,7 @@ import androidx.navigation.NavController
 import com.example.smartexpensecalendar.presentation.profile.ProfileViewModel
 import com.example.smartexpensecalendar.ui.components.PremiumFeatureCard
 import com.example.smartexpensecalendar.ui.navigation.Screen
-import com.example.smartexpensecalendar.ui.theme.*
+import com.example.smartexpensecalendar.core.designsystem.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -17,8 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smartexpensecalendar.ui.branding.Branding
-import com.example.smartexpensecalendar.ui.theme.CyanGlow
-import com.example.smartexpensecalendar.ui.theme.TextSecondary
+import com.example.smartexpensecalendar.core.designsystem.theme.CyanGlow
+import com.example.smartexpensecalendar.core.designsystem.theme.TextSecondary
 
 @Composable
 fun AppLogoText(

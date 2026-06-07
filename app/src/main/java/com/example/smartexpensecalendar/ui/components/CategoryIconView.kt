@@ -11,7 +11,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.smartexpensecalendar.ui.theme.getCategoryColor
+import com.example.smartexpensecalendar.core.designsystem.theme.getCategoryColor
 import com.example.smartexpensecalendar.utils.CategoryIconsUtils
 
 @Composable

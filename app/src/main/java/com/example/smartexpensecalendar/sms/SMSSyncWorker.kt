@@ -14,7 +14,7 @@ import com.example.smartexpensecalendar.domain.repository.ExpenseRepository
 import com.example.smartexpensecalendar.data.local.DataStoreManager
 import com.example.smartexpensecalendar.utils.NotificationHelper
 import com.example.smartexpensecalendar.domain.model.PaymentMethod
-import com.example.smartexpensecalendar.sms.merchant.MerchantNormalizer
+import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
 import com.example.smartexpensecalendar.sms.sender.SenderValidationEngine
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -109,17 +109,13 @@ class SMSSyncWorker @AssistedInject constructor(
                 }
 
                 val parsed = SMSParser.parse(body)
-                val finalParsed =
-                    SMSParser.parse(body)?.copy(
-                        senderType = senderInfo.senderType
-                    ) ?: continue
-                if (!finalParsed.isFinancial) {
+                if (parsed == null || !parsed.isFinancial) {
                     continue
                 }
-                val normalizedMerchant =
-                    MerchantNormalizer.normalize(
-                        finalParsed.merchant
-                    )
+                
+                val finalParsed = parsed.copy(senderType = senderInfo.senderType)
+                val normalizedMerchant = finalParsed.merchant
+
                 processedExpenses++
                 val category = if (finalParsed.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.SETTLEMENT)
                     "Settlement"

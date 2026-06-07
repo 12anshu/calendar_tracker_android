@@ -10,7 +10,7 @@ import com.example.smartexpensecalendar.domain.model.ExpenseSource
 import com.example.smartexpensecalendar.domain.model.ProcessingStatus
 import com.example.smartexpensecalendar.domain.model.SMSProcessingLog
 import com.example.smartexpensecalendar.domain.repository.ExpenseRepository
-import com.example.smartexpensecalendar.sms.merchant.MerchantNormalizer
+import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
 import com.example.smartexpensecalendar.sms.sender.SenderValidationEngine
 import com.example.smartexpensecalendar.utils.NotificationHelper
 import dagger.hilt.android.AndroidEntryPoint
@@ -60,18 +60,13 @@ class SMSReceiver : BroadcastReceiver() {
                 val senderInfo =
                     SenderValidationEngine.validate(sender)
 
-                val finalParsed =
-                    SMSParser.parse(body)?.copy(
-                        senderType = senderInfo.senderType
-                    ) ?: return@launch
-                if (!finalParsed.isFinancial) {
+                val parsed = SMSParser.parse(body)
+                if (parsed == null || !parsed.isFinancial) {
                     return@launch
                 }
-
-                val normalizedMerchant =
-                    MerchantNormalizer.normalize(
-                        finalParsed.merchant
-                    )
+                
+                val finalParsed = parsed.copy(senderType = senderInfo.senderType)
+                val normalizedMerchant = finalParsed.merchant
 
                 val category = when (finalParsed.status) {
                     com.example.smartexpensecalendar.domain.model.TransactionStatus.SETTLEMENT -> "Settlement"

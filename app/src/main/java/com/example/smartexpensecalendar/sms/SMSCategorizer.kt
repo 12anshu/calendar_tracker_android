@@ -1,7 +1,7 @@
 package com.example.smartexpensecalendar.sms
 
 import com.example.smartexpensecalendar.domain.repository.ExpenseRepository
-import com.example.smartexpensecalendar.sms.merchant.MerchantNormalizer
+import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
 import javax.inject.Inject
 import javax.inject.Singleton
 

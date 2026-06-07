@@ -30,7 +30,7 @@ import com.example.smartexpensecalendar.presentation.rules.MerchantRule
 import com.example.smartexpensecalendar.presentation.rules.RuleSource
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.ui.components.CategoryGridPicker
-import com.example.smartexpensecalendar.ui.theme.*
+import com.example.smartexpensecalendar.core.designsystem.theme.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.*

@@ -35,7 +35,7 @@ import com.example.smartexpensecalendar.domain.model.Expense
 import com.example.smartexpensecalendar.presentation.detail.ExpenseDetailViewModel
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.ui.components.CategoryGridPicker
-import com.example.smartexpensecalendar.ui.theme.*
+import com.example.smartexpensecalendar.core.designsystem.theme.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter

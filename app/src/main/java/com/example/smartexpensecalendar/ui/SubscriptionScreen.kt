@@ -20,7 +20,7 @@ import androidx.navigation.NavController
 import com.example.smartexpensecalendar.data.model.PlanFeatureInfo
 import com.example.smartexpensecalendar.data.model.SubscriptionData
 import com.example.smartexpensecalendar.data.model.SubscriptionPlan
-import com.example.smartexpensecalendar.ui.theme.*
+import com.example.smartexpensecalendar.core.designsystem.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

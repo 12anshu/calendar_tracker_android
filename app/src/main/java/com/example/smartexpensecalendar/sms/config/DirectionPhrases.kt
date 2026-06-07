@@ -1,0 +1,65 @@
+package com.example.smartexpensecalendar.sms.config
+
+object DirectionPhrases {
+
+    val creditPhrases = setOf(
+
+        "CREDITED TO",
+        "CREDITED INTO",
+        "CREDITED IN",
+        "AMOUNT CREDITED",
+        "SALARY CREDITED",
+        "SALARY DEPOSITED",
+        "REFUND CREDITED",
+        "CASHBACK CREDITED",
+        "INTEREST CREDITED",
+        "REWARD CREDITED",
+        "PAYMENT RECEIVED",
+        "FUNDS RECEIVED",
+        "AMOUNT RECEIVED",
+        "RECEIVED FROM",
+        "DEPOSITED INTO",
+        "DEPOSITED TO",
+        "DEPOSITED IN",
+        "MONEY RECEIVED",
+        "INWARD REMITTANCE",
+        "RECEIVED VIA UPI",
+        "CREDIT TRANSACTION",
+        "CREDITED SUCCESSFULLY"
+    )
+
+    val debitPhrases = setOf(
+        "DEBITED FROM",
+        "DEBITED TOWARDS",
+        "AMOUNT DEBITED",
+        "AMOUNT DEDUCTED",
+        "DEDUCTED FROM",
+        "SPENT ON",
+        "SPENT AT",
+        "PURCHASE MADE",
+        "PURCHASE USING",
+        "PURCHASE ON",
+        "PAID TO",
+        "PAID VIA",
+        "PAID USING",
+        "PAYMENT OF RS",
+        "PAYMENT OF INR",
+        "CASH WITHDRAWAL",
+        "ATM WITHDRAWAL",
+        "WITHDRAWN FROM",
+        "WITHDRAWN AT",
+        "SENT TO",
+        "MONEY SENT",
+        "CHARGED TO",
+        "CHARGE OF RS",
+        "AUTOPAY SUCCESSFUL",
+        "E-MANDATE SUCCESS",
+        "BILL PAYMENT",
+        "MERCHANT PAYMENT",
+        "DEBIT TRANSACTION",
+        "TXN OF RS",
+        "TXN OF INR",
+        "UPI PAYMENT",
+        "UPI TXN"
+    )
+}

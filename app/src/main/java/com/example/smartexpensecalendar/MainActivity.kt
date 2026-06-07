@@ -10,7 +10,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.example.smartexpensecalendar.ui.HomeScreen
-import com.example.smartexpensecalendar.ui.theme.SmartExpenseCalendarTheme
+import com.example.smartexpensecalendar.core.designsystem.theme.SmartExpenseCalendarTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 import androidx.navigation.compose.rememberNavController

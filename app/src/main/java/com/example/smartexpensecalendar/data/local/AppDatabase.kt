@@ -8,9 +8,9 @@ import com.example.smartexpensecalendar.data.local.entity.ExpenseEntity
 import com.example.smartexpensecalendar.data.local.entity.MerchantMappingEntity
 import com.example.smartexpensecalendar.data.local.entity.SMSLogEntity
 import com.example.smartexpensecalendar.data.local.entity.SubscriptionEntity
-import com.example.smartexpensecalendar.developer.data.entity.AnalyzedSMS
-import com.example.smartexpensecalendar.developer.data.entity.MisclassifiedMessage
-import com.example.smartexpensecalendar.developer.data.SMSAnalysisDao
+import com.example.smartexpensecalendar.features.developer_tools.data.entity.AnalyzedSMS
+import com.example.smartexpensecalendar.features.developer_tools.data.entity.MisclassifiedMessage
+import com.example.smartexpensecalendar.features.developer_tools.data.SMSAnalysisDao
 import androidx.room.TypeConverters
 
 @Database(

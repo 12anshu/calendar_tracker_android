@@ -1,6 +1,6 @@
 package com.example.smartexpensecalendar.data.model
 
-import com.example.smartexpensecalendar.ui.theme.*
+import com.example.smartexpensecalendar.core.designsystem.theme.*
 
 object SubscriptionData {
     val plans = listOf(

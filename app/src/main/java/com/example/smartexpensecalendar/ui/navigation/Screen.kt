@@ -16,4 +16,6 @@ sealed class Screen(val route: String) {
 
     // DEVELOPER SCREENS
     object DeveloperDashboard : Screen("developer_dashboard")
+    object FinancialDetectionLab : Screen("financial_detection_lab")
+    object TransactionExtractionLab : Screen("transaction_extraction_lab")
 }

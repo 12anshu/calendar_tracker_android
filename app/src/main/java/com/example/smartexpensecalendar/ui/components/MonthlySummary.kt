@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.example.smartexpensecalendar.domain.model.Expense
 import com.example.smartexpensecalendar.presentation.home.SyncSummary
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
-import com.example.smartexpensecalendar.ui.theme.*
+import com.example.smartexpensecalendar.core.designsystem.theme.*
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
 import java.time.YearMonth
 import java.time.format.TextStyle

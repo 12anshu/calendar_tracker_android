@@ -23,7 +23,7 @@ import androidx.navigation.NavController
 import com.example.smartexpensecalendar.R
 import com.example.smartexpensecalendar.ui.components.AppLogoText
 import com.example.smartexpensecalendar.ui.navigation.Screen
-import com.example.smartexpensecalendar.ui.theme.*
+import com.example.smartexpensecalendar.core.designsystem.theme.*
 import kotlinx.coroutines.delay
 
 @Composable

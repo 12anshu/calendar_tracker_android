@@ -51,7 +51,7 @@ import com.example.smartexpensecalendar.ui.components.MonthlySummary
 import com.example.smartexpensecalendar.ui.components.MonthYearPicker
 import com.example.smartexpensecalendar.ui.components.NotificationBottomSheet
 import com.example.smartexpensecalendar.ui.components.PremiumFeatureCard
-import com.example.smartexpensecalendar.ui.theme.*
+import com.example.smartexpensecalendar.core.designsystem.theme.*
 import kotlinx.coroutines.flow.collectLatest
 import java.time.LocalDate
 import java.time.YearMonth
