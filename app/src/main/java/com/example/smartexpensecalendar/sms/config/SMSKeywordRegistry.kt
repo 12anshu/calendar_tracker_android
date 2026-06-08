@@ -205,7 +205,6 @@ object SMSKeywordRegistry {
         "PLAN EXPIRED",
         "VALIDITY EXPIRED",
         "RECHARGE DUE",
-        "RECHARGE SUCCESSFUL",
         "PACK EXPIRED"
     )
 

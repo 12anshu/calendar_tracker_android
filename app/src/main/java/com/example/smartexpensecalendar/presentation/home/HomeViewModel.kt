@@ -175,9 +175,16 @@ class HomeViewModel @Inject constructor(
             if (info != null) {
                 val isRunning = info.state == androidx.work.WorkInfo.State.RUNNING || 
                                info.state == androidx.work.WorkInfo.State.ENQUEUED
-                val progress = info.progress.getFloat("progress", 0f)
-                val totalRead = info.progress.getInt("total_read", 0)
-                val expensesFound = info.progress.getInt("expenses_found", 0)
+                
+                val progressData = if (info.state == androidx.work.WorkInfo.State.SUCCEEDED) {
+                    info.outputData
+                } else {
+                    info.progress
+                }
+
+                val progress = progressData.getFloat("progress", 0f)
+                val totalRead = progressData.getInt("total_read", 0)
+                val expensesFound = progressData.getInt("expenses_found", 0)
                 
                 _uiState.update { it.copy(
                     isSyncing = isRunning, 

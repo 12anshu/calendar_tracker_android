@@ -16,98 +16,97 @@ import com.example.smartexpensecalendar.sms_engine.extractor.FinancialEventTypeE
 import com.example.smartexpensecalendar.sms_engine.extractor.ModeExtractor
 import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantExtractor
 import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
+import com.example.smartexpensecalendar.sms.config.MessageTypePhrases
 import java.util.regex.Pattern
 
 data class ParsedSMS(
     val amount: Double,
     val merchant: String?,
     val isFinancial: Boolean,
-
+    val messageType: MessageType = MessageType.UNKNOWN,
     val paymentMethod: PaymentMethod = PaymentMethod.UNKNOWN,
-
-    val direction: TransactionDirection =
-        TransactionDirection.UNKNOWN,
-
-    val financialEventType: FinancialEventType =
-        FinancialEventType.UNKNOWN,
-
-    val type: TransactionType =
-        TransactionType.DEBIT,
-
-    val status: TransactionStatus =
-        TransactionStatus.COMPLETED,
-
+    val direction: TransactionDirection = TransactionDirection.UNKNOWN,
+    val financialEventType: FinancialEventType = FinancialEventType.UNKNOWN,
+    val type: TransactionType = TransactionType.DEBIT,
+    val status: TransactionStatus = TransactionStatus.COMPLETED,
     val accountSuffix: String? = null,
-
     val confidence: Int = 0,
-
     val senderType: SenderType = SenderType.UNKNOWN
 )
+
 object SMSParser {
 
     private val messageTypeDetector = MessageTypeDetector()
 
-    // Regex for Account/Card Suffix (Last 4 digits)
     private val accountSuffixRegex = Pattern.compile(
         "(?i)(?:A/c|Acct|Card|XX|X|No|no\\.?)\\s*\\*?([0-9]{4})",
         Pattern.CASE_INSENSITIVE
     )
 
     fun parse(body: String): ParsedSMS? {
-        val lowercaseBody = body.lowercase()
+        val uppercaseBody = body.uppercase()
 
-        // 1. Production Specific Filters (Preserving existing production behavior)
-        if (lowercaseBody.contains("6038")) {
-            val isKeepTransaction = lowercaseBody.contains("emi") || 
-                                   lowercaseBody.contains("cash") || 
-                                   lowercaseBody.contains("withdrawal") ||
-                                   lowercaseBody.contains("ach")
-            if (lowercaseBody.contains("9490") || !isKeepTransaction) return null
-        }
-
-        // Hard ignore cases that might bypass the scoring engine
-        val isHardIgnore = lowercaseBody.contains("total amount due") || 
-                          lowercaseBody.contains("minimum amount due") ||
-                          lowercaseBody.contains("will be") ||
-                          lowercaseBody.contains("recharge of")
-        if (isHardIgnore) return null
-
-        val normalizedBody = SMSNormalizer.normalize(body)
+        // --- STAGE 1: Fast-Pass Efficiency ---
         
-        // 2. Detection using shared engine
-        val financialResult = FinancialDetector.detect(body)
-        if (!financialResult.isFinancial) return null
-        
-        val messageTypeResult = messageTypeDetector.detect(normalizedBody)
-        if (messageTypeResult.messageType != MessageType.TRANSACTION) {
-            return null
-        }
+        // 1.1 OTP Filter (Phrase-based with Exclusion)
+        val isOtp = MessageTypePhrases.otpPhrases.any { uppercaseBody.contains(it) }
+        val isOtpExclusion = MessageTypePhrases.otpExcludePhrases.any { uppercaseBody.contains(it) }
+        if (isOtp && !isOtpExclusion) return null
 
-        // 3. Extraction using shared engine
+        // 1.2 Amount Check
         val amount = AmountExtractor.extractAmount(body) ?: return null
-        val direction = DirectionExtractor.extractDirection(body)
-        val mode = ModeExtractor.extractMode(body)
-        val rawMerchant = MerchantExtractor.extractMerchant(body)
-        val merchant = rawMerchant?.let { MerchantNormalizer.normalize(it) }
-        
-        val financialEventType = FinancialEventTypeExtractor.extract(
-            smsText = body,
-            direction = direction,
-            mode = mode
-        )
 
-        // 4. Status and Type Mapping
-        val type = if (direction == TransactionDirection.CREDIT) 
-            TransactionType.CREDIT else TransactionType.DEBIT
+        // 1.3 Broad Financial Signal
+        val financialResult = FinancialDetector.detect(body)
+        
+        // --- STAGE 2: Unified Classification (Sequential Phrase Logic) ---
+        
+        val normalizedBody = SMSNormalizer.normalize(body)
+        val messageTypeResult = messageTypeDetector.detect(normalizedBody)
+        var messageType = messageTypeResult.messageType
+        var detectedDirection = messageTypeResult.detectedDirection
+
+        // THE ZERO-MISS DEFAULT RULE:
+        // If it's financial domain AND has an amount, but no phrase matched:
+        // We promote it to TRANSACTION to ensure visibility.
+        if (messageType == MessageType.UNKNOWN && financialResult.isFinancial) {
+            messageType = MessageType.TRANSACTION
+        }
+
+        // --- STAGE 3: Direction & Event Type ---
+        
+        // Use classifier direction if found, otherwise fallback to extractor
+        val direction = if (detectedDirection != TransactionDirection.UNKNOWN) {
+            detectedDirection
+        } else {
+            DirectionExtractor.extractDirection(body)
+        }
+
+        val mode = ModeExtractor.extractMode(body)
+        
+        var type = when (direction) {
+            TransactionDirection.CREDIT -> TransactionType.CREDIT
+            TransactionDirection.DEBIT -> TransactionType.DEBIT
+            TransactionDirection.UNKNOWN -> TransactionType.DEBIT // Default to Debit
+        }
             
-        var status = TransactionStatus.COMPLETED
+        var status = if (direction == TransactionDirection.UNKNOWN) 
+            TransactionStatus.PENDING_REVIEW else TransactionStatus.COMPLETED
+
+        val financialEventType = FinancialEventTypeExtractor.extract(body, direction, mode)
+        
         if (financialEventType == FinancialEventType.REFUND) {
             status = TransactionStatus.REFUNDED
+            type = TransactionType.CREDIT
         } else if (body.contains("failed", ignoreCase = true)) {
             status = TransactionStatus.FAILED
         }
 
-        // 5. Account Suffix
+        // --- STAGE 4: Final Extraction ---
+        
+        val rawMerchant = MerchantExtractor.extractMerchant(body)
+        val merchant = rawMerchant?.let { MerchantNormalizer.normalize(it) }
+        
         val suffixMatcher = accountSuffixRegex.matcher(body)
         var accountSuffix: String? = null
         if (suffixMatcher.find()) {
@@ -118,6 +117,7 @@ object SMSParser {
             amount = amount,
             merchant = merchant,
             isFinancial = true,
+            messageType = messageType,
             paymentMethod = mapToPaymentMethod(mode),
             direction = direction,
             financialEventType = financialEventType,
@@ -133,8 +133,8 @@ object SMSParser {
             TransactionMode.UPI -> PaymentMethod.UPI
             TransactionMode.CARD -> PaymentMethod.CARD
             TransactionMode.CASH -> PaymentMethod.CASH
-            TransactionMode.WALLET -> PaymentMethod.UNKNOWN // Or add WALLET to PaymentMethod
-            TransactionMode.BANK_TRANSFER -> PaymentMethod.NEFT // Generic mapping
+            TransactionMode.WALLET -> PaymentMethod.UNKNOWN
+            TransactionMode.BANK_TRANSFER -> PaymentMethod.NEFT
             TransactionMode.AUTO_DEBIT -> PaymentMethod.ACH
             TransactionMode.EMI -> PaymentMethod.UNKNOWN
             TransactionMode.UNKNOWN -> PaymentMethod.UNKNOWN

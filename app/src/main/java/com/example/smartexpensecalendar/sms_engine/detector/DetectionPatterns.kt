@@ -3,7 +3,7 @@ package com.example.smartexpensecalendar.sms_engine.detector
 object DetectionPatterns {
 
     val amountRegex = Regex(
-        "(₹|RS\\.?|INR)\\s*[\\d,]+(\\.\\d{1,2})?",
+        "(?:₹|RS\\.?|INR|RS|AMT|AMOUNT)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         RegexOption.IGNORE_CASE
     )
 
@@ -21,7 +21,7 @@ object DetectionPatterns {
             RegexOption.IGNORE_CASE
         ),
         Regex(
-            "\\\\b\\\\d{10}@\\\\w+",
+            "\\b\\d{10}@\\w+",
             RegexOption.IGNORE_CASE
         )
     )

@@ -192,6 +192,26 @@ fun DashboardView(
             )
         }
 
+        item {
+            ActionCard(
+                title = "Export Diagnostic JSON (All)",
+                subtitle = "Share raw messages for engine improvements",
+                icon = Icons.Default.BugReport,
+                color = PremiumGold,
+                onClick = { viewModel.exportDiagnosticData(month = null, minimal = true) }
+            )
+        }
+
+        item {
+            ActionCard(
+                title = "Export Diagnostic JSON (Current Month)",
+                subtitle = "Share only this month's messages",
+                icon = Icons.Default.CalendarMonth,
+                color = SecondaryAccent,
+                onClick = { viewModel.exportDiagnosticData(month = java.time.YearMonth.now(), minimal = true) }
+            )
+        }
+
         item { SectionHeader("Analysis Views") }
 
         item {

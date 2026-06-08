@@ -132,6 +132,9 @@ fun HomeScreen(
                     onNotificationClick = { showNotifications = true },
                     onUpgradeClick = { navController.navigate(Screen.Subscription.route) }
                 )
+            },
+            bottomBar = {
+                FintechBottomNav(navController = navController)
             }
         ) { padding ->
             BoxWithConstraints(
@@ -320,12 +323,6 @@ fun HomeScreen(
             }
         }
 
-        // Bottom Navigation
-        FintechBottomNav(
-            navController = navController,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
-
         // Expense Detail Sheet
         if (showDetailSheet && selectedDate != null) {
             ExpenseDetailBottomSheet(
@@ -382,6 +379,7 @@ fun FintechHeader(
 
     Column(
         modifier = Modifier
+            .statusBarsPadding()
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -540,7 +538,8 @@ fun FintechBottomNav(
 
     Box(
         modifier = modifier
-            .padding(horizontal = 4.dp, vertical = 20.dp)
+            .navigationBarsPadding()
+            .padding(horizontal = 4.dp, vertical = 8.dp)
             .fillMaxWidth()
             .height(82.dp)
     ) {

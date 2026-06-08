@@ -21,12 +21,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
+import java.time.ZoneId
 import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class SMSAnalysisRepository @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
     private val dao: SMSAnalysisDao,
     private val smsProvider: SmsProviderDataSource
 ) {
@@ -102,6 +104,66 @@ class SMSAnalysisRepository @Inject constructor(
     suspend fun getTransactionSMS() = dao.getTransactionSMS()
     
     suspend fun getAllAnalyzedSMSList() = dao.getAllAnalyzedSMSList()
+
+    suspend fun exportDiagnosticData(
+        month: java.time.YearMonth? = null,
+        minimal: Boolean = false
+    ): String = withContext(Dispatchers.IO) {
+        val messages = if (month != null) {
+            val start = month.atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val end = month.atEndOfMonth().atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            dao.getAnalyzedSMSInRange(start, end)
+        } else {
+            dao.getAllAnalyzedSMSList()
+        }
+
+        if (messages.isEmpty()) return@withContext "No messages found for the selected period."
+
+        val dataToExport = if (minimal) {
+            messages.map { 
+                mapOf(
+                    "sender" to it.sender,
+                    "message" to it.message,
+                    "timestamp" to it.timestamp
+                )
+            }
+        } else {
+            messages
+        }
+
+        val json = com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(dataToExport)
+        val fileName = if (month != null) {
+            "sms_diag_${month}_${if (minimal) "min" else "full"}.json"
+        } else {
+            "sms_diagnostic_data_${if (minimal) "min" else "full"}.json"
+        }
+
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                val contentValues = android.content.ContentValues().apply {
+                    put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "application/json")
+                    put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS)
+                }
+                val resolver = context.contentResolver
+                val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                uri?.let {
+                    resolver.openOutputStream(it)?.use { os: java.io.OutputStream ->
+                        os.write(json.toByteArray())
+                    }
+                    return@withContext "Diagnostic data ready: Downloads/$fileName"
+                }
+            } else {
+                val downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+                val file = java.io.File(downloadsDir, fileName)
+                file.writeText(json)
+                return@withContext "Diagnostic data ready: ${file.absolutePath}"
+            }
+        } catch (e: Exception) {
+            return@withContext "Export failed: ${e.message}"
+        }
+        return@withContext "Export failed"
+    }
 
     suspend fun flagMisclassification(sms: AnalyzedSMS, expectedClassification: String) {
         val misclassified = MisclassifiedMessage(

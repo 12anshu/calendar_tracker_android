@@ -10,38 +10,23 @@ object MessageTypeKeywords {
         "WITHDRAWN",
         "PURCHASE",
         "PURCHASED",
-        "CASHBACK CREDITED",
-        "REFUND PROCESSED",
+        "CASHBACK",
+        "REFUND",
         "SPENT",
         "POS",
         "ATM",
-        "ATM WDL",
-        "ATM WITHDRAWAL",
-        "CASH WITHDRAWAL",
-        "UPI PAYMENT",
-        "PAID VIA",
-        "PAID USING",
-        "MERCHANT",
-        "CARD USED",
-        "CARD PURCHASE",
-        "DEBIT TRANSACTION",
-        "ON CARD",
-        "SWIPED",
-        "PAYMENT OF RS",
-        "PAYMENT SUCCESSFUL",
-        "TRANSACTION SUCCESSFUL",
-        "TRANSFER SUCCESSFUL",
-        "REFUND SUCCESSFUL",
-        "RECHARGE SUCCESSFUL",
-        "ADDED TO",
-        "TRANSFERRED",
-        "REFUND",
+        "TXN",
+        "PAYMENT",
+        "TRANSFER",
         "RECHARGE",
         "AUTOPAY",
-        "E-MANDATE",
-        "TXN AMT",
-        "PAYMENT UPDATED",
-        "DEDUCTED"
+        "DEDUCTED",
+        "SENT",
+        "ADDED",
+        "SUCCESSFUL",
+        "WDL",
+        "SWIPED",
+        "CHARGED"
     )
 
     val informationKeywords = setOf(
@@ -82,6 +67,11 @@ object MessageTypeKeywords {
         "LOW BALANCE",
         "A/C BAL",
         "BAL IS NOW BELOW",
+        "OTP IS",
+        "FOR TXN OF",
+        "TELL US ABOUT YOUR",
+        "EXPERIENCE",
+        "HOW DID YOU LIKE"
     )
 
     val obligationKeywords = setOf(
@@ -104,7 +94,11 @@ object MessageTypeKeywords {
         "OVERDUE",
         "PAST DUE",
         "DUE DATE",
-        "MANDATE"
+        "MANDATE",
+        "STATEMENT:",
+        "WILL BE DEBITED",
+        "देय तिथि",
+        "धनराशि बनाए रखें"
     )
 
     val promotionalKeywords = setOf(

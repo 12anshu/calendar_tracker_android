@@ -1,7 +1,10 @@
 package com.example.smartexpensecalendar.sms
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.provider.Telephony
+import androidx.core.content.ContextCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -14,12 +17,15 @@ import com.example.smartexpensecalendar.domain.repository.ExpenseRepository
 import com.example.smartexpensecalendar.data.local.DataStoreManager
 import com.example.smartexpensecalendar.utils.NotificationHelper
 import com.example.smartexpensecalendar.domain.model.PaymentMethod
+import com.example.smartexpensecalendar.sms_engine.detector.MessageType
 import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
 import com.example.smartexpensecalendar.sms.sender.SenderValidationEngine
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.time.Instant
 import java.time.ZoneId
+import java.time.YearMonth
+import java.time.Month
 
 @HiltWorker
 class SMSSyncWorker @AssistedInject constructor(
@@ -44,172 +50,192 @@ class SMSSyncWorker @AssistedInject constructor(
             // Foreground not supported or failed
         }
 
+        // 1. Permission Check
+        if (ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.READ_SMS) 
+            != PackageManager.PERMISSION_GRANTED) {
+            return Result.failure()
+        }
+
         val selection = if (syncYear != -1 && syncMonth != -1) {
-            val startOfMonth = java.time.YearMonth.of(syncYear, syncMonth).atDay(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
-            val endOfMonth = java.time.YearMonth.of(syncYear, syncMonth).atEndOfMonth().atTime(23, 59, 59).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
-            "${Telephony.Sms.DATE} >= $startOfMonth AND ${Telephony.Sms.DATE} <= $endOfMonth"
+            val yearMonth = YearMonth.of(syncYear, syncMonth)
+            val startOfMonth = yearMonth.atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val endOfMonth = yearMonth.atEndOfMonth().atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            "${Telephony.Sms.DATE} >= $startOfMonth AND ${Telephony.Sms.DATE} <= $endOfMonth AND ${Telephony.Sms.TYPE} = 1"
         } else {
-            null
+            "${Telephony.Sms.TYPE} = 1"
         }
 
         val contentResolver = applicationContext.contentResolver
-        val cursor = contentResolver.query(
-            Telephony.Sms.CONTENT_URI,
-            arrayOf(Telephony.Sms._ID, Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE),
-            selection,
-            null,
-            "${Telephony.Sms.DATE} DESC"
-        )
+        val cursor = try {
+            contentResolver.query(
+                Telephony.Sms.CONTENT_URI,
+                arrayOf(Telephony.Sms._ID, Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.TYPE),
+                selection,
+                null,
+                "${Telephony.Sms.DATE} DESC"
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("SMSSyncWorker", "Cursor query failed", e)
+            null
+        }
+
+        var totalReadCount = 0
+        var foundExpensesCount = 0
 
         cursor?.use {
-            val bodyIndex = it.getColumnIndex(Telephony.Sms.BODY)
-            val addressIndex = it.getColumnIndex(Telephony.Sms.ADDRESS)
-            val dateIndex = it.getColumnIndex(Telephony.Sms.DATE)
-            val idIndex = it.getColumnIndex(Telephony.Sms._ID)
+            val bodyIndex = it.getColumnIndexOrThrow(Telephony.Sms.BODY)
+            val addressIndex = it.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
+            val dateIndex = it.getColumnIndexOrThrow(Telephony.Sms.DATE)
+            val idIndex = it.getColumnIndexOrThrow(Telephony.Sms._ID)
 
             val totalCount = it.count
-            var currentCount = 0
-            var processedExpenses = 0
-
+            
             while (it.moveToNext()) {
-                currentCount++
-                if (currentCount % 10 == 0 || currentCount == totalCount) {
-                    val progress = currentCount.toFloat() / totalCount
-                    setProgress(workDataOf(
-                        "progress" to progress,
-                        "total_read" to currentCount,
-                        "expenses_found" to processedExpenses
-                    ))
-                    
-                    try {
-                        setForeground(NotificationHelper.getSyncForegroundInfo(
-                            applicationContext, 
-                            "Processed $currentCount/$totalCount messages..."
+                try {
+                    totalReadCount++
+                    if (totalReadCount % 20 == 0 || totalReadCount == totalCount) {
+                        val progress = totalReadCount.toFloat() / totalCount
+                        setProgress(workDataOf(
+                            "progress" to progress,
+                            "total_read" to totalReadCount,
+                            "expenses_found" to foundExpensesCount
                         ))
-                    } catch (e: Exception) {}
-                }
-
-                val body = it.getString(bodyIndex)
-                val address = it.getString(addressIndex)
-                val senderInfo =
-                    SenderValidationEngine.validate(address)
-
-                val date = it.getLong(dateIndex)
-                val id = it.getLong(idIndex)
-
-                // Skip if already processed by ID
-                if (repository.isSmsIdProcessed(id)) {
-                    continue
-                }
-
-                // Additional check for body similarity (optional but helps with cross-device duplicates)
-                if (repository.isSMSSimilarProcessed(body)) {
-                    // Log it as ignored or skip
-                    continue
-                }
-
-                val parsed = SMSParser.parse(body)
-                if (parsed == null || !parsed.isFinancial) {
-                    continue
-                }
-                
-                val finalParsed = parsed.copy(senderType = senderInfo.senderType)
-                val normalizedMerchant = finalParsed.merchant
-
-                processedExpenses++
-                val category = if (finalParsed.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.SETTLEMENT)
-                    "Settlement"
-                else if (finalParsed.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.REFUNDED)
-                    "Refund"
-                else {
-                    val initialCat = categorizer.categorize(normalizedMerchant)
-                    if (initialCat == "Miscellaneous" &&  finalParsed.paymentMethod == PaymentMethod.UPI) {
-                        "UPI / Digital"
-                    } else {
-                        initialCat
+                        
+                        try {
+                            setForeground(NotificationHelper.getSyncForegroundInfo(
+                                applicationContext, 
+                                "Scanning $totalReadCount/$totalCount messages..."
+                            ))
+                        } catch (e: Exception) {}
                     }
-                }
 
-                val localDate = Instant.ofEpochMilli(date)
-                    .atZone(ZoneId.systemDefault())
-                    .toLocalDate()
+                    val body = it.getString(bodyIndex) ?: ""
+                    val address = it.getString(addressIndex) ?: "UNKNOWN"
+                    val date = it.getLong(dateIndex)
+                    val id = it.getLong(idIndex)
 
-                // Logical Deduplication: Check if same amount already exists on this day
-                if (repository.findSimilarExpense(finalParsed.amount, localDate) != null) {
+                    // 2. Technical Deduplication (ID-based is most reliable for same device)
+                    if (repository.isSmsIdProcessed(id)) {
+                        continue
+                    }
+
+                    val senderInfo = SenderValidationEngine.validate(address)
+                    val parsed = SMSParser.parse(body)
+                    
+                    if (parsed == null) {
+                        continue
+                    }
+                    
+                    val finalParsed = parsed.copy(senderType = senderInfo.senderType)
+                    
+                    // Logic: Hide OBLIGATION/PROMOTIONAL/INFORMATION from Transactions list
+                    val isHiddenType = finalParsed.messageType == MessageType.OBLIGATION ||
+                                     finalParsed.messageType == MessageType.PROMOTIONAL ||
+                                     finalParsed.messageType == MessageType.INFORMATION
+                    
+                    if (isHiddenType) {
+                        repository.logSMSProcessing(
+                            SMSProcessingLog(
+                                id, address, body, date, ProcessingStatus.PROCESSED,
+                                parsedAmount = finalParsed.amount, parsedMerchant = finalParsed.merchant
+                            )
+                        )
+                        continue
+                    }
+
+                    val normalizedMerchant = finalParsed.merchant
+
+                    foundExpensesCount++
+                    val category = if (finalParsed.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.SETTLEMENT)
+                        "Settlement"
+                    else if (finalParsed.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.REFUNDED)
+                        "Refund"
+                    else {
+                        val initialCat = categorizer.categorize(normalizedMerchant)
+                        if (initialCat == "Miscellaneous" && finalParsed.paymentMethod == PaymentMethod.UPI) {
+                            "UPI / Digital"
+                        } else {
+                            initialCat
+                        }
+                    }
+
+                    val localDate = Instant.ofEpochMilli(date)
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate()
+
+                    // Reconciliation Logic
+                    var linkedId: Long? = null
+                    if (finalParsed.type == com.example.smartexpensecalendar.domain.model.TransactionType.CREDIT) {
+                        val match = repository.findMatchingExpense(finalParsed.amount, localDate, 3)
+                        if (match != null) {
+                            linkedId = match.id
+                            repository.updateExpenseStatus(match.id, finalParsed.status, null)
+                        }
+                    }
+
+                    repository.upsertExpense(
+                        Expense(
+                            amount = finalParsed.amount,
+                            category = category,
+                            date = localDate,
+                            merchant = normalizedMerchant,
+                            financialEventType = finalParsed.financialEventType,
+                            paymentMethod = finalParsed.paymentMethod,
+                            confidence = finalParsed.confidence,
+                            source = ExpenseSource.SMS,
+                            type = finalParsed.type,
+                            status = finalParsed.status,
+                            accountSuffix = finalParsed.accountSuffix,
+                            linkedId = linkedId,
+                            originalSmsId = id,
+                            originalSmsBody = body,
+                            syncDate = System.currentTimeMillis()
+                        )
+                    )
+
                     repository.logSMSProcessing(
-                        SMSProcessingLog(id, address, body, date, ProcessingStatus.IGNORED)
+                        SMSProcessingLog(
+                            id, address, body, date, ProcessingStatus.PROCESSED,
+                            parsedAmount = finalParsed.amount, parsedMerchant = normalizedMerchant
+                        )
                     )
-                    continue
+                } catch (e: Exception) {
+                    android.util.Log.e("SMSSyncWorker", "Failed to process SMS", e)
                 }
-
-                // Reconciliation Logic
-                var linkedId: Long? = null
-                if (finalParsed.type == com.example.smartexpensecalendar.domain.model.TransactionType.CREDIT) {
-                    val match = repository.findMatchingExpense(finalParsed.amount, localDate, 3)
-                    if (match != null) {
-                        linkedId = match.id
-                        // Update the original debit to match this status
-                        repository.updateExpenseStatus(match.id, finalParsed.status, null) // We'll set linkedId after we get the new ID
-                    }
-                }
-
-                // Each unique financial SMS is a separate record now
-                repository.upsertExpense(
-                    Expense(
-                        amount = finalParsed.amount,
-                        category = category,
-                        date = localDate,
-                        merchant = normalizedMerchant,
-                        financialEventType =
-                            finalParsed.financialEventType,
-                        paymentMethod =
-                            finalParsed.paymentMethod,
-                        confidence =
-                            finalParsed.confidence,
-                        source = ExpenseSource.SMS,
-                        type = finalParsed.type,
-                        status = finalParsed.status,
-                        accountSuffix = finalParsed.accountSuffix,
-                        linkedId = linkedId,
-                        originalSmsId = id,
-                        originalSmsBody = body,
-                        syncDate = System.currentTimeMillis()
-                    )
-                )
-
-                repository.logSMSProcessing(
-                    SMSProcessingLog(
-                        id, address, body, date, ProcessingStatus.IGNORED, // Use IGNORED for individual logs during bulk sync
-                        parsedAmount = finalParsed.amount, parsedMerchant = normalizedMerchant
-                    )
-                )
             }
             
-            if (syncYear != -1 && syncMonth != -1 && processedExpenses > 0) {
-                com.example.smartexpensecalendar.utils.NotificationHelper.showSyncCompleteNotification(
-                    applicationContext,
-                    "${java.time.Month.of(syncMonth).name} $syncYear",
-                    processedExpenses
-                )
+            if (syncYear != -1 && syncMonth != -1) {
+                val monthName = Month.of(syncMonth).name
+                
+                if (foundExpensesCount > 0) {
+                    NotificationHelper.showSyncCompleteNotification(
+                        applicationContext,
+                        "$monthName $syncYear",
+                        foundExpensesCount
+                    )
+                }
 
-                // Log a sync completion event for the UI notification icon
                 repository.logSMSProcessing(
                     SMSProcessingLog(
-                        smsId = System.currentTimeMillis(), // Unique ID for the summary log
+                        smsId = System.currentTimeMillis(),
                         sender = "SYSTEM",
-                        body = "Successfully synced $processedExpenses expenses for ${java.time.Month.of(syncMonth).name} $syncYear",
+                        body = "Finished sync for $monthName $syncYear. Found $foundExpensesCount new transactions.",
                         date = System.currentTimeMillis(),
                         status = ProcessingStatus.SYNC_COMPLETE,
-                        parsedAmount = processedExpenses.toDouble() // Using this field to store count for UI
+                        parsedAmount = foundExpensesCount.toDouble()
                     )
                 )
             }
         }
 
         if (syncYear != -1 && syncMonth != -1) {
-            dataStoreManager.markMonthAsSynced(java.time.YearMonth.of(syncYear, syncMonth).toString())
+            dataStoreManager.markMonthAsSynced(YearMonth.of(syncYear, syncMonth).toString())
         }
 
-        return Result.success()
+        return Result.success(workDataOf(
+            "progress" to 1.0f,
+            "total_read" to totalReadCount,
+            "expenses_found" to foundExpensesCount
+        ))
     }
 }

@@ -74,7 +74,7 @@ object FinancialEventTypeExtractor {
             containsAny(
                 text,
                 EventTypePhrases.transferPhrases
-            )
+            ) || text.contains("SENT FROM") || text.contains("TO A/C")
         ) {
             return FinancialEventType.TRANSFER
         }

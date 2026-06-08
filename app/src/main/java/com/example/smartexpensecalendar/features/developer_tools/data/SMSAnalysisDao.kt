@@ -85,6 +85,9 @@ interface SMSAnalysisDao {
     @Query("SELECT * FROM analyzed_sms ORDER BY timestamp DESC")
     suspend fun getAllAnalyzedSMSList(): List<AnalyzedSMS>
 
+    @Query("SELECT * FROM analyzed_sms WHERE timestamp >= :start AND timestamp <= :end ORDER BY timestamp DESC")
+    suspend fun getAnalyzedSMSInRange(start: Long, end: Long): List<AnalyzedSMS>
+
     @Query("SELECT * FROM analyzed_sms WHERE messageType = 'TRANSACTION' ORDER BY timestamp DESC")
     suspend fun getTransactionSMS(): List<AnalyzedSMS>
 

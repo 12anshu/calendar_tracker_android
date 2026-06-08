@@ -190,6 +190,13 @@ class SMSAnalysisViewModel @Inject constructor(
             _exportStatus.emit(result)
         }
     }
+
+    fun exportDiagnosticData(month: java.time.YearMonth? = null, minimal: Boolean = true) {
+        viewModelScope.launch {
+            val result = repository.exportDiagnosticData(month, minimal)
+            _exportStatus.emit(result)
+        }
+    }
     
     fun exportFailedCases(): String {
         val cases = _uiState.value.failedCases

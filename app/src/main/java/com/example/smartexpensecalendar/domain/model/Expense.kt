@@ -4,14 +4,16 @@ import java.time.LocalDate
 
 enum class TransactionType {
     DEBIT,
-    CREDIT
+    CREDIT,
+    UNKNOWN
 }
 
 enum class TransactionStatus {
     COMPLETED,
     SETTLEMENT, // CC Bill Payment or Transfers
     REFUNDED,   // Transaction was reversed or refunded
-    FAILED      // Transaction failed
+    FAILED,     // Transaction failed
+    PENDING_REVIEW // Ambiguous transactions requiring user confirmation
 }
 
 data class Expense(

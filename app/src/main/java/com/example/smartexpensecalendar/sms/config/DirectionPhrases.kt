@@ -3,7 +3,6 @@ package com.example.smartexpensecalendar.sms.config
 object DirectionPhrases {
 
     val creditPhrases = setOf(
-
         "CREDITED TO",
         "CREDITED INTO",
         "CREDITED IN",
@@ -18,6 +17,7 @@ object DirectionPhrases {
         "FUNDS RECEIVED",
         "AMOUNT RECEIVED",
         "RECEIVED FROM",
+        "RECEIVED ON",
         "DEPOSITED INTO",
         "DEPOSITED TO",
         "DEPOSITED IN",
@@ -25,7 +25,9 @@ object DirectionPhrases {
         "INWARD REMITTANCE",
         "RECEIVED VIA UPI",
         "CREDIT TRANSACTION",
-        "CREDITED SUCCESSFULLY"
+        "CREDITED SUCCESSFULLY",
+        "GOT FRESH FUNDS",
+        "TOWARDS YOUR CREDIT CARD"
     )
 
     val debitPhrases = setOf(
@@ -36,6 +38,7 @@ object DirectionPhrases {
         "DEDUCTED FROM",
         "SPENT ON",
         "SPENT AT",
+        "SPENT RS",
         "PURCHASE MADE",
         "PURCHASE USING",
         "PURCHASE ON",
@@ -49,6 +52,7 @@ object DirectionPhrases {
         "WITHDRAWN FROM",
         "WITHDRAWN AT",
         "SENT TO",
+        "SENT FROM",
         "MONEY SENT",
         "CHARGED TO",
         "CHARGE OF RS",
@@ -60,6 +64,8 @@ object DirectionPhrases {
         "TXN OF RS",
         "TXN OF INR",
         "UPI PAYMENT",
-        "UPI TXN"
+        "UPI TXN",
+        "WAS DEBITED",
+        "SENT FROM YOUR ACCOUNT"
     )
 }
