@@ -1,5 +1,6 @@
 package com.example.smartexpensecalendar.features.developer_tools.presentation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -36,9 +37,28 @@ fun SMSAnalysisDashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var currentScreen by remember { mutableStateOf("dashboard") }
+    var previousScreen by remember { mutableStateOf("dashboard") }
     var selectedSms by remember { mutableStateOf<AnalyzedSMS?>(null) }
     var selectedPatternGroup by remember { mutableStateOf<PatternGroup?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val navigateTo: (String) -> Unit = { screen ->
+        previousScreen = currentScreen
+        currentScreen = screen
+    }
+
+    val goBack: () -> Unit = {
+        when (currentScreen) {
+            "dashboard" -> navController.popBackStack()
+            "pattern_detail" -> currentScreen = "pattern_groups"
+            "review" -> currentScreen = previousScreen
+            else -> currentScreen = "dashboard"
+        }
+    }
+
+    BackHandler(enabled = currentScreen != "dashboard") {
+        goBack()
+    }
 
     LaunchedEffect(Unit) {
         viewModel.exportStatus.collect { message ->
@@ -70,11 +90,7 @@ fun SMSAnalysisDashboardScreen(
                     ) 
                 },
                 navigationIcon = {
-                    IconButton(onClick = { 
-                        if (currentScreen == "dashboard") navController.popBackStack() 
-                        else if (currentScreen == "pattern_detail") currentScreen = "pattern_groups"
-                        else currentScreen = "dashboard"
-                    }) {
+                    IconButton(onClick = goBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
                     }
                 },
@@ -90,15 +106,15 @@ fun SMSAnalysisDashboardScreen(
                     if (it == "transaction_extraction_lab") {
                         navController.navigate("transaction_extraction_lab")
                     } else {
-                        currentScreen = it
+                        navigateTo(it)
                     }
                 }
-                "all_sms" -> AllSmsView(viewModel) { sms -> selectedSms = sms; currentScreen = "review" }
-                "pattern_groups" -> PatternGroupsView(uiState.patternGroups) { group -> selectedPatternGroup = group; currentScreen = "pattern_detail" }
-                "pattern_detail" -> PatternDetailView(selectedPatternGroup, uiState) { sms -> selectedSms = sms; currentScreen = "review" }
-                "borderline" -> BorderlineView(uiState.borderlineMessages) { sms -> selectedSms = sms; currentScreen = "review" }
-                "misclassifications" -> ListSmsView(uiState.potentialMisclassifications) { sms -> selectedSms = sms; currentScreen = "review" }
-                "review" -> MessageReviewView(selectedSms, viewModel) { currentScreen = "dashboard" }
+                "all_sms" -> AllSmsView(viewModel) { sms -> selectedSms = sms; navigateTo("review") }
+                "pattern_groups" -> PatternGroupsView(uiState.patternGroups) { group -> selectedPatternGroup = group; navigateTo("pattern_detail") }
+                "pattern_detail" -> PatternDetailView(selectedPatternGroup, uiState) { sms -> selectedSms = sms; navigateTo("review") }
+                "borderline" -> BorderlineView(uiState.borderlineMessages) { sms -> selectedSms = sms; navigateTo("review") }
+                "misclassifications" -> ListSmsView(uiState.potentialMisclassifications) { sms -> selectedSms = sms; navigateTo("review") }
+                "review" -> MessageReviewView(selectedSms, viewModel) { goBack() }
                 "failed" -> FailedCasesView(uiState.failedCases, viewModel)
                 "stats" -> DetectorStatisticsView(uiState)
             }
