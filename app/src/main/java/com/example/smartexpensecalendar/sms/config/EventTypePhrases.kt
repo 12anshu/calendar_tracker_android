@@ -46,12 +46,14 @@ object EventTypePhrases {
         "CREDIT CARD DUES PAID",
         "PAYMENT RECEIVED ON",
         "RECEIVED TOWARDS YOUR CREDIT CARD",
-        "PAYMENT OF INR",
-        "PAYMENT OF RS",
+        "PAYMENT OF {CUR}",
+        "PAYMENT OF {CUR} IS RECEIVED",
         "PAYMENT HAS BEEN RECEIVED",
         "PAYMENT RECEIVED TOWARDS",
         "RECEIVED ON CREDIT CARD",
-        "PAYMENT RECEIVED ON CREDIT CARD"
+        "PAYMENT RECEIVED ON CREDIT CARD",
+        "IS RECEIVED",
+        "IS RECIEVED"
     )
 
     val creditCardSpendPhrases = setOf(
@@ -61,14 +63,29 @@ object EventTypePhrases {
         "CARD TRANSACTION",
         "CARD USED",
         "POS TRANSACTION",
-        "SWIPED AT"
+        "SWIPED AT",
+        "SPENT {CUR} ON CARD"
     )
 
     val emiPhrases = setOf(
         "EMI PAYMENT",
         "EMI DEBITED",
         "LOAN INSTALLMENT",
-        "INSTALLMENT DEDUCTED"
+        "INSTALLMENT DEDUCTED",
+        "EMI DEDUCTED",
+        "TOWARDS LOAN",
+        "LOAN REPAYMENT",
+        "EMI PROCESSED",
+        "EMI OF {CUR}"
+    )
+
+    val emiConversionPhrases = setOf(
+        "CONVERTED TO EMI",
+        "CONVERTED INTO EMI",
+        "EMI CONVERSION",
+        "EMI CONVERSION SUCCESSFUL",
+        "PURCHASE CONVERTED",
+        "TXN CONVERTED TO EMI"
     )
 
     val investmentPhrases = setOf(
@@ -94,6 +111,15 @@ object EventTypePhrases {
         "CASH DEPOSITED",
         "DEPOSITED AT BRANCH",
         "CASH DEPOSITED IN ACCOUNT"
+    )
+
+    val mealCardPhrases = setOf(
+        "MEAL CARD",
+        "SODEXO",
+        "ZETA",
+        "TICKET RESTAURANT",
+        "PLUXEE",
+        "MEAL VOUCHER"
     )
 
 }

@@ -61,6 +61,7 @@ import java.util.*
 import androidx.navigation.NavController
 import com.example.smartexpensecalendar.ui.components.AppLogoText
 import com.example.smartexpensecalendar.ui.components.SyncProgressCard
+import com.example.smartexpensecalendar.ui.components.FintechBottomNav
 import com.example.smartexpensecalendar.ui.navigation.Screen
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
@@ -525,106 +526,6 @@ fun FintechHeader(
         AppLogoText(
             textStyle = MaterialTheme.typography.headlineLarge,
             showTagline = false
-        )
-    }
-}
-
-
-@Composable
-fun FintechBottomNav(
-    navController: NavController,
-    modifier: Modifier = Modifier
-) {
-
-    Box(
-        modifier = modifier
-            .navigationBarsPadding()
-            .padding(horizontal = 4.dp, vertical = 8.dp)
-            .fillMaxWidth()
-            .height(82.dp)
-    ) {
-
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            FintechNavItem(Icons.Default.Home, "Home", true) {
-                navController.navigate(Screen.Home.route) {
-                    popUpTo(Screen.Home.route) { saveState = true }
-                    launchSingleTop = true
-                    restoreState = true
-                }
-            }
-            FintechNavItem(Icons.AutoMirrored.Filled.ReceiptLong, "Transactions", isSelected = false) {
-                navController.navigate(Screen.Transactions.route) {
-                    popUpTo(Screen.Home.route) { saveState = true }
-                    launchSingleTop = true
-                    restoreState = true
-                }
-            }
-            FintechNavItem(Icons.Default.AutoGraph, "Insights", isSelected = false) {
-                navController.navigate(Screen.Insights.route)
-            }
-            FintechNavItem(Icons.Default.AccountBalanceWallet, "Budget", false) {
-                navController.navigate(Screen.Budget.route)
-            }
-            FintechNavItem(Icons.Default.Person, "Profile", isSelected = false) {
-                navController.navigate(Screen.Profile.route)
-            }
-        }
-    }
-}
-
-@Composable
-fun FintechNavItem(
-    icon: ImageVector,
-    label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier.clickable { onClick() }
-    ) {
-
-        Box(
-            modifier = Modifier
-                .clip(CircleShape)
-                .background(
-                    if (isSelected)
-                        Color(0xFF14B8A6).copy(alpha = 0.18f)
-                    else
-                        Color.Transparent
-                )
-                .padding(10.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = if (isSelected)
-                    Color(0xFF2DD4BF)
-                else
-                    Color(0xFF94A3B8),
-                modifier = Modifier.size(24.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = label,
-            color = if (isSelected)
-                Color(0xFF2DD4BF)
-            else
-                Color(0xFF94A3B8),
-            fontSize = 11.sp,
-            fontWeight = if (isSelected)
-                FontWeight.Bold
-            else
-                FontWeight.Medium
         )
     }
 }

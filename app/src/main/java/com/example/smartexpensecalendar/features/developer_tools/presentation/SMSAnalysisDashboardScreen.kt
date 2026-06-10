@@ -150,8 +150,8 @@ fun DashboardView(
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 SummaryCard("Total SMS", uiState.totalCount.toString(), Icons.Default.Sms, Modifier.weight(1f))
-                SummaryCard("Fin Domain", uiState.financialCount.toString(), Icons.Default.AccountBalanceWallet, Modifier.weight(1f), PrimaryAccent)
-                SummaryCard("Non-Fin", uiState.nonFinancialCount.toString(), Icons.Default.Block, Modifier.weight(1f), ColorTransport)
+                SummaryCard("Financial", uiState.financialCount.toString(), Icons.Default.AccountBalanceWallet, Modifier.weight(1f), PrimaryAccent)
+                SummaryCard("Non-Financial", uiState.nonFinancialCount.toString(), Icons.Default.Block, Modifier.weight(1f), ColorTransport)
             }
         }
 
@@ -167,14 +167,6 @@ fun DashboardView(
                     Modifier.weight(1f),
                     Color.Gray
                 )
-            }
-        }
-
-        item {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SummaryCard("Promo", uiState.promotionalCount.toString(), Icons.Default.Campaign, Modifier.weight(1f), ColorTransport)
-                SummaryCard("High Conf", uiState.highConfidenceCount.toString(), Icons.Default.Verified, Modifier.weight(1f), PrimaryAccent)
-                SummaryCard("Low Conf", uiState.lowConfidenceCount.toString(), Icons.Default.QuestionMark, Modifier.weight(1f), ColorFood)
             }
         }
 

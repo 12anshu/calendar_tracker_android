@@ -55,7 +55,13 @@ object EventTypeKeywords {
     val emiKeywords = setOf(
         "EMI",
         "INSTALLMENT",
-        "LOAN PAYMENT"
+        "LOAN PAYMENT",
+        "LOAN REPAYMENT"
+    )
+
+    val emiConversionKeywords = setOf(
+        "CONVERTED",
+        "EMI CONVERSION"
     )
 
     val investmentKeywords = setOf(

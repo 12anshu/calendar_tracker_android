@@ -6,8 +6,13 @@ import com.example.smartexpensecalendar.features.developer_tools.data.entity.Ana
 import com.example.smartexpensecalendar.features.developer_tools.engine.SMSPatternGroupingEngine
 import com.example.smartexpensecalendar.sms.SMSNormalizer
 import com.example.smartexpensecalendar.sms_engine.detector.FinancialDetector
-import com.example.smartexpensecalendar.sms_engine.detector.MessageType
+import com.example.smartexpensecalendar.domain.model.MessageType
 import com.example.smartexpensecalendar.sms_engine.detector.MessageTypeDetector
+import com.example.smartexpensecalendar.sms_engine.extractor.FinancialEventTypeExtractor
+import com.example.smartexpensecalendar.sms_engine.extractor.ModeExtractor
+import com.example.smartexpensecalendar.sms_engine.extractor.DirectionExtractor
+import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantExtractor
+import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
 import com.example.smartexpensecalendar.sms.sender.SenderValidationEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -51,12 +56,21 @@ class SmsProviderDataSource @Inject constructor(
                 val senderInfo = SenderValidationEngine.validate(address)
                 val normalized = SMSNormalizer.normalize(body)
                 val financialResult = FinancialDetector.detect(body)
+                
                 val template = SMSPatternGroupingEngine.generateTemplate(body)
+                
                 val messageTypeResult =
                     if (financialResult.isFinancial)
                         messageTypeDetector.detect(normalized)
                     else
                         null
+
+                // Extract Metadata for enriched SMS view
+                val direction = DirectionExtractor.extractDirection(body)
+                val mode = ModeExtractor.extractMode(body)
+                val eventType = FinancialEventTypeExtractor.extract(body, direction, mode)
+                val rawMerchant = MerchantExtractor.extractMerchant(body)
+                val normalizedMerchant = rawMerchant?.let { MerchantNormalizer.normalize(it) }
                 
                 analyzedList.add(
                     AnalyzedSMS(
@@ -75,7 +89,10 @@ class SmsProviderDataSource @Inject constructor(
                         negativeSignals = financialResult.negativeSignals,
                         scoreBreakdown = financialResult.scoreBreakdown,
                         template = template,
-                        messageType = messageTypeResult?.messageType?.name ?: MessageType.UNKNOWN.name
+                        messageType = messageTypeResult?.messageType?.name ?: MessageType.UNKNOWN.name,
+                        financialEventType = eventType.name,
+                        merchant = normalizedMerchant,
+                        transactionMode = mode.name
                     )
                 )
 

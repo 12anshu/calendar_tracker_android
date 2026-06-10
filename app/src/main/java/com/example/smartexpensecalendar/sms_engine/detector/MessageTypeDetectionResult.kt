@@ -1,5 +1,6 @@
 package com.example.smartexpensecalendar.sms_engine.detector
 
+import com.example.smartexpensecalendar.domain.model.MessageType
 import com.example.smartexpensecalendar.domain.model.TransactionDirection
 
 data class MessageTypeDetectionResult(

@@ -10,116 +10,80 @@ class SMSCategorizer @Inject constructor(
     private val repository: ExpenseRepository
 ) {
 
-    val defaultMappings = mapOf(
-
-        // Food
-        "swiggy" to "Food",
-        "zomato" to "Food",
-        "dominos" to "Food",
-        "kfc" to "Food",
-        "mcdonalds" to "Food",
-        "eatclub" to "Food",
-        "faasos" to "Food",
-        "behrouz" to "Food",
-        "starbucks" to "Food",
-
-        // Travel
-        "uber" to "Travel",
-        "ola" to "Travel",
-        "rapido" to "Travel",
-        "irctc" to "Travel",
-        "makemytrip" to "Travel",
-
-        // Shopping
-        "amazon" to "Online Shopping",
-        "flipkart" to "Online Shopping",
-        "myntra" to "Online Shopping",
-        "ajio" to "Online Shopping",
-
-        // Groceries
-        "bigbasket" to "Groceries",
-        "blinkit" to "Groceries",
-        "zepto" to "Groceries",
-        "dmart" to "Groceries",
-        "reliance fresh" to "Groceries",
-
-        // Utilities
-        "airtel" to "Bill Payment",
-        "jio" to "Bill Payment",
-        "vi" to "Bill Payment",
-        "electricity" to "Utilities",
-        "water" to "Utilities",
-        "gas" to "Utilities",
-
-        // Fuel
-        "fuel" to "Fuel",
-        "petrol" to "Fuel",
-        "shell" to "Fuel",
-        "hpcl" to "Fuel",
-        "iocl" to "Fuel",
-        "indianoil" to "Fuel",
-        "bharat petroleum" to "Fuel",
-
-        // Medical
-        "apollo" to "Medical",
-        "hospital" to "Medical",
-        "pharmacy" to "Medical",
-        "1mg" to "Medical",
-        "netmeds" to "Medical",
-        "pharmeasy" to "Medical",
-
-        // Entertainment
-        "netflix" to "Entertainment",
-        "spotify" to "Entertainment",
-        "hotstar" to "Entertainment",
-        "prime video" to "Entertainment",
-        "youtube" to "Entertainment",
-        "bookmyshow" to "Entertainment",
-        "pvr" to "Entertainment",
-
-        // Rent
-        "rent" to "Rent",
-        "flat" to "Rent",
-
-        // Transfers
-        "neft" to "Transfer",
-        "ach" to "Transfer",
-        "imps" to "Transfer",
-        "rtgs" to "Transfer",
-
-        // Meal Card
-        "meal card" to "Food"
-    )
-
-    suspend fun categorize(merchant: String?): String {
-
-        if (merchant.isNullOrBlank())
-            return "Miscellaneous"
-
-        val normalized =
-            MerchantNormalizer.normalize(merchant)!!
-
-        // User mapping first
-        val savedCategory =
-            repository.getCategoryForMerchant(
-                normalized
-            )
-
-        if (savedCategory != null)
-            return savedCategory
-
-        // Default mappings
-        defaultMappings[normalized]?.let {
-            return it
+    /**
+     * Categorizes a transaction using a priority-based logic:
+     * 1. Status-based (Refund, Settlement, etc.)
+     * 2. Event Type-based (EMI, Investment, etc.)
+     * 3. Manual User Overrides
+     * 4. Direct Merchant Registry Match
+     * 5. Keyword-based fallback
+     */
+    suspend fun categorize(
+        merchant: String?,
+        eventType: com.example.smartexpensecalendar.domain.model.FinancialEventType = com.example.smartexpensecalendar.domain.model.FinancialEventType.UNKNOWN,
+        status: com.example.smartexpensecalendar.domain.model.TransactionStatus = com.example.smartexpensecalendar.domain.model.TransactionStatus.COMPLETED,
+        paymentMethod: com.example.smartexpensecalendar.domain.model.PaymentMethod = com.example.smartexpensecalendar.domain.model.PaymentMethod.UNKNOWN
+    ): String {
+        // --- 1. STATUS-BASED CATEGORIES ---
+        if (status == com.example.smartexpensecalendar.domain.model.TransactionStatus.REFUNDED) return "Refund"
+        if (status == com.example.smartexpensecalendar.domain.model.TransactionStatus.SETTLEMENT) return "Settlement"
+        
+        // --- 2. EVENT TYPE-BASED CATEGORIES ---
+        when (eventType) {
+            com.example.smartexpensecalendar.domain.model.FinancialEventType.INCOME -> return "Income"
+            com.example.smartexpensecalendar.domain.model.FinancialEventType.EMI_PAYMENT -> return "EMI & Loans"
+            com.example.smartexpensecalendar.domain.model.FinancialEventType.INVESTMENT -> return "Investment"
+            com.example.smartexpensecalendar.domain.model.FinancialEventType.TRANSFER -> return "Transfer"
+            com.example.smartexpensecalendar.domain.model.FinancialEventType.CREDIT_CARD_PAYMENT -> return "Card Payment"
+            com.example.smartexpensecalendar.domain.model.FinancialEventType.CASH_WITHDRAWAL -> return "Cash Withdrawal"
+            com.example.smartexpensecalendar.domain.model.FinancialEventType.CASH_DEPOSIT -> return "Cash Deposit"
+            com.example.smartexpensecalendar.domain.model.FinancialEventType.EMI_CONVERSION -> return "EMI Conversion"
+            else -> {}
         }
 
-        // Contains fallback
-        for ((keyword, category) in defaultMappings) {
-
-            if (normalized.contains(keyword))
-                return category
+        if (merchant.isNullOrBlank()) {
+            return when {
+                eventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.INCOME -> "Income"
+                paymentMethod == com.example.smartexpensecalendar.domain.model.PaymentMethod.UPI -> "UPI / Digital"
+                // New logic: All generic credits are "Income", generic debits are "Payment"
+                eventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.UNKNOWN && status == com.example.smartexpensecalendar.domain.model.TransactionStatus.COMPLETED -> "Payment"
+                else -> "Miscellaneous"
+            }
         }
 
-        return "Miscellaneous"
+        val normalized = MerchantNormalizer.normalize(merchant) ?: merchant
+        val upperMerchant = normalized.uppercase()
+
+        // --- 3. USER OVERRIDES ---
+        val savedCategory = repository.getCategoryForMerchant(normalized)
+        if (savedCategory != null) return savedCategory
+
+        // --- 4. MERCHANT REGISTRY MATCH ---
+        val registryMatch = com.example.smartexpensecalendar.sms.config.MerchantRegistry.merchants.find { definition ->
+            definition.canonicalName.uppercase() == upperMerchant || 
+            definition.aliases.any { it == upperMerchant }
+        }
+        if (registryMatch != null) return registryMatch.category
+
+        // --- 5. KEYWORD-BASED MATCHING (FALLBACK) ---
+        return when {
+            containsAny(upperMerchant, setOf("FUEL", "PETROL", "SHELL", "HPCL", "IOCL", "INDIANOIL", "BHARAT PETROLEUM", "BPCL")) -> "Fuel"
+            containsAny(upperMerchant, setOf("RENT", "FLAT", "MAINTENANCE", "HOUSING", "MYGATE", "NOBROKER")) -> "Rent & Maintenance"
+            containsAny(upperMerchant, setOf("HOSPITAL", "PHARMACY", "CLINIC", "DOCTOR", "HEALTHCARE", "DIAGNOSTIC", "MEDPLUS", "APOLLO")) -> "Medical"
+            containsAny(upperMerchant, setOf("NETFLIX", "SPOTIFY", "DISNEY", "HOTSTAR", "YOUTUBE", "PRIME", "TICKET", "PVR", "INOX")) -> "Entertainment"
+            containsAny(upperMerchant, setOf("AIRTEL", "JIO", "VODAFONE", "IDEA", "ELECTRICITY", "WATER", "GAS", "BESCOM", "RECHARGE")) -> "Bill Payment"
+            containsAny(upperMerchant, setOf("AMAZON", "FLIPKART", "MYNTRA", "AJIO", "RETAIL", "FASHION", "ZIVAME", "NYKAA", "LIFESTYLE", "PANTALOONS", "MAX")) -> "Shopping"
+            containsAny(upperMerchant, setOf("UBER", "OLA", "RAPIDO", "METRO", "RAIL", "IRCTC", "FLIGHT", "MAKEMYTRIP", "INDIGO", "AIR INDIA")) -> "Travel"
+            containsAny(upperMerchant, setOf("SWIGGY", "ZOMATO", "FOOD", "RESTAURANT", "CAFE", "BAKERY", "EATCLUB", "DOMINOS", "PIZZA", "BURGER", "KFC", "MCDONALD")) -> "Food"
+            containsAny(upperMerchant, setOf("BIGBASKET", "BLINKIT", "ZEPTO", "DMART", "GROCERY", "SUPERMARKET", "RELIANCE FRESH", "JIOMART", "BBDAILY")) -> "Groceries"
+            containsAny(upperMerchant, setOf("INVEST", "MUTUAL", "SIP", "STOCK", "GROWW", "ZERODHA", "TRADING", "COIN", "SMALLCASE", "INDMONEY")) -> "Investment"
+            paymentMethod == com.example.smartexpensecalendar.domain.model.PaymentMethod.UPI -> "UPI / Digital"
+            eventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.INCOME -> "Money Received"
+            else -> "Payment"
+        }
+    }
+
+    private fun containsAny(text: String, keywords: Set<String>): Boolean {
+        return keywords.any { text.contains(it) }
     }
 }

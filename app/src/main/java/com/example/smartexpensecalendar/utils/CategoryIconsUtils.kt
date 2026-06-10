@@ -13,18 +13,26 @@ object CategoryIconsUtils {
             "upi / digital", "upi" -> Icons.Rounded.Payments
             "online spending", "online shopping" -> Icons.Rounded.ShoppingBag
             "bill payment" -> Icons.AutoMirrored.Rounded.ReceiptLong
-            "credit card payment" -> Icons.Rounded.CreditCard
+            "card payment", "credit card payment" -> Icons.Rounded.CreditCard
             "travel" -> Icons.Rounded.TravelExplore
             "fuel" -> Icons.Rounded.LocalGasStation
             "entertainment" -> Icons.Rounded.Theaters
             "medical" -> Icons.Rounded.MedicalServices
             "utilities" -> Icons.Rounded.Bolt
-            "rent" -> Icons.Rounded.Apartment
-            "investments" -> Icons.AutoMirrored.Rounded.ShowChart
+            "rent", "rent & maintenance" -> Icons.Rounded.Apartment
+            "investment", "investments" -> Icons.AutoMirrored.Rounded.ShowChart
             "insurance" -> Icons.Rounded.Shield
-            "emi", "loan" -> Icons.Rounded.CreditCard
+            "emi & loans", "emi", "loan" -> Icons.Rounded.CreditCard
+            "emi conversion" -> Icons.Rounded.History
+            "transfer" -> Icons.Rounded.SwapHoriz
+            "refund" -> Icons.Rounded.Replay
+            "settlement" -> Icons.Rounded.CheckCircle
+            "income", "money received" -> Icons.Rounded.AddCircle
+            "cash withdrawal" -> Icons.Rounded.Atm
+            "cash deposit" -> Icons.Rounded.AccountBalance
             "subscription" -> Icons.Rounded.Subscriptions
             "miscellaneous" -> Icons.Rounded.Category
+            "services" -> Icons.Rounded.Handyman
             else -> Icons.Rounded.Category
         }
     }

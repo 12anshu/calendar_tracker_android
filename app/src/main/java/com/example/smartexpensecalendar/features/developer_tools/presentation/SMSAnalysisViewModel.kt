@@ -25,6 +25,7 @@ data class SMSAnalysisUiState(
     val nonFinancialCount: Int = 0,
     val highConfidenceCount: Int = 0,
     val lowConfidenceCount: Int = 0,
+
     val transactionCount: Int = 0,
     val obligationCount: Int = 0,
     val informationCount: Int = 0,

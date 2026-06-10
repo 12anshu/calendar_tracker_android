@@ -20,5 +20,10 @@ data class AnalyzedSMS(
     val negativeSignals: Set<String> = emptySet(),
     val scoreBreakdown: Map<String, Int> = emptyMap(),
     val template: String = "",
-    val messageType: String = "UNKNOWN"
+    val messageType: String = "UNKNOWN",
+    val financialEventType: String = "UNKNOWN",
+    val merchant: String? = null,
+    val transactionMode: String = "UNKNOWN",
+    val isReviewed: Boolean = false,
+    val isFlagged: Boolean = false
 )

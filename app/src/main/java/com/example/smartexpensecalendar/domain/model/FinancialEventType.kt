@@ -16,6 +16,10 @@ enum class FinancialEventType {
 
     EMI_PAYMENT,
 
+    EMI_CONVERSION,
+
+    MEAL_CARD,
+
     CASH_WITHDRAWAL,
 
     CASH_DEPOSIT,

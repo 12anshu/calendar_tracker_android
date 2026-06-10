@@ -1,0 +1,446 @@
+package com.example.smartexpensecalendar.ui
+
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import com.example.smartexpensecalendar.core.designsystem.theme.*
+import com.example.smartexpensecalendar.features.developer_tools.data.entity.AnalyzedSMS
+import com.example.smartexpensecalendar.presentation.sms_inbox.SmsInboxViewModel
+import com.example.smartexpensecalendar.ui.components.MonthYearPicker
+import com.example.smartexpensecalendar.ui.components.FintechBottomNav
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.RadioButtonUnchecked
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import com.example.smartexpensecalendar.presentation.sms_inbox.ReviewStatus
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
+@Composable
+fun SmsInboxScreen(
+    navController: NavController,
+    viewModel: SmsInboxViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    var showMonthPicker by remember { mutableStateOf(false) }
+    var selectedSmsForDetail by remember { mutableStateOf<AnalyzedSMS?>(null) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    TextButton(onClick = { showMonthPicker = true }) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "${uiState.selectedMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${uiState.selectedMonth.year}",
+                                color = TextPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Icon(Icons.Default.KeyboardArrowDown, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                    if (showMonthPicker) {
+                        MonthYearPicker(
+                            initialMonth = uiState.selectedMonth,
+                            onDismiss = { showMonthPicker = false },
+                            onConfirm = { viewModel.setMonth(it); showMonthPicker = false }
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = BackgroundStart)
+            )
+        },
+        bottomBar = {
+            FintechBottomNav(navController = navController)
+        },
+        containerColor = BackgroundStart
+    ) { padding ->
+        Column(modifier = Modifier.padding(padding)) {
+            // Filter Row 1: Message Type
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, start = 16.dp, end = 16.dp)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val types = listOf("TRANSACTION", "OBLIGATION", "INFORMATION", "UNKNOWN")
+                types.forEach { type ->
+                    FilterChip(
+                        selected = uiState.messageTypeFilter == type,
+                        onClick = { viewModel.setMessageTypeFilter(if (uiState.messageTypeFilter == type) null else type) },
+                        label = { Text(type, fontSize = 10.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = CyanGlow,
+                            selectedLabelColor = BackgroundStart
+                        )
+                    )
+                }
+            }
+
+            // Filter Row 2: Financial Event Type
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp, start = 16.dp, end = 16.dp)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val events = listOf("EXPENSE", "INCOME", "REFUND", "TRANSFER", "EMI_PAYMENT")
+                events.forEach { event ->
+                    FilterChip(
+                        selected = uiState.financialEventTypeFilter == event,
+                        onClick = { viewModel.setFinancialEventTypeFilter(if (uiState.financialEventTypeFilter == event) null else event) },
+                        label = { Text(event, fontSize = 9.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = PrimaryAccent,
+                            selectedLabelColor = Color.White
+                        )
+                    )
+                }
+            }
+
+            // Filter Row 3: Review Status
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp, horizontal = 16.dp)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ReviewStatus.values().forEach { status ->
+                    FilterChip(
+                        selected = uiState.reviewStatusFilter == status,
+                        onClick = { viewModel.setReviewStatusFilter(status) },
+                        label = { Text(status.name, fontSize = 10.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = PremiumGold,
+                            selectedLabelColor = BackgroundStart
+                        )
+                    )
+                }
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 16.dp)
+            ) {
+                if (uiState.smsByDate.isEmpty()) {
+                    item {
+                        Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("No messages found", color = TextSecondary)
+                        }
+                    }
+                }
+
+                uiState.smsByDate.keys.sortedDescending().forEach { date ->
+                    stickyHeader {
+                        SmsDateHeader(date)
+                    }
+
+                    items(uiState.smsByDate[date] ?: emptyList(), key = { it.id }) { sms ->
+                        SmsInboxItem(
+                            sms = sms,
+                            onDoneClick = { viewModel.toggleReviewStatus(sms.id, sms.isReviewed) },
+                            onFlagClick = { viewModel.toggleFlagStatus(sms.id, sms.isFlagged) },
+                            onClick = { selectedSmsForDetail = sms }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (selectedSmsForDetail != null) {
+        SmsDetailDialog(sms = selectedSmsForDetail!!) {
+            selectedSmsForDetail = null
+        }
+    }
+}
+
+@Composable
+fun SmsDateHeader(date: LocalDate) {
+    val formatter = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy")
+    val dateText = when (date) {
+        LocalDate.now() -> "Today"
+        LocalDate.now().minusDays(1) -> "Yesterday"
+        else -> date.format(formatter)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(BackgroundStart)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Text(
+            text = dateText,
+            style = MaterialTheme.typography.labelLarge,
+            color = TextSecondary,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+fun SmsInboxItem(
+    sms: AnalyzedSMS, 
+    onDoneClick: () -> Unit,
+    onFlagClick: () -> Unit,
+    onClick: () -> Unit
+) {
+    val clipboardManager = LocalClipboardManager.current
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (sms.isReviewed) SurfaceGlass.copy(alpha = 0.5f) else SurfaceGlass)
+            .clickable { onClick() }
+            .padding(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    sms.sender, 
+                    color = SecondaryAccent, 
+                    fontWeight = FontWeight.Bold, 
+                    fontSize = 13.sp
+                )
+                Text(
+                    "Financial: ${if (sms.isFinancial) "YES" else "NO"}",
+                    color = if (sms.isFinancial) CyanGlow else TextSecondary,
+                    fontSize = 10.sp
+                )
+            }
+            
+            IconButton(onClick = { 
+                val debugInfo = """
+                    SENDER: ${sms.sender}
+                    MESSAGE: ${sms.message}
+                    FINANCIAL: ${if (sms.isFinancial) "YES" else "NO"}
+                    SCORE: ${sms.score}
+                    TYPE: ${sms.messageType}
+                    EVENT: ${sms.financialEventType}
+                    MERCHANT: ${sms.merchant ?: "NONE"}
+                    MODE: ${sms.transactionMode}
+                    SIGNALS: ${sms.matchedSignals.joinToString(", ")}
+                """.trimIndent()
+                clipboardManager.setText(AnnotatedString(debugInfo)) 
+            }) {
+                Icon(Icons.Default.ContentCopy, "Copy Debug Info", tint = TextSecondary, modifier = Modifier.size(18.dp))
+            }
+            
+            IconButton(onClick = onFlagClick) {
+                Icon(
+                    imageVector = if (sms.isFlagged) Icons.Default.Flag else Icons.Outlined.Flag,
+                    contentDescription = "Flag",
+                    tint = if (sms.isFlagged) Color.Red else TextSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            IconButton(onClick = onDoneClick) {
+                Icon(
+                    imageVector = if (sms.isReviewed) Icons.Default.Done else Icons.Outlined.RadioButtonUnchecked,
+                    contentDescription = "Done",
+                    tint = if (sms.isReviewed) PrimaryAccent else TextSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Tag(sms.messageType, CyanGlow)
+            if (sms.isFinancial) {
+                Tag(sms.financialEventType, PrimaryAccent)
+                if (!sms.merchant.isNullOrBlank()) {
+                    Tag(sms.merchant, PremiumGold)
+                }
+                Tag(sms.transactionMode, SecondaryAccent)
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                "Score: ${sms.score}",
+                color = if (sms.score >= 50) PremiumGold else TextSecondary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            sms.message,
+            color = if (sms.isReviewed) TextPrimary.copy(alpha = 0.6f) else TextPrimary,
+            fontSize = 13.sp,
+            maxLines = 3,
+            lineHeight = 18.sp
+        )
+
+        if (sms.matchedSignals.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                "Signals: ${sms.matchedSignals.joinToString(", ")}",
+                color = if (sms.matchedSignals.contains("REPORTING_CONTEXT_PENALTY") || sms.matchedSignals.contains("FAILED_TXN_PENALTY")) ColorFood else TextSecondary.copy(alpha = 0.7f),
+                fontSize = 10.sp,
+                fontWeight = if (sms.matchedSignals.contains("REPORTING_CONTEXT_PENALTY")) FontWeight.Bold else FontWeight.Normal
+            )
+        }
+    }
+}
+
+@Composable
+fun Tag(text: String, color: Color) {
+    Surface(
+        color = color.copy(alpha = 0.1f),
+        shape = RoundedCornerShape(4.dp)
+    ) {
+        Text(
+            text,
+            color = color,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun SmsFilterBottomSheet(
+    selectedFinancial: Boolean?,
+    selectedType: String?,
+    selectedEvent: String?,
+    onDismiss: () -> Unit,
+    onApply: (Boolean?, String?, String?) -> Unit
+) {
+    var tempFinancial by remember { mutableStateOf(selectedFinancial) }
+    var tempType by remember { mutableStateOf(selectedType) }
+    var tempEvent by remember { mutableStateOf(selectedEvent) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = BackgroundEnd,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = SurfaceGlassBright) }
+    ) {
+        Column(modifier = Modifier.padding(16.dp).padding(bottom = 32.dp)) {
+            Text("Filter Messages", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Text("Domain", color = TextSecondary, fontSize = 12.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 8.dp)) {
+                FilterChip(selected = tempFinancial == null, onClick = { tempFinancial = null }, label = { Text("All") })
+                FilterChip(selected = tempFinancial == true, onClick = { tempFinancial = true }, label = { Text("Financial") })
+                FilterChip(selected = tempFinancial == false, onClick = { tempFinancial = false }, label = { Text("Non-Fin") })
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text("Message Type", color = TextSecondary, fontSize = 12.sp)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 8.dp)) {
+                val types = listOf("TRANSACTION", "OBLIGATION", "INFORMATION", "PROMOTIONAL", "UNKNOWN")
+                FilterChip(selected = tempType == null, onClick = { tempType = null }, label = { Text("Any") })
+                types.forEach { type ->
+                    FilterChip(selected = tempType == type, onClick = { tempType = type }, label = { Text(type) })
+                }
+            }
+
+            if (tempType == "TRANSACTION") {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Financial Event", color = TextSecondary, fontSize = 12.sp)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 8.dp)) {
+                    val events = listOf("EXPENSE", "INCOME", "REFUND", "TRANSFER", "EMI_PAYMENT")
+                    FilterChip(selected = tempEvent == null, onClick = { tempEvent = null }, label = { Text("Any") })
+                    events.forEach { event ->
+                        FilterChip(selected = tempEvent == event, onClick = { tempEvent = event }, label = { Text(event) })
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Button(
+                onClick = { onApply(tempFinancial, tempType, tempEvent) },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = CyanGlow, contentColor = BackgroundStart)
+            ) {
+                Text("Apply Filters", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+fun SmsDetailDialog(sms: AnalyzedSMS, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("SMS Analysis", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column {
+                    Text("Sender", color = TextSecondary, fontSize = 11.sp)
+                    Text(sms.sender, color = TextPrimary, fontWeight = FontWeight.Bold)
+                }
+                Column {
+                    Text("Message", color = TextSecondary, fontSize = 11.sp)
+                    Text(sms.message, color = TextPrimary, fontSize = 13.sp)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                    Column {
+                        Text("Type", color = TextSecondary, fontSize = 11.sp)
+                        Text(sms.messageType, color = CyanGlow, fontWeight = FontWeight.Bold)
+                    }
+                    Column {
+                        Text("Financial", color = TextSecondary, fontSize = 11.sp)
+                        Text(if (sms.isFinancial) "Yes" else "No", color = if (sms.isFinancial) PrimaryAccent else ColorTransport, fontWeight = FontWeight.Bold)
+                    }
+                    Column {
+                        Text("Score", color = TextSecondary, fontSize = 11.sp)
+                        Text("${sms.score}", color = PremiumGold, fontWeight = FontWeight.Bold)
+                    }
+                }
+                if (sms.matchedSignals.isNotEmpty()) {
+                    Column {
+                        Text("Signals", color = TextSecondary, fontSize = 11.sp)
+                        Text(sms.matchedSignals.joinToString(", "), color = TextPrimary, fontSize = 12.sp)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close", color = CyanGlow)
+            }
+        },
+        containerColor = BackgroundEnd
+    )
+}

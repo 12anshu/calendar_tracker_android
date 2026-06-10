@@ -9,17 +9,25 @@ fun getCategoryColor(category: String): Color {
         "upi / digital", "upi" -> CategoryColors.UPI
         "online shopping" -> CategoryColors.OnlineSpending
         "bill payment" -> CategoryColors.BillPayment
-        "credit card payment" -> CategoryColors.CreditCardPayment
+        "card payment", "credit card payment" -> CategoryColors.CreditCardPayment
         "travel" -> CategoryColors.Travel
         "fuel" -> CategoryColors.Fuel
         "entertainment" -> CategoryColors.Entertainment
         "medical" -> CategoryColors.Medical
         "utilities" -> CategoryColors.Utilities
-        "rent" -> CategoryColors.Rent
-        "investments" -> CategoryColors.Investments
+        "rent", "rent & maintenance" -> CategoryColors.Rent
+        "investment", "investments" -> CategoryColors.Investments
         "insurance" -> CategoryColors.Insurance
-        "emi", "loan" -> CategoryColors.EMI
+        "emi & loans", "emi", "loan" -> CategoryColors.EMI
+        "emi conversion" -> CategoryColors.EMI
+        "transfer" -> CategoryColors.Transfer
+        "refund" -> CategoryColors.Refund
+        "settlement" -> CategoryColors.Settlement
+        "income", "money received" -> CategoryColors.Inflow
+        "cash withdrawal" -> CategoryColors.Cash
+        "cash deposit" -> CategoryColors.Cash
         "subscription" -> CategoryColors.Subscription
+        "services" -> CategoryColors.Services
         else -> CategoryColors.Miscellaneous
     }
 }
@@ -43,4 +51,10 @@ object CategoryColors {
     val EMI = Color(0xFF9333EA)
     val Loan = Color(0xFF9333EA)
     val Subscription = Color(0xFFF97316)
+    val Transfer = Color(0xFF10B981)
+    val Refund = Color(0xFF14B8A6)
+    val Settlement = Color(0xFF3B82F6)
+    val Inflow = Color(0xFF4CAF50)
+    val Cash = Color(0xFF6B7280)
+    val Services = Color(0xFFF43F5E)
 }

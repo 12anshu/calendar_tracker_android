@@ -118,9 +118,15 @@ class TransactionsViewModel @Inject constructor(
             
             if (applyToFuture) {
                 expense.merchant?.let { merchant ->
-                    repository.saveMerchantMapping(MerchantMapping(merchant.lowercase(), newCategory))
+                    repository.saveMerchantMapping(com.example.smartexpensecalendar.domain.model.MerchantMapping(merchant.lowercase(), newCategory))
                 }
             }
+        }
+    }
+
+    fun updateExpenseStatus(id: Long, status: com.example.smartexpensecalendar.domain.model.TransactionStatus) {
+        viewModelScope.launch {
+            repository.updateExpenseStatus(id, status, null)
         }
     }
 

@@ -33,6 +33,7 @@ import com.example.smartexpensecalendar.presentation.budget.CategoryBudgetState
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.ui.components.MonthYearPicker
 import com.example.smartexpensecalendar.ui.components.CategoryGridPicker
+import com.example.smartexpensecalendar.ui.components.FintechBottomNav
 import com.example.smartexpensecalendar.core.designsystem.theme.*
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
 import java.time.YearMonth
@@ -145,6 +146,9 @@ fun BudgetDetailScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = BackgroundStart)
             )
+        },
+        bottomBar = {
+            FintechBottomNav(navController = navController)
         },
         containerColor = BackgroundStart
     ) { padding ->

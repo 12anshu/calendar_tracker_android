@@ -103,19 +103,57 @@ object FinancialDetector {
                 scoreBreakdown["NEGATIVE:$keyword"] = score
             }
         }
+        
+        // --- NEW: Contextual Penalties (Unified Intelligence) ---
+        
+        // 1. Explicit Reporting/Utility Context (Airtel, Data Balances, etc.)
+        val isUtilityContext = DetectionPatterns.reportingIdentifiers.any { it.containsMatchIn(text) }
+        val hasExplicitBankAnchor = DetectionPatterns.explicitAnchors.any { it.containsMatchIn(text) }
+        
+        if (isUtilityContext && !hasExplicitBankAnchor) {
+            val penalty = DetectionConstants.REPORTING_CONTEXT_PENALTY
+            totalScore += penalty
+            matchedSignals.add("REPORTING_CONTEXT_PENALTY")
+            scoreBreakdown["REPORTING_CONTEXT_PENALTY"] = penalty
+        }
+
+        // 2. Failed/Cancelled Transactions
+        val isFailed = DetectionPatterns.failureKillSwitches.any { it.containsMatchIn(text) }
+        val isRefund = DetectionPatterns.refundOverrides.any { it.containsMatchIn(text) }
+        
+        if (isFailed && !isRefund) {
+            val penalty = DetectionConstants.FAILED_TXN_PENALTY
+            totalScore = totalScore + penalty
+            matchedSignals.add("FAILED_TXN_PENALTY")
+            scoreBreakdown["FAILED_TXN_PENALTY"] = penalty
+            
+            // Hard clamp for failed transactions - they should almost never be 'Financial'
+            if (totalScore > 0) {
+                totalScore = 0
+            }
+        }
+
+        // 3. No Anchor Penalty (Broad Safety Catch for Service Confirmations)
+        val hasBroadAnchor = DetectionPatterns.broadAnchors.any { it.containsMatchIn(text) }
+        if (!hasBroadAnchor) {
+            val penalty = DetectionConstants.NO_ANCHOR_PENALTY
+            totalScore += penalty
+            matchedSignals.add("NO_ANCHOR_PENALTY")
+            scoreBreakdown["NO_ANCHOR_PENALTY"] = penalty
+        }
 
         // 5. Multiple Signal Bonus
-        if (matchedSignals.size >= 3) {
-            val score = DetectionConstants.MULTIPLE_SIGNAL_BONUS
-            totalScore += score
+        if (matchedSignals.size >= 3 && totalScore > DetectionConstants.FINANCIAL_THRESHOLD) {
+            val bonus = DetectionConstants.MULTIPLE_SIGNAL_BONUS
+            totalScore += bonus
             matchedSignals.add("MULTIPLE_SIGNAL_BONUS")
-            scoreBreakdown["MULTIPLE_SIGNAL_BONUS"] = score
+            scoreBreakdown["MULTIPLE_SIGNAL_BONUS"] = bonus
         }
 
         val confidence = totalScore.coerceIn(0, 100)
 
         return FinancialDetectionResult(
-            isFinancial = totalScore >= DetectionConstants.FINANCIAL_THRESHOLD,
+            isFinancial = totalScore >= DetectionConstants.FINANCIAL_THRESHOLD && !isFailed,
             confidence = confidence,
             score = totalScore,
             matchedSignals = matchedSignals,

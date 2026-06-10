@@ -43,14 +43,25 @@ class ExpenseRepositoryImpl @Inject constructor(
         return dao.getExpenseByCategoryAndDate(category, date.toString())?.toDomain()
     }
 
-    override suspend fun findSimilarExpense(amount: Double, date: LocalDate): Expense? {
-        return dao.findSimilarExpense(amount, date.toString())?.toDomain()
+    override suspend fun findSimilarExpense(amount: Double, date: LocalDate, type: com.example.smartexpensecalendar.domain.model.TransactionType): Expense? {
+        return dao.findSimilarExpense(amount, date.toString(), type.name)?.toDomain()
     }
 
     override suspend fun findMatchingExpense(amount: Double, date: LocalDate, daysBack: Long): Expense? {
         val startDate = date.minusDays(daysBack).toString()
         val endDate = date.toString()
-        return dao.findMatchingDebit(amount, startDate, endDate)?.toDomain()
+        // We use findExpensesInRange and filter for exact amount for now
+        return dao.findExpensesInRange("DEBIT", startDate, endDate)
+            .firstOrNull { it.amount == amount }?.toDomain()
+    }
+
+    override suspend fun findExpensesInRange(
+        type: com.example.smartexpensecalendar.domain.model.TransactionType,
+        startDate: LocalDate,
+        endDate: LocalDate
+    ): List<Expense> {
+        return dao.findExpensesInRange(type.name, startDate.toString(), endDate.toString())
+            .map { it.toDomain() }
     }
 
     override suspend fun updateExpenseStatus(
@@ -59,6 +70,10 @@ class ExpenseRepositoryImpl @Inject constructor(
         linkedId: Long?
     ) {
         dao.updateExpenseStatus(id, status.name, linkedId)
+    }
+
+    override suspend fun updateExpenseCategory(id: Long, category: String) {
+        dao.updateExpenseCategory(id, category)
     }
 
     override suspend fun isSmsIdProcessed(smsId: Long): Boolean {

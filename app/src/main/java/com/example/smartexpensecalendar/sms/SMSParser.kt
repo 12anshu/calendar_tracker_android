@@ -7,8 +7,7 @@ import com.example.smartexpensecalendar.domain.model.PaymentMethod
 import com.example.smartexpensecalendar.domain.model.SenderType
 import com.example.smartexpensecalendar.domain.model.TransactionDirection
 import com.example.smartexpensecalendar.domain.model.TransactionMode
-import com.example.smartexpensecalendar.sms_engine.detector.FinancialDetector
-import com.example.smartexpensecalendar.sms_engine.detector.MessageType
+import com.example.smartexpensecalendar.domain.model.MessageType
 import com.example.smartexpensecalendar.sms_engine.detector.MessageTypeDetector
 import com.example.smartexpensecalendar.sms_engine.extractor.AmountExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.DirectionExtractor
@@ -17,6 +16,7 @@ import com.example.smartexpensecalendar.sms_engine.extractor.ModeExtractor
 import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantExtractor
 import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
 import com.example.smartexpensecalendar.sms.config.MessageTypePhrases
+import com.example.smartexpensecalendar.sms_engine.detector.FinancialDetector
 import java.util.regex.Pattern
 
 data class ParsedSMS(
@@ -44,7 +44,9 @@ object SMSParser {
     )
 
     fun parse(body: String): ParsedSMS? {
-        val uppercaseBody = body.uppercase()
+        // 1. Normalize Whitespace and Currency Symbols
+        val normalizedBody = SMSNormalizer.normalize(body)
+        val uppercaseBody = normalizedBody.uppercase()
 
         // --- STAGE 1: Fast-Pass Efficiency ---
         
@@ -61,10 +63,8 @@ object SMSParser {
         
         // --- STAGE 2: Unified Classification (Sequential Phrase Logic) ---
         
-        val normalizedBody = SMSNormalizer.normalize(body)
         val messageTypeResult = messageTypeDetector.detect(normalizedBody)
         var messageType = messageTypeResult.messageType
-        var detectedDirection = messageTypeResult.detectedDirection
 
         // THE ZERO-MISS DEFAULT RULE:
         // If it's financial domain AND has an amount, but no phrase matched:
@@ -73,17 +73,22 @@ object SMSParser {
             messageType = MessageType.TRANSACTION
         }
 
+        // If the detector determines it is NOT financial, we stop parsing.
+        if (!financialResult.isFinancial) return null
+
         // --- STAGE 3: Direction & Event Type ---
         
         // Use classifier direction if found, otherwise fallback to extractor
-        val direction = if (detectedDirection != TransactionDirection.UNKNOWN) {
-            detectedDirection
+        val direction = if (messageTypeResult.detectedDirection != TransactionDirection.UNKNOWN) {
+            messageTypeResult.detectedDirection
         } else {
-            DirectionExtractor.extractDirection(body)
+            DirectionExtractor.extractDirection(normalizedBody)
         }
 
         val mode = ModeExtractor.extractMode(body)
         
+        // --- DIRECTION TO TYPE MAPPING ---
+        // Crucial: Credit always results in TransactionType.CREDIT
         var type = when (direction) {
             TransactionDirection.CREDIT -> TransactionType.CREDIT
             TransactionDirection.DEBIT -> TransactionType.DEBIT

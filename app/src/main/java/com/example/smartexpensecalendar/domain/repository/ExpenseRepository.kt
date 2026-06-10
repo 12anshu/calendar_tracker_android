@@ -15,9 +15,11 @@ interface ExpenseRepository {
     suspend fun getExpenseByCategoryAndDate(category: String, date: LocalDate): Expense?
     suspend fun isSmsIdProcessed(smsId: Long): Boolean
     
-    suspend fun findSimilarExpense(amount: Double, date: LocalDate): Expense?
+    suspend fun findSimilarExpense(amount: Double, date: LocalDate, type: com.example.smartexpensecalendar.domain.model.TransactionType): Expense?
     suspend fun findMatchingExpense(amount: Double, date: LocalDate, daysBack: Long): Expense?
+    suspend fun findExpensesInRange(type: com.example.smartexpensecalendar.domain.model.TransactionType, startDate: LocalDate, endDate: LocalDate): List<Expense>
     suspend fun updateExpenseStatus(id: Long, status: com.example.smartexpensecalendar.domain.model.TransactionStatus, linkedId: Long?)
+    suspend fun updateExpenseCategory(id: Long, category: String)
 
     // Merchant Mapping
     suspend fun getCategoryForMerchant(merchant: String): String?

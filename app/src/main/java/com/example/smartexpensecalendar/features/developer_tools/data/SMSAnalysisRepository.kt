@@ -10,7 +10,7 @@ import com.example.smartexpensecalendar.features.developer_tools.data.entity.Mis
 import com.example.smartexpensecalendar.features.developer_tools.data.source.SmsProviderDataSource
 import com.example.smartexpensecalendar.features.developer_tools.domain.model.PatternGroup
 import com.example.smartexpensecalendar.sms_engine.detector.FinancialDetector
-import com.example.smartexpensecalendar.sms_engine.detector.MessageType
+import com.example.smartexpensecalendar.domain.model.MessageType
 import com.example.smartexpensecalendar.sms_engine.extractor.AmountExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.DirectionExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.FinancialEventTypeExtractor
@@ -37,7 +37,7 @@ class SMSAnalysisRepository @Inject constructor(
     fun getNonFinancialSMSCount() = dao.getNonFinancialSMSCount()
     fun getHighConfidenceFinancialCount() = dao.getHighConfidenceFinancialCount()
     fun getLowConfidenceFinancialCount() = dao.getLowConfidenceFinancialCount()
-    
+
     fun getTransactionCount() = dao.getMessageTypeCount("TRANSACTION")
     fun getObligationCount() = dao.getMessageTypeCount("OBLIGATION")
     fun getInformationCount() = dao.getMessageTypeCount("INFORMATION")
@@ -165,6 +165,37 @@ class SMSAnalysisRepository @Inject constructor(
         return@withContext "Export failed"
     }
 
+    suspend fun runFullAnalysis(onProgress: (Float) -> Unit) = withContext(Dispatchers.IO) {
+        // 1. Fetch existing status map to preserve reviews/flags
+        val existingData = dao.getAllAnalyzedSMSList().associateBy { it.id }
+        
+        smsProvider.fetchAndAnalyzeAllSms(
+            onBatchReady = { batch ->
+                val mergedBatch = batch.map { newSms ->
+                    val oldSms = existingData[newSms.id]
+                    if (oldSms != null) {
+                        // Logic: Reset 'Reviewed' if classification changed
+                        val significantChange = oldSms.messageType != newSms.messageType || 
+                                         oldSms.financialEventType != newSms.financialEventType ||
+                                         oldSms.isFinancial != newSms.isFinancial ||
+                                         oldSms.merchant != newSms.merchant ||
+                                         oldSms.transactionMode != newSms.transactionMode ||
+                                         oldSms.score != newSms.score
+                        
+                        newSms.copy(
+                            isReviewed = if (significantChange) false else oldSms.isReviewed,
+                            isFlagged = oldSms.isFlagged // Always preserve flags for manual cleanup
+                        )
+                    } else {
+                        newSms
+                    }
+                }
+                dao.insertAnalyzedSMS(mergedBatch)
+            },
+            onProgress = onProgress
+        )
+    }
+
     suspend fun flagMisclassification(sms: AnalyzedSMS, expectedClassification: String) {
         val misclassified = MisclassifiedMessage(
             message = sms.message,
@@ -176,13 +207,10 @@ class SMSAnalysisRepository @Inject constructor(
             reviewTimestamp = System.currentTimeMillis()
         )
         dao.insertMisclassifiedMessage(misclassified)
+        dao.updateFlagStatus(sms.id, true)
     }
 
-    suspend fun runFullAnalysis(onProgress: (Float) -> Unit) = withContext(Dispatchers.IO) {
+    suspend fun clearAllData() {
         dao.clearAnalyzedSMS()
-        smsProvider.fetchAndAnalyzeAllSms(
-            onBatchReady = { dao.insertAnalyzedSMS(it) },
-            onProgress = onProgress
-        )
     }
 }

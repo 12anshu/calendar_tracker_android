@@ -25,6 +25,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.smartexpensecalendar.presentation.profile.ProfileViewModel
 import com.example.smartexpensecalendar.ui.components.PremiumFeatureCard
+import com.example.smartexpensecalendar.ui.components.FintechBottomNav
 import com.example.smartexpensecalendar.ui.navigation.Screen
 import com.example.smartexpensecalendar.core.designsystem.theme.*
 
@@ -49,6 +50,9 @@ fun ProfileScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = BackgroundStart)
             )
+        },
+        bottomBar = {
+            FintechBottomNav(navController = navController)
         },
         containerColor = BackgroundStart
     ) { padding ->

@@ -1,4 +1,4 @@
-package com.example.smartexpensecalendar.sms_engine.detector
+package com.example.smartexpensecalendar.domain.model
 
 enum class MessageType {
 

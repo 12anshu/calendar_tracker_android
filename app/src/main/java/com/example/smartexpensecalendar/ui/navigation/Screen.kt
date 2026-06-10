@@ -10,6 +10,7 @@ sealed class Screen(val route: String) {
     object Insights : Screen("insights")         // Behavior (Bottom Nav)
     object Budget : Screen("budget")             // Settings (Bottom Nav - replacing Report)
     object Transactions : Screen("transactions")
+    object SmsInbox : Screen("sms_inbox")
     object Profile : Screen("profile")
     object MerchantRules : Screen("merchant_rules")
     object Subscription : Screen("subscription")

@@ -2,8 +2,10 @@ package com.example.smartexpensecalendar.sms.config
 
 object MessageTypePhrases {
 
+    // --- CURRENCY AGNOSTIC PATTERNS ---
+    const val CUR_PLACEHOLDER = "{CUR}"
+
     // --- STAGE 1: OBLIGATION (Reminders / Future Actions) ---
-    // High Priority: Checked first to stop reminders from appearing as transactions.
     val obligationPhrases = setOf(
         "IS DUE ON",
         "OVERDUE ON",
@@ -21,80 +23,99 @@ object MessageTypePhrases {
         "TOTAL DUE",
         "MIN. DUE",
         "MINIMUM DUE",
+        "AMOUNT DUE",
         "IS DUE FOR PAYMENT",
         "MAINTAIN ADEQUATE BALANCE",
         "ENSURE SUFFICIENT BALANCE",
         "SCHEDULED ON",
         "REQUESTED A PAYMENT",
         "DUE DATE",
-        "ईएमआई की देय तिथि", // Hindi: EMI Due Date
-        "धनराशि बनाए रखें"    // Hindi: Maintain balance
+        "ईएमआई की देय तिथि",
+        "धनराशि बनाए रखें"
     )
 
-    // --- STAGE 2: TRANSACTION (Actual Money Movement) ---
-    // High Priority: Checked second. This overrides "Balance" phrases if both exist.
+    // --- STAGE 2: TRANSACTION (Confirmed Money Movement) ---
     
-    // Confirmed OUTGOING (Expenses/Spends)
     val transactionDebitPhrases = setOf(
-        "SPENT RS",
-        "SPENT INR",
+        "SPENT {CUR}",
+        "{CUR} SPENT",
+        "TXN {CUR}",
+        "{CUR} DEBITED",
+        "TXN OF {CUR}",
+        "TRANSACTION OF {CUR}",
+        "CHARGE OF {CUR}",
         "SPENT ON",
+        "SPENT OF",
         "SPENT USING",
         "SPENT FROM",
         "SPENT AT",
         "PAID TO",
         "PAID VIA",
         "PAID USING",
+        "PAYMENT MADE",
+        "PAID {CUR}",
         "DEBITED FROM",
         "WAS DEBITED",
         "IS DEBITED",
         "HAS BEEN DEBITED",
+        "MONEY DEBITED",
+        "DEBITED FOR {CUR}",
         "SENT FROM YOUR ACCOUNT",
         "DEDUCTED FROM",
         "AMT DEDUCTED",
         "WITHDRAWN VIA",
         "WITHDRAWN FROM",
-        "WITHDRAWAL FROM",
-        "WITHDRAWAL AT",
+        "WITHDRAWN {CUR}",
         "CASH WITHDRAWAL",
         "PURCHASE MADE",
         "PURCHASED AT",
         "SWIPED ON",
         "CHARGED ON",
-        "CHARGE OF RS",
         "AUTOPAY SUCCESSFUL",
         "E-MANDATE SUCCESS",
-        "TXN RS",
-        "TXN INR",
-        "TRANSACTION OF RS",
         "MONEY SENT",
         "SENT TO",
         "SENT FROM",
+        "SENT FROM YOUR",
+        "SENT OF {CUR}",
+        "SENT {CUR}",
         "TRANSFERRED TO",
+        "TRANSFERRED FROM YOUR",
         "TRANSFERRED FROM YOUR A/C",
-        "TRANSFERRED INR",
-        "TRANSFER TO",
+        "TRANSFERRED FROM YOUR ACCOUNT",
+        "TRANSFERRED {CUR}",
+        "TRANSFERRED VIA",
+        "TRANSFERRED THROUGH",
+        "WE'VE TRANSFERRED {CUR}",
+        "WE HAVE TRANSFERRED {CUR}",
+        "YOU'VE SPENT {CUR}",
+        "YOU HAVE SPENT {CUR}",
         "WITHOUT OTP", 
         "WITHOUT PIN",
+        "DEBITED FOR",
+        "DEBITED BY",
         "BILL PAYMENT SUCCESSFUL",
         "PAYMENT SUCCESSFUL",
-        "RECHARGE SUCCESSFUL",
         "STANDING INSTRUCTION EXECUTED",
         "SUCCESSFULLY PAID",
         "PAID RS",
         "PAID INR",
-        "MONEY DEBITED",
         "DEBITED FOR RS",
-        "ನಿಕಾಲೇ ಗಯೇ", // Hindi: Withdrawn (Romanized)
-        "निकाले गए"    // Hindi: Withdrawn
+        "USED ON SODEXO",
+        "ZETA ACCOUNT DEBITED",
+        "PLUXEE BALANCE",
+        "ನಿಕಾಲೇ ಗಯೇ",
+        "निकाले गए"
     )
 
-    // Confirmed INCOMING (Income/Refunds/Cashback)
     val transactionCreditPhrases = setOf(
         "CREDITED TO",
+        "{CUR} CREDITED",
         "IS CREDITED WITH",
         "AMT CREDITED",
         "AMOUNT CREDITED",
+        "CREDITED {CUR}",
+        "MONEY CREDITED",
         "SUCCESSFULLY DEPOSITED",
         "DEPOSITED IN",
         "DEPOSITED TO",
@@ -102,43 +123,76 @@ object MessageTypePhrases {
         "AMOUNT DEPOSITED IN",
         "RECEIVED IN",
         "RECEIVED ON",
+        "RECEIVED TOWARDS",
+        "RECEIVED {CUR}",
+        "RECIEVED {CUR}", // Typo handling
+        "IS RECEIVED",
+        "IS RECIEVED", // Typo handling
+        "PAYMENT OF {CUR} RECEIVED",
+        "PAYMENT OF {CUR} RECIEVED",
         "FUNDS RECEIVED",
         "MONEY RECEIVED",
         "CASHBACK CREDITED",
-        "CASHBACK OF",
+        "CASHBACK OF {CUR}",
         "REFUND PROCESSED",
         "REFUND CREDITED",
         "REWARD CREDITED",
         "PAYMENT RECEIVED",
-        "PAYMENT OF", 
+        "PAYMENT OF {CUR} IS RECEIVED",
+        "PAYMENT OF {CUR} IS RECIEVED",
         "FRESH FUNDS",
-        "GOT FRESH FUNDS",
+        "FUNDS CREDITED",
+        "FUNDS TRANSFERRED",
+        "TRANSFERRED TO YOUR",
+        "TRANSFERRED TO YOUR A/C",
         "TRANSFERRED TO YOUR ACCOUNT",
+        "TRANSFER TO YOUR ACCOUNT",
         "TRANSFER FROM",
         "TRANSFERRED FROM",
+        "RECEIVED FROM",
+        "REFUND OF {CUR}",
+        "GOT FRESH FUNDS",
         "ADDED TO YOUR",
+        "ADDED TO YOUR ACCOUNT",
+        "SALARY CREDITED",
+        "TOP-UP SUCCESSFUL",
         "SUCCESSFULLY CREDITED",
-        "MONEY CREDITED",
-        "RECEIVED RS",
-        "RECEIVED INR",
-        "CREDITED FOR RS",
         "REVERSAL OF",
         "LOADED IN WALLET",
         "ADDED IN WALLET",
-        "ಜಮಾ ಕಿಯಾ ಗಯಾ", // Hindi: Deposited (Romanized)
-        "जमा किया गया",   // Hindi: Deposited
-        "ईएमआई प्राप्त हुई" // Hindi: EMI Received
+        "जमा किया गया",
+        "ईएमआई प्राप्त हुई"
     )
 
     // --- STAGE 3: INFORMATION (Status / Non-Financial Alerts) ---
-    // Low Priority: Only matched if no Transaction or Obligation was found.
     val informationPhrases = setOf(
+        "RECHARGE OF {CUR} IS SUCCESSFUL",
+        "WILL BE REFUNDED",
+        "PAYMENT OF {CUR} HAS FAILED",
+        "HAS FAILED",
+        "TRANSACTION HAS FAILED",
+        "REQUEST FAILED",
+        "PAYMENT FAILED",
+        "TXN DECLINED",
+        "TRANSACTION DECLINED",
+        "TXN FAILED",
+        "TRANSACTION FAILED",
+        "TXN CANCELLED",
+        "TRANSACTION CANCELLED",
+        "TXN REJECTED",
+        "TRANSACTION REJECTED",
+        "DECLINED",
+        "PAYMENT UNSUCCESSFUL",
+        "INSUFFICIENT FUNDS",
         "AVAILABLE BALANCE",
         "CURRENT BALANCE",
         "AVL BAL:",
         "ACCOUNT BALANCE IS",
+        "IS NOW BELOW",
+        "IS NOW BELOW {CUR}",
         "BALANCE IS LOW",
         "LOW BALANCE",
+        "BALANCE AGAINST",
         "REMAINING LIMIT",
         "OTP IS",
         "VERIFICATION CODE IS",
@@ -152,7 +206,6 @@ object MessageTypePhrases {
         "SERVICE REQUEST",
         "TELL US ABOUT",
         "FEEDBACK ON",
-        "HOW DID YOU LIKE",
         "PACK IS EXPIRING",
         "VALID TILL",
         "PACK VALID TILL",
@@ -171,10 +224,13 @@ object MessageTypePhrases {
         "REQUEST FOR",
         "SUCCESSFULLY SET",
         "SIM BINDING CODE",
-        "MBACTIVATE"
+        "MBACTIVATE",
+        "MAB",
+        "MONTHLY AVERAGE BALANCE",
+        "MONTHLY AVG BAL",
+
     )
 
-    // Special case for Stage 1 OTP filter
     val otpPhrases = setOf(
         "OTP IS",
         "VERIFICATION CODE IS",

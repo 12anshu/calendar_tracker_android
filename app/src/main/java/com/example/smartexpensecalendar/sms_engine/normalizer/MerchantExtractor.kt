@@ -200,7 +200,10 @@ object MerchantExtractor {
         "payment received",
         "otp for",
         "bank account",
-        "available limit"
+        "available limit",
+        "not you?",
+        "call",
+        "any assistance"
     )
 
     private fun cleanMerchant(
@@ -286,15 +289,7 @@ object MerchantExtractor {
     private fun normalizeMerchant(
         merchant: String?
     ): String? {
-
-        if (merchant.isNullOrBlank())
-            return null
-
-        val match =
-            MerchantMatcher.match(merchant)
-
-        return match.canonicalName
-            ?: MerchantNormalizer.normalize(merchant)
+        return MerchantNormalizer.normalize(merchant)
     }
 
     private fun looksLikeMerchant(text: String): Boolean {

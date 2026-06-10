@@ -24,22 +24,23 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE category = :category AND date = :date LIMIT 1")
     suspend fun getExpenseByCategoryAndDate(category: String, date: String): ExpenseEntity?
 
-    @Query("SELECT * FROM expenses WHERE amount = :amount AND date = :date LIMIT 1")
-    suspend fun findSimilarExpense(amount: Double, date: String): ExpenseEntity?
+    @Query("SELECT * FROM expenses WHERE amount = :amount AND date = :date AND type = :type LIMIT 1")
+    suspend fun findSimilarExpense(amount: Double, date: String, type: String): ExpenseEntity?
 
     @Query("""
         SELECT * FROM expenses 
-        WHERE amount = :amount 
-        AND type = 'DEBIT' 
-        AND status = 'COMPLETED' 
+        WHERE type = :type 
         AND date >= :startDate 
         AND date <= :endDate 
-        ORDER BY date DESC LIMIT 1
+        ORDER BY date DESC
     """)
-    suspend fun findMatchingDebit(amount: Double, startDate: String, endDate: String): ExpenseEntity?
+    suspend fun findExpensesInRange(type: String, startDate: String, endDate: String): List<ExpenseEntity>
 
     @Query("UPDATE expenses SET status = :status, linkedId = :linkedId WHERE id = :id")
     suspend fun updateExpenseStatus(id: Long, status: String, linkedId: Long?)
+
+    @Query("UPDATE expenses SET category = :category WHERE id = :id")
+    suspend fun updateExpenseCategory(id: Long, category: String)
 
     @Query("SELECT EXISTS(SELECT 1 FROM expenses WHERE originalSmsId = :smsId LIMIT 1)")
     suspend fun isSmsIdProcessed(smsId: Long): Boolean

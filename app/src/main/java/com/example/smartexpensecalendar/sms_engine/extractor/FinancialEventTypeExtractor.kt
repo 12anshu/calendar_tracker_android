@@ -4,6 +4,7 @@ import com.example.smartexpensecalendar.domain.model.FinancialEventType
 import com.example.smartexpensecalendar.domain.model.TransactionDirection
 import com.example.smartexpensecalendar.domain.model.TransactionMode
 import com.example.smartexpensecalendar.sms.config.EventTypePhrases
+import com.example.smartexpensecalendar.sms.config.DetectionConstants
 
 object FinancialEventTypeExtractor {
 
@@ -15,204 +16,48 @@ object FinancialEventTypeExtractor {
 
         val text = smsText.uppercase()
 
-        // Phrases
-        if (
-            containsAny(
-                text,
-                EventTypePhrases.refundPhrases
-            )
-        ) {
-            return FinancialEventType.REFUND
-        }
+        // 1. HIGH-CONFIDENCE PHRASES (Proximity Aware)
+        if (anyMatch(text, EventTypePhrases.refundPhrases)) return FinancialEventType.REFUND
+        if (anyMatch(text, EventTypePhrases.creditCardPaymentPhrases)) return FinancialEventType.CREDIT_CARD_PAYMENT
+        if (anyMatch(text, EventTypePhrases.emiConversionPhrases)) return FinancialEventType.EMI_CONVERSION
+        if (anyMatch(text, EventTypePhrases.emiPhrases)) return FinancialEventType.EMI_PAYMENT
+        if (anyMatch(text, EventTypePhrases.transferPhrases)) return FinancialEventType.TRANSFER
+        if (anyMatch(text, EventTypePhrases.mealCardPhrases)) return FinancialEventType.MEAL_CARD
+        if (anyMatch(text, EventTypePhrases.cashWithdrawalPhrases)) return FinancialEventType.CASH_WITHDRAWAL
+        if (anyMatch(text, EventTypePhrases.cashDepositPhrases)) return FinancialEventType.CASH_DEPOSIT
+        if (anyMatch(text, EventTypePhrases.investmentPhrases)) return FinancialEventType.INVESTMENT
+        if (anyMatch(text, EventTypePhrases.incomePhrases)) return FinancialEventType.INCOME
 
-        if (
-            containsAny(
-                text,
-                EventTypePhrases.cashWithdrawalPhrases
-            )
-        ) {
-            return FinancialEventType.CASH_WITHDRAWAL
-        }
+        // 2. KEYWORD FALLBACK
+        if (containsAny(text, EventTypeKeywords.refundKeywords)) return FinancialEventType.REFUND
+        if (containsAny(text, EventTypeKeywords.creditCardPaymentKeywords)) return FinancialEventType.CREDIT_CARD_PAYMENT
+        if (containsAny(text, EventTypeKeywords.emiKeywords)) return FinancialEventType.EMI_PAYMENT
+        if (containsAny(text, EventTypeKeywords.transferKeywords)) return FinancialEventType.TRANSFER
+        if (containsAny(text, EventTypeKeywords.cashWithdrawalKeywords)) return FinancialEventType.CASH_WITHDRAWAL
 
-        if (
-            containsAny(
-                text,
-                EventTypePhrases.cashDepositPhrases
-            )
-        ) {
-            return FinancialEventType.CASH_DEPOSIT
-        }
-
-        if (
-            containsAny(
-                text,
-                EventTypePhrases.creditCardPaymentPhrases
-            )
-        ) {
-            return FinancialEventType.CREDIT_CARD_PAYMENT
-        }
-
-        if (
-            containsAny(
-                text,
-                EventTypePhrases.emiPhrases
-            )
-        ) {
-            return FinancialEventType.EMI_PAYMENT
-        }
-
-        if (
-            containsAny(
-                text,
-                EventTypePhrases.investmentPhrases
-            )
-        ) {
-            return FinancialEventType.INVESTMENT
-        }
-
-        if (
-            containsAny(
-                text,
-                EventTypePhrases.transferPhrases
-            ) || text.contains("SENT FROM") || text.contains("TO A/C")
-        ) {
-            return FinancialEventType.TRANSFER
-        }
-
-        if (
-            containsAny(
-                text,
-                EventTypePhrases.incomePhrases
-            )
-        ) {
-            return FinancialEventType.INCOME
-        }
-
-        if (
-            containsAny(
-                text,
-                EventTypePhrases.creditCardSpendPhrases
-            )
-        ) {
+        // 3. LOGICAL INFERENCE
+        if (mode == TransactionMode.CARD && direction == TransactionDirection.DEBIT) {
             return FinancialEventType.CREDIT_CARD_SPEND
         }
 
-        if (
-            text.contains("PAYMENT OF") &&
-            text.contains("RECEIVED") &&
-            text.contains("CREDIT CARD")
-        ) {
-            return FinancialEventType.CREDIT_CARD_PAYMENT
+        return when (direction) {
+            TransactionDirection.DEBIT -> FinancialEventType.EXPENSE
+            TransactionDirection.CREDIT -> FinancialEventType.INCOME
+            else -> FinancialEventType.UNKNOWN
         }
-
-        // Keywords
-        if (
-            containsAny(
-                text,
-                EventTypeKeywords.refundKeywords
-            )
-        ) {
-            return FinancialEventType.REFUND
-        }
-
-        if (
-            containsAny(
-                text,
-                EventTypeKeywords.cashWithdrawalKeywords
-            )
-        ) {
-            return FinancialEventType.CASH_WITHDRAWAL
-        }
-
-        if (
-            containsAny(
-                text,
-                EventTypeKeywords.cashDepositKeywords
-            )
-        ) {
-            return FinancialEventType.CASH_DEPOSIT
-        }
-
-        if (
-            containsAny(
-                text,
-                EventTypeKeywords.creditCardPaymentKeywords
-            )
-        ) {
-            return FinancialEventType.CREDIT_CARD_PAYMENT
-        }
-
-        if (
-            containsAny(
-                text,
-                EventTypeKeywords.emiKeywords
-            )
-        ) {
-            return FinancialEventType.EMI_PAYMENT
-        }
-
-        if (
-            containsAny(
-                text,
-                EventTypeKeywords.investmentKeywords
-            )
-        ) {
-            return FinancialEventType.INVESTMENT
-        }
-
-        if (
-            containsAny(
-                text,
-                EventTypeKeywords.transferKeywords
-            )
-        ) {
-            return FinancialEventType.TRANSFER
-        }
-
-        if (
-            containsAny(
-                text,
-                EventTypeKeywords.incomeKeywords
-            )
-        ) {
-            return FinancialEventType.INCOME
-        }
-
-        if (
-            containsAny(
-                text,
-                EventTypeKeywords.creditCardSpendKeywords
-            )
-        ) {
-            return FinancialEventType.CREDIT_CARD_SPEND
-        }
-
-        //
-        if (
-            mode == TransactionMode.CARD &&
-            direction == TransactionDirection.DEBIT
-        ) {
-            return FinancialEventType.CREDIT_CARD_SPEND
-        }
-
-        if (direction == TransactionDirection.DEBIT) {
-            return FinancialEventType.EXPENSE
-        }
-
-        if (direction == TransactionDirection.CREDIT) {
-            return FinancialEventType.INCOME
-        }
-
-        return FinancialEventType.UNKNOWN
     }
 
-    private fun containsAny(
-        text: String,
-        keywords: Set<String>
-    ): Boolean {
+    private fun anyMatch(text: String, phrases: Set<String>): Boolean {
+        return phrases.any { smartMatch(text, it) }
+    }
 
-        return keywords.any {
-            text.contains(it)
-        }
+    private fun smartMatch(text: String, phrase: String): Boolean {
+        val escaped = phrase.replace(".", "\\.")
+        val regexStr = escaped.replace("{CUR}", ".{0,50}" + DetectionConstants.CURRENCY_SYMBOLS + ".{0,50}")
+        return Regex(regexStr, RegexOption.IGNORE_CASE).containsMatchIn(text)
+    }
+
+    private fun containsAny(text: String, keywords: Set<String>): Boolean {
+        return keywords.any { text.contains(it) }
     }
 }

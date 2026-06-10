@@ -38,8 +38,8 @@ class MerchantRulesViewModel @Inject constructor(
         repository.getAllMerchantMappings(),
         repository.getActiveMerchantStats()
     ) { custom, active ->
-        val systemRules = categorizer.defaultMappings.map { 
-            MerchantRule(it.key, it.value, RuleSource.SYSTEM) 
+        val systemRules = com.example.smartexpensecalendar.sms.config.MerchantRegistry.merchants.map { 
+            MerchantRule(it.canonicalName, it.category, RuleSource.SYSTEM) 
         }
         
         val customRules = custom.map { 
@@ -49,11 +49,6 @@ class MerchantRulesViewModel @Inject constructor(
         val activeMerchants = active.map { 
             MerchantRule(it.merchant, it.category, RuleSource.ACTIVE, it.frequency) 
         }
-        
-        // Strategy: 
-        // 1. Prioritize Custom Rules
-        // 2. Then System Rules (if not overridden by Custom)
-        // 3. Then Active Merchants (if not already covered by Rule)
         
         val mappedKeywords = (customRules + systemRules).map { it.keyword.lowercase() }.toSet()
         

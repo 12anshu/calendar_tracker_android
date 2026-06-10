@@ -1,5 +1,7 @@
 package com.example.smartexpensecalendar.sms_engine.detector
 
+import com.example.smartexpensecalendar.domain.model.MessageType
+
 data class MessageTypeResult(
     val messageType: MessageType,
     val confidence: Int,

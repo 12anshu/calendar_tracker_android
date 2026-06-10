@@ -1,9 +1,11 @@
 package com.example.smartexpensecalendar.sms_engine.detector
 
+import com.example.smartexpensecalendar.sms.config.DetectionConstants
+
 object DetectionPatterns {
 
     val amountRegex = Regex(
-        "(?:₹|RS\\.?|INR|RS|AMT|AMOUNT)\\s*([\\d,]+(?:\\.\\d{1,2})?)",
+        "${DetectionConstants.CURRENCY_SYMBOLS}\\s*([\\d,]+(?:\\.\\d{1,2})?)",
         RegexOption.IGNORE_CASE
     )
 
@@ -149,5 +151,43 @@ object DetectionPatterns {
             "(?:REF|TXN|ID|UPI)\\s*(?:NO|NUMBER)?[:\\s-]*([A-Z0-9]{8,})",
             RegexOption.IGNORE_CASE
         )
+    )
+
+    // --- CONTEXTUAL INTELLIGENCE PATTERNS (V2) ---
+    
+    val explicitAnchors = listOf(
+        Regex("A/C\\s*(NO|NUMBER|ENDING)?", RegexOption.IGNORE_CASE),
+        Regex("CARD\\s*(NO|NUMBER|ENDING)?", RegexOption.IGNORE_CASE),
+        Regex("DEBIT\\s*CARD|CREDIT\\s*CARD", RegexOption.IGNORE_CASE),
+        Regex("ENDING\\s*IN\\s*\\d{4}", RegexOption.IGNORE_CASE)
+    )
+
+    val reportingIdentifiers = listOf(
+        Regex("UNITS|NAV|FOLIO|PRAN|PORTFOLIO|VALUATION", RegexOption.IGNORE_CASE),
+        Regex("CONTRIBUTION|STATEMENT|OUTSTANDING|LOYALTY|POINTS", RegexOption.IGNORE_CASE),
+        Regex("LIMIT|AVAILABLE\\s*LIMIT|CREDIT\\s*LIMIT", RegexOption.IGNORE_CASE),
+        Regex("PLAN|DATA\\s*BAL|VALIDITY", RegexOption.IGNORE_CASE)
+    )
+
+    val failureKillSwitches = listOf(
+        Regex("FAILED", RegexOption.IGNORE_CASE),
+        Regex("DECLINED", RegexOption.IGNORE_CASE),
+        Regex("UNSUCCESSFUL", RegexOption.IGNORE_CASE),
+        Regex("REJECTED", RegexOption.IGNORE_CASE),
+        Regex("CANCELLED", RegexOption.IGNORE_CASE)
+    )
+    
+    val refundOverrides = listOf(
+        Regex("HAS\\s*BEEN\\s*REFUNDED", RegexOption.IGNORE_CASE),
+        Regex("AMOUNT\\s*REVERSED", RegexOption.IGNORE_CASE),
+        Regex("CREDITED\\s*BACK", RegexOption.IGNORE_CASE),
+        Regex("REFUND\\s*SUCCESSFUL", RegexOption.IGNORE_CASE)
+    )
+
+    // --- BROAD ANCHORS FOR SAFETY CATCH ---
+    val broadAnchors = listOf(
+        Regex("A/C|ACCT|BANK|CARD|VPA|UPI\\s*ID|WALLET|ENDING|XX\\d{2,}", RegexOption.IGNORE_CASE),
+        Regex("PAYTM|GPAY|PHONEPE|GOOGLE\\s*PAY|AMAZON\\s*PAY|ZETA|SODEXO", RegexOption.IGNORE_CASE),
+        Regex("HDFC|ICICI|SBI|AXIS|KOTAK|HSBC|AMEX|SCB|PNB|BOB|IDFC|CITI", RegexOption.IGNORE_CASE)
     )
 }

@@ -1,20 +1,19 @@
 package com.example.smartexpensecalendar.sms_engine.detector
 
+import com.example.smartexpensecalendar.domain.model.MessageType
 import com.example.smartexpensecalendar.domain.model.TransactionDirection
+import com.example.smartexpensecalendar.sms.config.DetectionConstants
 import com.example.smartexpensecalendar.sms.config.MessageTypePhrases
 
 class MessageTypeDetector {
 
     /**
-     * Sequential Logic Refactored:
-     * 1. Obligation (Reminders) - Must be first.
-     * 2. Transaction (Debit/Credit) - Must be second to override balance alerts.
-     * 3. Information (Status) - Must be last.
+     * Sequential Unified Detection with Currency Agnostic Matching.
      */
     fun detect(sms: String): MessageTypeDetectionResult {
         val text = sms.uppercase()
 
-        // --- STAGE 1: OBLIGATION (Reminders / Future Actions) ---
+        // --- STAGE 1: OBLIGATION ---
         val matchedObligation = MessageTypePhrases.obligationPhrases.filter { text.contains(it) }.toSet()
         if (matchedObligation.isNotEmpty()) {
             return MessageTypeDetectionResult(
@@ -25,21 +24,14 @@ class MessageTypeDetector {
             )
         }
 
-        // --- STAGE 2: TRANSACTION WITH DIRECTION ---
-        // Priority: DEBIT then CREDIT
+        // --- STAGE 2: TRANSACTION WITH CURRENCY AGNOSTIC MATCHING ---
+        // RULE: Check CREDIT before DEBIT because "Payment Received" contains "Payment"
         
-        val matchedDebit = MessageTypePhrases.transactionDebitPhrases.filter { text.contains(it) }.toSet()
-        if (matchedDebit.isNotEmpty()) {
-            return MessageTypeDetectionResult(
-                messageType = MessageType.TRANSACTION,
-                confidence = 100,
-                scores = mapOf(MessageType.TRANSACTION to 100),
-                matchedKeywords = mapOf(MessageType.TRANSACTION to matchedDebit),
-                detectedDirection = TransactionDirection.DEBIT
-            )
-        }
-
-        val matchedCredit = MessageTypePhrases.transactionCreditPhrases.filter { text.contains(it) }.toSet()
+        // 2.1 Check CREDIT
+        val matchedCredit = MessageTypePhrases.transactionCreditPhrases.filter { phrase ->
+            smartContains(text, phrase)
+        }.toSet()
+        
         if (matchedCredit.isNotEmpty()) {
             return MessageTypeDetectionResult(
                 messageType = MessageType.TRANSACTION,
@@ -50,9 +42,22 @@ class MessageTypeDetector {
             )
         }
 
-        // --- STAGE 3: INFORMATION (Status / Non-Financial) ---
-        // Checked only if no transaction rule matched. 
-        // This solves the "Spent... Avl Bal" problem.
+        // 2.2 Check DEBIT
+        val matchedDebit = MessageTypePhrases.transactionDebitPhrases.filter { phrase ->
+            smartContains(text, phrase)
+        }.toSet()
+        
+        if (matchedDebit.isNotEmpty()) {
+            return MessageTypeDetectionResult(
+                messageType = MessageType.TRANSACTION,
+                confidence = 100,
+                scores = mapOf(MessageType.TRANSACTION to 100),
+                matchedKeywords = mapOf(MessageType.TRANSACTION to matchedDebit),
+                detectedDirection = TransactionDirection.DEBIT
+            )
+        }
+
+        // --- STAGE 3: INFORMATION ---
         val matchedInfo = MessageTypePhrases.informationPhrases.filter { text.contains(it) }.toSet()
         if (matchedInfo.isNotEmpty()) {
             return MessageTypeDetectionResult(
@@ -63,7 +68,6 @@ class MessageTypeDetector {
             )
         }
 
-        // --- STAGE 4: FALLBACK ---
         return MessageTypeDetectionResult(
             messageType = MessageType.UNKNOWN,
             confidence = 0,
@@ -71,5 +75,26 @@ class MessageTypeDetector {
             matchedKeywords = emptyMap(),
             detectedDirection = TransactionDirection.UNKNOWN
         )
+    }
+
+    /**
+     * Handles the {CUR} placeholder by converting the phrase into a Proximity Regex.
+     * Allows for text (like account numbers or amounts) on either side of the currency symbol.
+     * e.g., "SPENT {CUR}" matches "Spent using card Rs. 500"
+     */
+    private fun smartContains(text: String, phrase: String): Boolean {
+        return if (phrase.contains(MessageTypePhrases.CUR_PLACEHOLDER)) {
+            val escapedPhrase = phrase.replace(".", "\\.")
+            
+            // Replace {CUR} with a regex that matches the symbol plus optional proximity around it
+            // This allows the amount or account info to be adjacent to the symbol.
+            val regexStr = escapedPhrase.replace(
+                MessageTypePhrases.CUR_PLACEHOLDER, 
+                ".{0,50}" + DetectionConstants.CURRENCY_SYMBOLS + ".{0,50}"
+            )
+            Regex(regexStr, RegexOption.IGNORE_CASE).containsMatchIn(text)
+        } else {
+            text.contains(phrase)
+        }
     }
 }

@@ -17,7 +17,7 @@ import com.example.smartexpensecalendar.domain.repository.ExpenseRepository
 import com.example.smartexpensecalendar.data.local.DataStoreManager
 import com.example.smartexpensecalendar.utils.NotificationHelper
 import com.example.smartexpensecalendar.domain.model.PaymentMethod
-import com.example.smartexpensecalendar.sms_engine.detector.MessageType
+import com.example.smartexpensecalendar.domain.model.MessageType
 import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
 import com.example.smartexpensecalendar.sms.sender.SenderValidationEngine
 import dagger.assisted.Assisted
@@ -33,7 +33,8 @@ class SMSSyncWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val repository: ExpenseRepository,
     private val categorizer: SMSCategorizer,
-    private val dataStoreManager: DataStoreManager
+    private val dataStoreManager: DataStoreManager,
+    private val linker: com.example.smartexpensecalendar.sms.reconciliation.TransactionLinker
 ) : CoroutineWorker(context, params) {
 
     override suspend fun getForegroundInfo(): androidx.work.ForegroundInfo {
@@ -146,18 +147,12 @@ class SMSSyncWorker @AssistedInject constructor(
                     val normalizedMerchant = finalParsed.merchant
 
                     foundExpensesCount++
-                    val category = if (finalParsed.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.SETTLEMENT)
-                        "Settlement"
-                    else if (finalParsed.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.REFUNDED)
-                        "Refund"
-                    else {
-                        val initialCat = categorizer.categorize(normalizedMerchant)
-                        if (initialCat == "Miscellaneous" && finalParsed.paymentMethod == PaymentMethod.UPI) {
-                            "UPI / Digital"
-                        } else {
-                            initialCat
-                        }
-                    }
+                    val category = categorizer.categorize(
+                        merchant = normalizedMerchant,
+                        eventType = finalParsed.financialEventType,
+                        status = finalParsed.status,
+                        paymentMethod = finalParsed.paymentMethod
+                    )
 
                     val localDate = Instant.ofEpochMilli(date)
                         .atZone(ZoneId.systemDefault())
@@ -205,8 +200,17 @@ class SMSSyncWorker @AssistedInject constructor(
             }
             
             if (syncYear != -1 && syncMonth != -1) {
+                val yearMonth = YearMonth.of(syncYear, syncMonth)
                 val monthName = Month.of(syncMonth).name
                 
+                /*
+                // Run Reconciliation Linker after sync - PAUSED
+                linker.linkTransactions(
+                    startDate = yearMonth.atDay(1),
+                    endDate = yearMonth.atEndOfMonth()
+                )
+                */
+
                 if (foundExpensesCount > 0) {
                     NotificationHelper.showSyncCompleteNotification(
                         applicationContext,

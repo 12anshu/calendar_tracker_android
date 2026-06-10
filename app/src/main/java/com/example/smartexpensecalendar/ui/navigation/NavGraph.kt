@@ -18,6 +18,7 @@ import com.example.smartexpensecalendar.ui.AuthScreen
 import com.example.smartexpensecalendar.ui.ProfileScreen
 import com.example.smartexpensecalendar.ui.SplashScreen
 import com.example.smartexpensecalendar.ui.SubscriptionScreen
+import com.example.smartexpensecalendar.ui.SmsInboxScreen
 import com.example.smartexpensecalendar.features.developer_tools.presentation.DeveloperDashboardScreen
 import com.example.smartexpensecalendar.features.developer_tools.presentation.SMSAnalysisDashboardScreen
 import com.example.smartexpensecalendar.features.developer_tools.presentation.TransactionExtractionScreen
@@ -49,6 +50,9 @@ fun NavGraph(navController: NavHostController) {
         }
         composable(Screen.Transactions.route) {
             TransactionsScreen(navController = navController)
+        }
+        composable(Screen.SmsInbox.route) {
+            SmsInboxScreen(navController = navController)
         }
         composable(Screen.Insights.route) {
             InsightsScreen(navController = navController)

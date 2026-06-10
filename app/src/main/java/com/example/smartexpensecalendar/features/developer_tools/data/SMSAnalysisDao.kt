@@ -88,6 +88,41 @@ interface SMSAnalysisDao {
     @Query("SELECT * FROM analyzed_sms WHERE timestamp >= :start AND timestamp <= :end ORDER BY timestamp DESC")
     suspend fun getAnalyzedSMSInRange(start: Long, end: Long): List<AnalyzedSMS>
 
+    @Query("UPDATE analyzed_sms SET isReviewed = :reviewed WHERE id = :id")
+    suspend fun updateReviewStatus(id: Long, reviewed: Boolean)
+
+    @Query("UPDATE analyzed_sms SET isFlagged = :flagged WHERE id = :id")
+    suspend fun updateFlagStatus(id: Long, flagged: Boolean)
+
+    @Query("""
+        SELECT * FROM analyzed_sms 
+        WHERE timestamp >= :start AND timestamp <= :end
+        AND (:financial IS NULL OR isFinancial = :financial)
+        AND (
+            :messageType IS NULL 
+            OR (
+                :messageType = 'UNKNOWN' 
+                AND (messageType IS NULL OR messageType = '' OR messageType = 'UNKNOWN')
+            )
+            OR messageType = :messageType
+        )
+        AND (:eventType IS NULL OR financialEventType = :eventType)
+        AND (:reviewed IS NULL OR isReviewed = :reviewed)
+        AND (:flagged IS NULL OR isFlagged = :flagged)
+        AND (message LIKE '%' || :query || '%' OR sender LIKE '%' || :query || '%')
+        ORDER BY timestamp DESC
+    """)
+    fun getFilteredAnalyzedSMS(
+        start: Long, 
+        end: Long, 
+        query: String = "",
+        financial: Boolean? = null,
+        messageType: String? = null,
+        eventType: String? = null,
+        reviewed: Boolean? = null,
+        flagged: Boolean? = null
+    ): Flow<List<AnalyzedSMS>>
+
     @Query("SELECT * FROM analyzed_sms WHERE messageType = 'TRANSACTION' ORDER BY timestamp DESC")
     suspend fun getTransactionSMS(): List<AnalyzedSMS>
 

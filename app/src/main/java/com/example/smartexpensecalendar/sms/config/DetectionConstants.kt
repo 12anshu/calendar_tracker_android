@@ -33,4 +33,15 @@ object DetectionConstants {
     const val STRONG_PROMOTIONAL_SCORE = 50
 
     const val MESSAGE_TYPE_MIN_THRESHOLD = 20
+
+    // --- SHARED REGEX FRAGMENTS ---
+    // Covers: Rs, Rs., INR, ₹, $, Amt, Amount, Re, Re.
+    const val CURRENCY_SYMBOLS = "(?:RS\\.?|INR|₹|AMT|AMOUNT|RE\\.?|\\$)"
+
+    // --- CONTEXTUAL PENALTIES (Merged V2 Intelligence) ---
+    const val FAILED_TXN_PENALTY = -100
+
+    const val REPORTING_CONTEXT_PENALTY = -100
+
+    const val NO_ANCHOR_PENALTY = -80
 }

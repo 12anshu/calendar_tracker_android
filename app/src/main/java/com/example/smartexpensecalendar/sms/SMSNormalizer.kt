@@ -2,51 +2,20 @@ package com.example.smartexpensecalendar.sms
 
 object SMSNormalizer {
 
+    /**
+     * Normalizes whitespace and common symbols without altering the core banking verbs.
+     * This ensures our phrase-based detection matches the actual SMS templates.
+     */
     fun normalize(text: String): String {
+        if (text.isBlank()) return ""
 
-        var normalized = text
+        var normalized = text.uppercase()
 
-        // Normalize currency variations
-        normalized = normalized.replace(
-            Regex("\\b(rs\\.?|inr\\.?)\\b", RegexOption.IGNORE_CASE),
-            "INR"
-        )
+        // 1. Normalize currency variations to a standard anchor for easier regex
+        normalized = normalized.replace(Regex("\\b(RS\\.?|INR|₹|RE\\.?)\\b"), "INR")
 
-        // Normalize account references
-        normalized = normalized.replace(
-            Regex("\\b(a/c|acct|ac)\\b", RegexOption.IGNORE_CASE),
-            "ACCOUNT"
-        )
-
-        // Normalize debit keywords
-        normalized = normalized.replace(
-            Regex("\\b(debited|debit)\\b", RegexOption.IGNORE_CASE),
-            "DEBITED"
-        )
-
-        // Normalize credit keywords
-        normalized = normalized.replace(
-            Regex("\\b(credited|credit|received)\\b", RegexOption.IGNORE_CASE),
-            "CREDITED"
-        )
-
-        // Normalize refund keywords
-        normalized = normalized.replace(
-            Regex("\\b(refunded|refund)\\b", RegexOption.IGNORE_CASE),
-            "REFUND"
-        )
-
-        // Normalize transfer keywords
-        normalized = normalized.replace(
-            Regex("\\b(transferred|transfer)\\b", RegexOption.IGNORE_CASE),
-            "TRANSFER"
-        )
-
-        // Remove multiple spaces
-        normalized = normalized.replace(
-            Regex("\\s+"),
-            " "
-        )
+        // 2. Remove multiple spaces and newlines
+        normalized = normalized.replace(Regex("\\s+"), " ")
 
         return normalized.trim()
     }
