@@ -180,7 +180,9 @@ class SMSAnalysisRepository @Inject constructor(
                                          oldSms.isFinancial != newSms.isFinancial ||
                                          oldSms.merchant != newSms.merchant ||
                                          oldSms.transactionMode != newSms.transactionMode ||
-                                         oldSms.score != newSms.score
+                                         oldSms.score != newSms.score ||
+                                         oldSms.amount != newSms.amount ||
+                                         oldSms.category != newSms.category
                         
                         newSms.copy(
                             isReviewed = if (significantChange) false else oldSms.isReviewed,

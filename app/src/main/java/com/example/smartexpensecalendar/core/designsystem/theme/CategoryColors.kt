@@ -27,6 +27,8 @@ fun getCategoryColor(category: String): Color {
         "cash withdrawal" -> CategoryColors.Cash
         "cash deposit" -> CategoryColors.Cash
         "subscription" -> CategoryColors.Subscription
+        "meal card" -> CategoryColors.MealCard
+        "payment" -> CategoryColors.Payment
         "services" -> CategoryColors.Services
         else -> CategoryColors.Miscellaneous
     }
@@ -51,6 +53,8 @@ object CategoryColors {
     val EMI = Color(0xFF9333EA)
     val Loan = Color(0xFF9333EA)
     val Subscription = Color(0xFFF97316)
+    val MealCard = Color(0xFFFF5722)
+    val Payment = Color(0xFF607D8B)
     val Transfer = Color(0xFF10B981)
     val Refund = Color(0xFF14B8A6)
     val Settlement = Color(0xFF3B82F6)

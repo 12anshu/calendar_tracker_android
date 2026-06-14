@@ -13,6 +13,7 @@ import com.example.smartexpensecalendar.sms_engine.extractor.AmountExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.DirectionExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.FinancialEventTypeExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.ModeExtractor
+import com.example.smartexpensecalendar.sms_engine.extractor.AccountNameExtractor
 import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantExtractor
 import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
 import com.example.smartexpensecalendar.sms.config.MessageTypePhrases
@@ -30,6 +31,7 @@ data class ParsedSMS(
     val type: TransactionType = TransactionType.DEBIT,
     val status: TransactionStatus = TransactionStatus.COMPLETED,
     val accountSuffix: String? = null,
+    val accountName: String? = null,
     val confidence: Int = 0,
     val senderType: SenderType = SenderType.UNKNOWN
 )
@@ -110,13 +112,25 @@ object SMSParser {
         // --- STAGE 4: Final Extraction ---
         
         val rawMerchant = MerchantExtractor.extractMerchant(body)
-        val merchant = rawMerchant?.let { MerchantNormalizer.normalize(it) }
-        
+        var merchant = rawMerchant?.let { MerchantNormalizer.normalize(it) }
+
+        // --- ENHANCED MEAL CARD IDENTITY ---
+        if (merchant.isNullOrBlank() && mode == TransactionMode.MEAL_CARD) {
+            merchant = when {
+                uppercaseBody.contains("PLUXEE") -> "Pluxee Transaction"
+                uppercaseBody.contains("SODEXO") -> "Sodexo Transaction"
+                uppercaseBody.contains("ZETA") -> "Zeta Transaction"
+                else -> "Meal Card Transaction"
+            }
+        }
+
         val suffixMatcher = accountSuffixRegex.matcher(body)
         var accountSuffix: String? = null
         if (suffixMatcher.find()) {
             accountSuffix = suffixMatcher.group(1)
         }
+
+        val accountName = AccountNameExtractor.extract(body)
 
         return ParsedSMS(
             amount = amount,
@@ -129,6 +143,7 @@ object SMSParser {
             type = type,
             status = status,
             accountSuffix = accountSuffix,
+            accountName = accountName,
             confidence = calculateConfidence(amount, merchant, direction, mode)
         )
     }
@@ -142,6 +157,7 @@ object SMSParser {
             TransactionMode.BANK_TRANSFER -> PaymentMethod.NEFT
             TransactionMode.AUTO_DEBIT -> PaymentMethod.ACH
             TransactionMode.EMI -> PaymentMethod.UNKNOWN
+            TransactionMode.MEAL_CARD -> PaymentMethod.CARD
             TransactionMode.UNKNOWN -> PaymentMethod.UNKNOWN
         }
     }

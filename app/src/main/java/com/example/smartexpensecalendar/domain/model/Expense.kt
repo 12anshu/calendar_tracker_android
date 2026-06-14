@@ -33,6 +33,7 @@ data class Expense(
     val type: TransactionType = TransactionType.DEBIT,
     val status: TransactionStatus = TransactionStatus.COMPLETED,
     val accountSuffix: String? = null, // e.g., "9490" or "XX47"
+    val accountName: String? = null,   // New Field: e.g. "HDFC Card 6774"
     val linkedId: Long? = null,        // Link between debit and credit/settlement
     val originalSmsId: Long? = null,
     val originalSmsBody: String? = null,

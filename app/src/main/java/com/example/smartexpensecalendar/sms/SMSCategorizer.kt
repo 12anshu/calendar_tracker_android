@@ -38,6 +38,7 @@ class SMSCategorizer @Inject constructor(
             com.example.smartexpensecalendar.domain.model.FinancialEventType.CASH_WITHDRAWAL -> return "Cash Withdrawal"
             com.example.smartexpensecalendar.domain.model.FinancialEventType.CASH_DEPOSIT -> return "Cash Deposit"
             com.example.smartexpensecalendar.domain.model.FinancialEventType.EMI_CONVERSION -> return "EMI Conversion"
+            com.example.smartexpensecalendar.domain.model.FinancialEventType.MEAL_CARD -> return "Meal Card"
             else -> {}
         }
 

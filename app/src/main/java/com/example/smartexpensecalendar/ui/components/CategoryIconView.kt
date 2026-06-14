@@ -24,7 +24,7 @@ fun CategoryIconView(
     iconColor: Color? = null
 ) {
     val categoryColor = getCategoryColor(category)
-    val finalBackgroundColor = backgroundColor ?: categoryColor.copy(alpha = 0.15f)
+    val finalBackgroundColor = backgroundColor ?: categoryColor.copy(alpha = 0.25f)
     val finalIconColor = iconColor ?: categoryColor
 
     Box(

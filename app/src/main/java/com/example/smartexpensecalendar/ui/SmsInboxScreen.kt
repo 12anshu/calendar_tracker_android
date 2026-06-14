@@ -2,6 +2,7 @@ package com.example.smartexpensecalendar.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -17,7 +18,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -27,6 +31,8 @@ import com.example.smartexpensecalendar.features.developer_tools.data.entity.Ana
 import com.example.smartexpensecalendar.presentation.sms_inbox.SmsInboxViewModel
 import com.example.smartexpensecalendar.ui.components.MonthYearPicker
 import com.example.smartexpensecalendar.ui.components.FintechBottomNav
+import com.example.smartexpensecalendar.ui.components.CategoryIconView
+import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -218,101 +224,139 @@ fun SmsInboxItem(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (sms.isReviewed) SurfaceGlass.copy(alpha = 0.5f) else SurfaceGlass)
-            .clickable { onClick() }
-            .padding(12.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    sms.sender, 
-                    color = SecondaryAccent, 
-                    fontWeight = FontWeight.Bold, 
-                    fontSize = 13.sp
-                )
-                Text(
-                    "Financial: ${if (sms.isFinancial) "YES" else "NO"}",
-                    color = if (sms.isFinancial) CyanGlow else TextSecondary,
-                    fontSize = 10.sp
-                )
-            }
-            
-            IconButton(onClick = { 
-                val debugInfo = """
-                    SENDER: ${sms.sender}
-                    MESSAGE: ${sms.message}
-                    FINANCIAL: ${if (sms.isFinancial) "YES" else "NO"}
-                    SCORE: ${sms.score}
-                    TYPE: ${sms.messageType}
-                    EVENT: ${sms.financialEventType}
-                    MERCHANT: ${sms.merchant ?: "NONE"}
-                    MODE: ${sms.transactionMode}
-                    SIGNALS: ${sms.matchedSignals.joinToString(", ")}
-                """.trimIndent()
-                clipboardManager.setText(AnnotatedString(debugInfo)) 
-            }) {
-                Icon(Icons.Default.ContentCopy, "Copy Debug Info", tint = TextSecondary, modifier = Modifier.size(18.dp))
-            }
-            
-            IconButton(onClick = onFlagClick) {
-                Icon(
-                    imageVector = if (sms.isFlagged) Icons.Default.Flag else Icons.Outlined.Flag,
-                    contentDescription = "Flag",
-                    tint = if (sms.isFlagged) Color.Red else TextSecondary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            IconButton(onClick = onDoneClick) {
-                Icon(
-                    imageVector = if (sms.isReviewed) Icons.Default.Done else Icons.Outlined.RadioButtonUnchecked,
-                    contentDescription = "Done",
-                    tint = if (sms.isReviewed) PrimaryAccent else TextSecondary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(4.dp))
-        
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Tag(sms.messageType, CyanGlow)
-            if (sms.isFinancial) {
-                Tag(sms.financialEventType, PrimaryAccent)
-                if (!sms.merchant.isNullOrBlank()) {
-                    Tag(sms.merchant, PremiumGold)
-                }
-                Tag(sms.transactionMode, SecondaryAccent)
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                "Score: ${sms.score}",
-                color = if (sms.score >= 50) PremiumGold else TextSecondary,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (sms.isReviewed) SurfaceGlass.copy(alpha = 0.4f) else SurfaceGlass)
+            .border(
+                width = 1.dp,
+                color = if (sms.isFlagged) Color.Red.copy(alpha = 0.5f) else Color.Transparent,
+                shape = RoundedCornerShape(8.dp)
             )
+            .clickable { onClick() }
+            .padding(10.dp)
+    ) {
+        // Line 1: Financial status | Message Type | Event Type | Mode
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Tag(if (sms.isFinancial) "FIN" else "NON-FIN", if (sms.isFinancial) CyanGlow else TextSecondary)
+            Text("|", color = TextSecondary.copy(alpha = 0.3f), fontSize = 10.sp)
+            Tag(sms.messageType, TextSecondary)
+            Text("|", color = TextSecondary.copy(alpha = 0.3f), fontSize = 10.sp)
+            Tag(sms.financialEventType, PrimaryAccent)
+            Text("|", color = TextSecondary.copy(alpha = 0.3f), fontSize = 10.sp)
+            Tag(sms.transactionMode, SecondaryAccent)
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-        
+        Spacer(modifier = Modifier.height(2.dp))
+
+        // Line 2: Merchant | Category * Account/Card Name vessel | Amount
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            val vesselInfo = buildAnnotatedString {
+                withStyle(SpanStyle(color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)) {
+                    append(sms.merchant ?: "NONE")
+                }
+                append(" | ")
+                withStyle(SpanStyle(color = TextSecondary, fontSize = 11.sp)) {
+                    append(sms.category ?: "UNCATEGORIZED")
+                }
+                withStyle(SpanStyle(color = TextSecondary.copy(alpha = 0.5f))) {
+                    append(" | ")
+                }
+                withStyle(SpanStyle(color = SecondaryAccent.copy(alpha = 0.8f), fontSize = 11.sp)) {
+                    append(sms.accountName ?: "UNKNOWN")
+                }
+            }
+            Text(text = vesselInfo, modifier = Modifier.weight(1f), maxLines = 1)
+
+            if (sms.amount != null) {
+                val isCredit = sms.financialEventType == "INCOME" || sms.financialEventType == "REFUND"
+                Text(
+                    text = "${if (isCredit) "+" else "-"} ₹${formatIndianCurrency(sms.amount)}",
+                    color = if (isCredit) ColorGroceries else TextPrimary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        // Line 3: Message body
         Text(
-            sms.message,
-            color = if (sms.isReviewed) TextPrimary.copy(alpha = 0.6f) else TextPrimary,
-            fontSize = 13.sp,
-            maxLines = 3,
-            lineHeight = 18.sp
+            text = sms.message,
+            color = if (sms.isReviewed) TextPrimary.copy(alpha = 0.5f) else TextPrimary,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+            modifier = Modifier.fillMaxWidth()
         )
 
-        if (sms.matchedSignals.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                "Signals: ${sms.matchedSignals.joinToString(", ")}",
-                color = if (sms.matchedSignals.contains("REPORTING_CONTEXT_PENALTY") || sms.matchedSignals.contains("FAILED_TXN_PENALTY")) ColorFood else TextSecondary.copy(alpha = 0.7f),
-                fontSize = 10.sp,
-                fontWeight = if (sms.matchedSignals.contains("REPORTING_CONTEXT_PENALTY")) FontWeight.Bold else FontWeight.Normal
-            )
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Line 4: Signals | Score + Action Buttons
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "S:",
+                    color = PremiumGold,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = sms.matchedSignals.joinToString(", "),
+                    color = TextSecondary.copy(alpha = 0.6f),
+                    fontSize = 9.sp,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Score: ${sms.score}",
+                    color = if (sms.score >= 50) PremiumGold else TextSecondary,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+
+            // Action Buttons at the end
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                IconButton(onClick = { 
+                    val debugInfo = """
+                        SENDER: ${sms.sender}
+                        MESSAGE: ${sms.message}
+                        AMOUNT: ${sms.amount ?: "NONE"}
+                        FINANCIAL: ${if (sms.isFinancial) "YES" else "NO"}
+                        SCORE: ${sms.score}
+                        TYPE: ${sms.messageType}
+                        EVENT: ${sms.financialEventType}
+                        CATEGORY: ${sms.category ?: "NONE"}
+                        MERCHANT: ${sms.merchant ?: "NONE"}
+                        MODE: ${sms.transactionMode}
+                        ACCOUNT: ${sms.accountName ?: "UNKNOWN"}
+                        SIGNALS: ${sms.matchedSignals.joinToString(", ")}
+                    """.trimIndent()
+                    clipboardManager.setText(AnnotatedString(debugInfo)) 
+                }, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Default.ContentCopy, null, tint = TextSecondary, modifier = Modifier.size(14.dp))
+                }
+                
+                IconButton(onClick = onFlagClick, modifier = Modifier.size(24.dp)) {
+                    Icon(
+                        imageVector = if (sms.isFlagged) Icons.Default.Flag else Icons.Outlined.Flag,
+                        contentDescription = null,
+                        tint = if (sms.isFlagged) Color.Red else TextSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                IconButton(onClick = onDoneClick, modifier = Modifier.size(24.dp)) {
+                    Icon(
+                        imageVector = if (sms.isReviewed) Icons.Default.Done else Icons.Outlined.RadioButtonUnchecked,
+                        contentDescription = null,
+                        tint = if (sms.isReviewed) PrimaryAccent else TextSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
         }
     }
 }
@@ -320,7 +364,7 @@ fun SmsInboxItem(
 @Composable
 fun Tag(text: String, color: Color) {
     Surface(
-        color = color.copy(alpha = 0.1f),
+        color = color.copy(alpha = 0.18f),
         shape = RoundedCornerShape(4.dp)
     ) {
         Text(
@@ -414,11 +458,50 @@ fun SmsDetailDialog(sms: AnalyzedSMS, onDismiss: () -> Unit) {
                     Text("Message", color = TextSecondary, fontSize = 11.sp)
                     Text(sms.message, color = TextPrimary, fontSize = 13.sp)
                 }
+                
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                    if (sms.amount != null) {
+                        Column {
+                            Text("Amount", color = TextSecondary, fontSize = 11.sp)
+                            Text("₹${formatIndianCurrency(sms.amount)}", color = TextPrimary, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    Column {
+                        Text("Category", color = TextSecondary, fontSize = 11.sp)
+                        Text(sms.category ?: "None", color = CyanGlow, fontWeight = FontWeight.Bold)
+                    }
+                }
+
                 Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                     Column {
                         Text("Type", color = TextSecondary, fontSize = 11.sp)
-                        Text(sms.messageType, color = CyanGlow, fontWeight = FontWeight.Bold)
+                        Text(sms.messageType, color = TextPrimary, fontWeight = FontWeight.Bold)
                     }
+                    Column {
+                        Text("Event", color = TextSecondary, fontSize = 11.sp)
+                        Text(sms.financialEventType, color = TextPrimary, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                    Column {
+                        Text("Merchant", color = TextSecondary, fontSize = 11.sp)
+                        Text(sms.merchant ?: "None", color = TextPrimary, fontWeight = FontWeight.Bold)
+                    }
+                    Column {
+                        Text("Mode", color = TextSecondary, fontSize = 11.sp)
+                        Text(sms.transactionMode, color = TextPrimary, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                if (!sms.accountName.isNullOrBlank()) {
+                    Column {
+                        Text("Account/Card", color = TextSecondary, fontSize = 11.sp)
+                        Text(sms.accountName, color = SecondaryAccent, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                     Column {
                         Text("Financial", color = TextSecondary, fontSize = 11.sp)
                         Text(if (sms.isFinancial) "Yes" else "No", color = if (sms.isFinancial) PrimaryAccent else ColorTransport, fontWeight = FontWeight.Bold)
@@ -428,6 +511,7 @@ fun SmsDetailDialog(sms: AnalyzedSMS, onDismiss: () -> Unit) {
                         Text("${sms.score}", color = PremiumGold, fontWeight = FontWeight.Bold)
                     }
                 }
+
                 if (sms.matchedSignals.isNotEmpty()) {
                     Column {
                         Text("Signals", color = TextSecondary, fontSize = 11.sp)

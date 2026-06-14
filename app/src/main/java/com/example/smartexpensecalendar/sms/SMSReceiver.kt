@@ -99,6 +99,7 @@ class SMSReceiver : BroadcastReceiver() {
                         type = finalParsed.type,
                         status = finalParsed.status,
                         accountSuffix = finalParsed.accountSuffix,
+                        accountName = finalParsed.accountName,
                         originalSmsId = timestamp
                     )
                 )

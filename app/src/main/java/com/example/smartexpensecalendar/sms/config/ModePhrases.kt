@@ -25,13 +25,20 @@ object ModePhrases {
         "UPI TXN",
         "UPI REF",
         "UPI REFERENCE",
+        "VIA UPI",
         "VPA",
         "COLLECT REQUEST",
         "@YBL",
         "@OKSBI",
         "@OKHDFCBANK",
         "@PAYTM",
-        "@APL"
+        "@APL",
+        "GPAY",
+        "GOOGLE PAY",
+        "PHONEPE",
+        "PAYTM",
+        "BHIM",
+        "MOBIKWIK"
     )
 
     val bankTransferPhrases = setOf(
@@ -80,5 +87,14 @@ object ModePhrases {
         "ATM WITHDRAWAL",
         "ATM CASH WITHDRAWAL",
         "CASH DEPOSITED"
+    )
+
+    val mealCardPhrases = setOf(
+        "PLUXEE",
+        "SODEXO",
+        "MEAL CARD",
+        "ZETA",
+        "TICKET RESTAURANT",
+        "BENEFIT CARD"
     )
 }

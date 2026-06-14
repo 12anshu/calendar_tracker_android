@@ -39,7 +39,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -399,6 +403,7 @@ fun TransactionItem(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 val displayName = when {
                                     !expense.merchant.isNullOrBlank() -> expense.merchant
+                                    !expense.accountName.isNullOrBlank() -> expense.accountName
                                     expense.financialEventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.TRANSFER -> "Account Transfer"
                                     expense.financialEventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.EMI_PAYMENT -> "EMI Payment"
                                     expense.financialEventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.EMI_CONVERSION -> "EMI Conversion"
@@ -419,44 +424,29 @@ fun TransactionItem(
                                     modifier = Modifier.weight(1f, fill = false)
                                 )
                                 
-                                /*
-                                if (expense.status == TransactionStatus.SETTLEMENT) {
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Surface(
-                                        color = SurfaceGlassBright.copy(alpha = 0.3f),
-                                        shape = RoundedCornerShape(4.dp)
-                                    ) {
-                                        Text(
-                                            "SETTLED",
-                                            color = TextSecondary,
-                                            fontSize = 8.sp,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                                        )
-                                    }
-                                }
-                                
-                                if (expense.status == TransactionStatus.REFUNDED) {
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Surface(
-                                        color = ColorGroceries.copy(alpha = 0.2f),
-                                        shape = RoundedCornerShape(4.dp)
-                                    ) {
-                                        Text(
-                                            "REFUNDED",
-                                            color = ColorGroceries,
-                                            fontSize = 8.sp,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                                        )
-                                    }
-                                }
-                                */
+                                /* [Omitted Badge Code] */
                             }
+                            
+                            val subtitle = buildAnnotatedString {
+                                withStyle(SpanStyle(color = TextSecondary)) {
+                                    append(expense.category)
+                                }
+                                if (!expense.accountName.isNullOrBlank()) {
+                                    withStyle(SpanStyle(color = TextSecondary.copy(alpha = 0.5f))) {
+                                        append("  •  ")
+                                    }
+                                    withStyle(SpanStyle(
+                                        color = SecondaryAccent.copy(alpha = 0.8f),
+                                        fontWeight = FontWeight.Medium
+                                    )) {
+                                        append(expense.accountName)
+                                    }
+                                }
+                            }
+
                             Text(
-                                text = expense.category,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = TextSecondary
+                                text = subtitle,
+                                style = MaterialTheme.typography.labelMedium
                             )
                         }
                     }
@@ -469,7 +459,8 @@ fun TransactionItem(
                             color = if (expense.type == TransactionType.DEBIT) TextPrimary else ColorGroceries
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (expense.accountSuffix != null) {
+                            // Only show suffix if full accountName is missing
+                            if (expense.accountSuffix != null && expense.accountName.isNullOrBlank()) {
                                 Text(
                                     text = "XX${expense.accountSuffix}",
                                     style = MaterialTheme.typography.labelSmall,

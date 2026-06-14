@@ -31,6 +31,8 @@ object CategoryIconsUtils {
             "cash withdrawal" -> Icons.Rounded.Atm
             "cash deposit" -> Icons.Rounded.AccountBalance
             "subscription" -> Icons.Rounded.Subscriptions
+            "meal card" -> Icons.Rounded.Fastfood
+            "payment" -> Icons.Rounded.AccountBalanceWallet
             "miscellaneous" -> Icons.Rounded.Category
             "services" -> Icons.Rounded.Handyman
             else -> Icons.Rounded.Category

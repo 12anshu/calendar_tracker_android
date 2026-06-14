@@ -110,11 +110,13 @@ object FinancialDetector {
         val isUtilityContext = DetectionPatterns.reportingIdentifiers.any { it.containsMatchIn(text) }
         val hasExplicitBankAnchor = DetectionPatterns.explicitAnchors.any { it.containsMatchIn(text) }
         
-        if (isUtilityContext && !hasExplicitBankAnchor) {
-            val penalty = DetectionConstants.REPORTING_CONTEXT_PENALTY
-            totalScore += penalty
-            matchedSignals.add("REPORTING_CONTEXT_PENALTY")
-            scoreBreakdown["REPORTING_CONTEXT_PENALTY"] = penalty
+        if (isUtilityContext) {
+            if (!hasExplicitBankAnchor) {
+                val penalty = DetectionConstants.REPORTING_CONTEXT_PENALTY
+                totalScore += penalty
+                matchedSignals.add("REPORTING_CONTEXT_PENALTY")
+                scoreBreakdown["REPORTING_CONTEXT_PENALTY"] = penalty
+            }
         }
 
         // 2. Failed/Cancelled Transactions
@@ -126,11 +128,6 @@ object FinancialDetector {
             totalScore = totalScore + penalty
             matchedSignals.add("FAILED_TXN_PENALTY")
             scoreBreakdown["FAILED_TXN_PENALTY"] = penalty
-            
-            // Hard clamp for failed transactions - they should almost never be 'Financial'
-            if (totalScore > 0) {
-                totalScore = 0
-            }
         }
 
         // 3. No Anchor Penalty (Broad Safety Catch for Service Confirmations)
@@ -153,7 +150,7 @@ object FinancialDetector {
         val confidence = totalScore.coerceIn(0, 100)
 
         return FinancialDetectionResult(
-            isFinancial = totalScore >= DetectionConstants.FINANCIAL_THRESHOLD && !isFailed,
+            isFinancial = totalScore >= DetectionConstants.FINANCIAL_THRESHOLD,
             confidence = confidence,
             score = totalScore,
             matchedSignals = matchedSignals,

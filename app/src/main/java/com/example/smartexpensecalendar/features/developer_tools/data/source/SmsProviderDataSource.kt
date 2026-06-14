@@ -8,9 +8,11 @@ import com.example.smartexpensecalendar.sms.SMSNormalizer
 import com.example.smartexpensecalendar.sms_engine.detector.FinancialDetector
 import com.example.smartexpensecalendar.domain.model.MessageType
 import com.example.smartexpensecalendar.sms_engine.detector.MessageTypeDetector
+import com.example.smartexpensecalendar.sms_engine.extractor.AmountExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.FinancialEventTypeExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.ModeExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.DirectionExtractor
+import com.example.smartexpensecalendar.sms_engine.extractor.AccountNameExtractor
 import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantExtractor
 import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
 import com.example.smartexpensecalendar.sms.sender.SenderValidationEngine
@@ -22,7 +24,8 @@ import javax.inject.Singleton
 
 @Singleton
 class SmsProviderDataSource @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val categorizer: com.example.smartexpensecalendar.sms.SMSCategorizer
 ) {
     private val messageTypeDetector = MessageTypeDetector()
 
@@ -66,12 +69,22 @@ class SmsProviderDataSource @Inject constructor(
                         null
 
                 // Extract Metadata for enriched SMS view
+                val amount = AmountExtractor.extractAmount(body)
                 val direction = DirectionExtractor.extractDirection(body)
                 val mode = ModeExtractor.extractMode(body)
                 val eventType = FinancialEventTypeExtractor.extract(body, direction, mode)
                 val rawMerchant = MerchantExtractor.extractMerchant(body)
                 val normalizedMerchant = rawMerchant?.let { MerchantNormalizer.normalize(it) }
+                val accountName = AccountNameExtractor.extract(body)
                 
+                val category = if (financialResult.isFinancial) {
+                    categorizer.categorize(
+                        merchant = normalizedMerchant,
+                        eventType = eventType,
+                        paymentMethod = mapToPaymentMethod(mode)
+                    )
+                } else null
+
                 analyzedList.add(
                     AnalyzedSMS(
                         id = id,
@@ -91,8 +104,11 @@ class SmsProviderDataSource @Inject constructor(
                         template = template,
                         messageType = messageTypeResult?.messageType?.name ?: MessageType.UNKNOWN.name,
                         financialEventType = eventType.name,
+                        category = category,
+                        amount = amount,
                         merchant = normalizedMerchant,
-                        transactionMode = mode.name
+                        transactionMode = mode.name,
+                        accountName = accountName
                     )
                 )
 
@@ -107,6 +123,20 @@ class SmsProviderDataSource @Inject constructor(
                 onBatchReady(analyzedList.toList())
                 onProgress(1.0f)
             }
+        }
+    }
+
+    private fun mapToPaymentMethod(mode: com.example.smartexpensecalendar.domain.model.TransactionMode): com.example.smartexpensecalendar.domain.model.PaymentMethod {
+        return when (mode) {
+            com.example.smartexpensecalendar.domain.model.TransactionMode.UPI -> com.example.smartexpensecalendar.domain.model.PaymentMethod.UPI
+            com.example.smartexpensecalendar.domain.model.TransactionMode.CARD -> com.example.smartexpensecalendar.domain.model.PaymentMethod.CARD
+            com.example.smartexpensecalendar.domain.model.TransactionMode.CASH -> com.example.smartexpensecalendar.domain.model.PaymentMethod.CASH
+            com.example.smartexpensecalendar.domain.model.TransactionMode.WALLET -> com.example.smartexpensecalendar.domain.model.PaymentMethod.UNKNOWN
+            com.example.smartexpensecalendar.domain.model.TransactionMode.BANK_TRANSFER -> com.example.smartexpensecalendar.domain.model.PaymentMethod.NEFT
+            com.example.smartexpensecalendar.domain.model.TransactionMode.AUTO_DEBIT -> com.example.smartexpensecalendar.domain.model.PaymentMethod.ACH
+            com.example.smartexpensecalendar.domain.model.TransactionMode.EMI -> com.example.smartexpensecalendar.domain.model.PaymentMethod.UNKNOWN
+            com.example.smartexpensecalendar.domain.model.TransactionMode.MEAL_CARD -> com.example.smartexpensecalendar.domain.model.PaymentMethod.CARD
+            com.example.smartexpensecalendar.domain.model.TransactionMode.UNKNOWN -> com.example.smartexpensecalendar.domain.model.PaymentMethod.UNKNOWN
         }
     }
 }

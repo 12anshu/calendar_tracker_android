@@ -166,7 +166,8 @@ object DetectionPatterns {
         Regex("UNITS|NAV|FOLIO|PRAN|PORTFOLIO|VALUATION", RegexOption.IGNORE_CASE),
         Regex("CONTRIBUTION|STATEMENT|OUTSTANDING|LOYALTY|POINTS", RegexOption.IGNORE_CASE),
         Regex("LIMIT|AVAILABLE\\s*LIMIT|CREDIT\\s*LIMIT", RegexOption.IGNORE_CASE),
-        Regex("PLAN|DATA\\s*BAL|VALIDITY", RegexOption.IGNORE_CASE)
+        Regex("PLAN|DATA\\s*BAL|VALIDITY", RegexOption.IGNORE_CASE),
+        Regex("ORDER|ORDER\\s*#|ENJOY\\s*YOUR", RegexOption.IGNORE_CASE)
     )
 
     val failureKillSwitches = listOf(
@@ -186,7 +187,7 @@ object DetectionPatterns {
 
     // --- BROAD ANCHORS FOR SAFETY CATCH ---
     val broadAnchors = listOf(
-        Regex("A/C|ACCT|BANK|CARD|VPA|UPI\\s*ID|WALLET|ENDING|XX\\d{2,}", RegexOption.IGNORE_CASE),
+        Regex("A/C|ACCT|ACCOUNT|BANK|CARD|VPA|UPI\\s*ID|WALLET|ENDING|XX\\d{2,}|[X*]{2,}\\d{3,6}", RegexOption.IGNORE_CASE),
         Regex("PAYTM|GPAY|PHONEPE|GOOGLE\\s*PAY|AMAZON\\s*PAY|ZETA|SODEXO", RegexOption.IGNORE_CASE),
         Regex("HDFC|ICICI|SBI|AXIS|KOTAK|HSBC|AMEX|SCB|PNB|BOB|IDFC|CITI", RegexOption.IGNORE_CASE)
     )

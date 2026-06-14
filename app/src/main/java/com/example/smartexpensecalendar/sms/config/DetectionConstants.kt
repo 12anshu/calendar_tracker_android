@@ -2,7 +2,7 @@ package com.example.smartexpensecalendar.sms.config
 
 object DetectionConstants {
 
-    const val FINANCIAL_THRESHOLD = 40
+    const val FINANCIAL_THRESHOLD = 50
 
     const val STRONG_SIGNAL_SCORE = 30
 

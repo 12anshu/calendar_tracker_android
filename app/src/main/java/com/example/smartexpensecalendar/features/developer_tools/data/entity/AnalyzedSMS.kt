@@ -22,8 +22,11 @@ data class AnalyzedSMS(
     val template: String = "",
     val messageType: String = "UNKNOWN",
     val financialEventType: String = "UNKNOWN",
+    val category: String? = null,
+    val amount: Double? = null,
     val merchant: String? = null,
     val transactionMode: String = "UNKNOWN",
+    val accountName: String? = null,
     val isReviewed: Boolean = false,
     val isFlagged: Boolean = false
 )

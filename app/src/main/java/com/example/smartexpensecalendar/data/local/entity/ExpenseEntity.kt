@@ -21,6 +21,7 @@ data class ExpenseEntity(
     val type: String,   // DEBIT or CREDIT
     val status: String, // COMPLETED, SETTLEMENT, REFUNDED, FAILED
     val accountSuffix: String?,
+    val accountName: String?,
     val linkedId: Long?,
     val originalSmsId: Long?,
     val originalSmsBody: String?,

@@ -16,5 +16,7 @@ enum class TransactionMode {
 
     CASH,
 
+    MEAL_CARD,
+
     UNKNOWN
 }

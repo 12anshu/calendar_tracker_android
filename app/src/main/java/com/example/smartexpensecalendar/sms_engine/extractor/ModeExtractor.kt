@@ -18,7 +18,8 @@ object ModeExtractor {
             TransactionMode.EMI to 0,
             TransactionMode.AUTO_DEBIT to 0,
             TransactionMode.WALLET to 0,
-            TransactionMode.CASH to 0
+            TransactionMode.CASH to 0,
+            TransactionMode.MEAL_CARD to 0
         )
 
         // Phrases
@@ -26,6 +27,13 @@ object ModeExtractor {
             text,
             ModePhrases.cardPhrases,
             TransactionMode.CARD,
+            scores
+        )
+
+        scorePhrases(
+            text,
+            ModePhrases.mealCardPhrases,
+            TransactionMode.MEAL_CARD,
             scores
         )
 
@@ -121,10 +129,20 @@ object ModeExtractor {
             scores
         )
 
-        return scores.maxByOrNull { it.value }
-            ?.takeIf { it.value > 0 }
-            ?.key
-            ?: TransactionMode.UNKNOWN
+        // --- UPI PRECEDENCE & VPA DETECTION ---
+        // 1. Check for the '@' symbol (Generic VPA signal)
+        if (text.contains("@")) {
+            scores[TransactionMode.UPI] = (scores[TransactionMode.UPI] ?: 0) + 10
+        }
+
+        // 2. Return the highest score, favoring UPI in case of ties (Composite transactions)
+        return scores.maxWithOrNull { a, b ->
+            if (a.value == b.value) {
+                if (a.key == TransactionMode.UPI) 1 else -1
+            } else {
+                a.value.compareTo(b.value)
+            }
+        }?.takeIf { it.value > 0 }?.key ?: TransactionMode.UNKNOWN
     }
 
     private fun scorePhrases(

@@ -27,7 +27,10 @@ object ModeKeywords {
         "NEFT",
         "RTGS",
         "BANK TRANSFER",
-        "TRANSFERRED"
+        "TRANSFERRED",
+        "ACCOUNT",
+        "A/C",
+        "ACCT"
     )
 
     val emiKeywords = setOf(

@@ -181,6 +181,7 @@ class SMSSyncWorker @AssistedInject constructor(
                             type = finalParsed.type,
                             status = finalParsed.status,
                             accountSuffix = finalParsed.accountSuffix,
+                            accountName = finalParsed.accountName,
                             linkedId = linkedId,
                             originalSmsId = id,
                             originalSmsBody = body,

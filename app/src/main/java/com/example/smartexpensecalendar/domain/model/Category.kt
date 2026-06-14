@@ -24,6 +24,7 @@ object DefaultCategories {
         "EMI",
         "Loan",
         "Subscription",
+        "Meal Card",
         "Miscellaneous"
     )
 }
