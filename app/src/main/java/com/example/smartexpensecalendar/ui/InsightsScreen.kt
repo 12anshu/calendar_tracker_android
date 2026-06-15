@@ -1,7 +1,7 @@
 package com.example.smartexpensecalendar.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,28 +9,33 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.smartexpensecalendar.presentation.insights.InsightsViewModel
-import com.example.smartexpensecalendar.presentation.insights.CategorySpend
-import com.example.smartexpensecalendar.presentation.insights.MerchantSpend
+import com.example.smartexpensecalendar.presentation.insights.*
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
-import com.example.smartexpensecalendar.ui.components.MonthYearPicker
 import com.example.smartexpensecalendar.ui.components.FintechBottomNav
 import com.example.smartexpensecalendar.core.designsystem.theme.*
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
-import java.time.YearMonth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,122 +44,767 @@ fun InsightsScreen(
     viewModel: InsightsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showMonthPicker by remember { mutableStateOf(false) }
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    val tabs = listOf("OVERVIEW", "SPENDING", "ANALYTICS")
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-//                        Text(
-//                            text = "S.M.A.R.T Insights",
-//                            color = CyanGlow,
-//                            fontSize = 12.sp,
-//                            fontWeight = FontWeight.Bold,
-//                            letterSpacing = 1.sp
-//                        )
-                        Box {
-                            TextButton(
-                                onClick = { showMonthPicker = true },
-                                contentPadding = PaddingValues(0.dp),
-                                modifier = Modifier.height(24.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = "${uiState.selectedMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${uiState.selectedMonth.year}",
-                                        color = TextPrimary,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Icon(Icons.Default.KeyboardArrowDown, null, tint = TextSecondary, modifier = Modifier.size(20.dp))
-                                }
-                            }
-                            if (showMonthPicker) {
-                                MonthYearPicker(
-                                    initialMonth = uiState.selectedMonth,
-                                    onDismiss = { showMonthPicker = false },
-                                    onConfirm = { viewModel.setMonth(it); showMonthPicker = false }
-                                )
-                            }
+            Column(modifier = Modifier.background(BackgroundStart)) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "${uiState.selectedMonth.month.name} ${uiState.selectedMonth.year}",
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
                         }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = BackgroundStart)
+                )
+                TabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    containerColor = BackgroundStart,
+                    contentColor = CyanGlow,
+                    divider = { HorizontalDivider(color = SurfaceGlassBright) },
+                    indicator = { tabPositions ->
+                        TabRowDefaults.SecondaryIndicator(
+                            Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
+                            color = CyanGlow
+                        )
                     }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTabIndex == index,
+                            onClick = { selectedTabIndex = index },
+                            text = { Text(title, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                        )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = BackgroundStart)
-            )
+                }
+            }
         },
         bottomBar = {
             FintechBottomNav(navController = navController)
         },
         containerColor = BackgroundStart
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = 32.dp)
-        ) {
-            // Summary Card
-            item {
-                TotalSpendCard(uiState.totalSpent, uiState.currencySymbol)
-            }
-
-            // Category Breakdown Section
-            item {
-                SectionHeader("Category Breakdown")
-            }
-            
-            items(uiState.categoryBreakdown) { item ->
-                CategoryProgressItem(item, uiState.currencySymbol)
-            }
-
-            // Top Merchants Section
-            item {
-                SectionHeader("Top Merchants")
-            }
-
-            items(uiState.topMerchants) { merchant ->
-                MerchantListItem(merchant, uiState.currencySymbol)
-            }
-
-            // Payment Mode Split
-            item {
-                SectionHeader("Payment Modes")
-                PaymentModeCard(uiState.upiVsCard, uiState.currencySymbol)
+        Column(modifier = Modifier.padding(padding).padding(horizontal = 16.dp)) {
+            when (selectedTabIndex) {
+                0 -> OverviewTab(uiState)
+                1 -> SpendingTab(uiState, onSeeAllCategories = { navController.navigate(com.example.smartexpensecalendar.ui.navigation.Screen.SpendingAnalysis.route) })
+                2 -> AnalyticsTab(uiState)
             }
         }
     }
 }
 
 @Composable
-fun TotalSpendCard(amount: Double, currencySymbol: String = "₹") {
+fun OverviewTab(uiState: InsightsUiState) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
+    ) {
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                SnapshotMiniCard(
+                    title = "Total Spent",
+                    amount = uiState.totalSpent,
+                    symbol = uiState.currencySymbol,
+                    comparison = uiState.spentComparison,
+                    icon = Icons.Default.ShoppingCart,
+                    modifier = Modifier.weight(1f)
+                )
+                SnapshotMiniCard(
+                    title = "Total Budget",
+                    amount = uiState.totalBudget,
+                    symbol = uiState.currencySymbol,
+                    comparison = uiState.budgetComparison,
+                    icon = Icons.Default.AccountBalanceWallet,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        
+        item {
+            SnapshotMiniCard(
+                title = "Remaining Budget",
+                amount = uiState.remainingBudget,
+                symbol = uiState.currencySymbol,
+                comparison = uiState.remainingComparison,
+                icon = Icons.Default.Savings,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        
+        item {
+            SectionHeader("Smart Highlights")
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                uiState.smartInsights.forEach { insight ->
+                    InsightCard(insight)
+                }
+            }
+        }
+
+        item {
+            SectionHeader("Daily Breakdown")
+            CashFlowMiniCard(uiState.totalIncome, uiState.totalSpent, uiState.currencySymbol)
+        }
+    }
+}
+
+@Composable
+fun SpendingTab(uiState: InsightsUiState, onSeeAllCategories: () -> Unit) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
+    ) {
+        item {
+            SectionHeader("Spending Trend")
+            SpendingTrendCard(uiState)
+        }
+
+        item {
+            SectionHeader("Category Breakdown")
+//            CategoryDonutSection(uiState, onSeeAllCategories)
+            CategoryBreakdownCard(uiState, onSeeAllCategories)
+        }
+    }
+}
+
+@Composable
+fun AnalyticsTab(uiState: InsightsUiState) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
+    ) {
+        item {
+            SectionHeader("Payment Channels")
+            PaymentChannelsSection(uiState)
+        }
+
+        item {
+            SectionHeader("Top Merchants")
+        }
+
+        items(uiState.topMerchants) { merchant ->
+            MerchantListItem(merchant, uiState.currencySymbol)
+        }
+    }
+}
+
+@Composable
+fun SnapshotMiniCard(
+    title: String,
+    amount: Double,
+    symbol: String,
+    comparison: Comparison?,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(SurfaceGlass)
+            .padding(16.dp)
+    ) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, null, tint = CyanGlow, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(title, color = TextSecondary, fontSize = 11.sp)
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "$symbol${formatIndianCurrency(amount)}",
+                color = TextPrimary,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+            if (comparison != null) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                    Icon(
+                        if (comparison.isIncrease) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                        null,
+                        tint = if (comparison.isIncrease) ColorFood else ColorGroceries,
+                        modifier = Modifier.size(10.dp)
+                    )
+                    Text(
+                        "${comparison.percentChange}% vs last month",
+                        color = if (comparison.isIncrease) ColorFood else ColorGroceries,
+                        fontSize = 10.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SpendingTrendCard(uiState: InsightsUiState) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(SurfaceGlass)
+            .padding(16.dp)
+    ) {
+        Column {
+            SpendingTrendChartInteractive(uiState.dailyTrend, uiState.currencySymbol)
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(color = SurfaceGlassBright)
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column {
+                    Text("Highest Spending Day", color = TextSecondary, fontSize = 11.sp)
+                    Text(
+                        "${uiState.highestSpendingDay?.first?.dayOfMonth ?: "N/A"} ${uiState.highestSpendingDay?.first?.month?.name?.take(3) ?: ""} (${uiState.currencySymbol}${formatIndianCurrency(uiState.highestSpendingDay?.second ?: 0.0)})",
+                        color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Average Daily Spend", color = TextSecondary, fontSize = 11.sp)
+                    Text("${uiState.currencySymbol}${formatIndianCurrency(uiState.averageDailySpend)}", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CategoryDonutSection(uiState: InsightsUiState, onSeeAllClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(SurfaceGlass)
+            .padding(16.dp)
+    ) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Donut Chart
+                Box(modifier = Modifier.size(200.dp), contentAlignment = Alignment.Center) {
+                    CategoryDonutChart(uiState.categoryBreakdown, uiState.totalSpent)
+//                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+//                        Text("${uiState.currencySymbol}${formatIndianCurrency(uiState.totalSpent)}", color = TextPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
+//                        Text("TOTAL", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+//                    }
+                }
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                // Legend
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+                    uiState.categoryBreakdown.take(5).forEach { cat ->
+                        Row(modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(12.dp).clip(CircleShape).background(getCategoryColor(cat.category), CircleShape))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(cat.category.uppercase(), color = TextPrimary, modifier = Modifier.weight(1f))
+                            Text("${uiState.currencySymbol}${formatIndianCurrency(cat.amount)}", color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text("${(cat.percentage * 100).toInt()}%)", color = TextSecondary, fontSize = 9.sp)
+//                            Column {
+//                                Text(cat.category.uppercase(), color = TextPrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+//                                Text("${uiState.currencySymbol}${formatIndianCurrency(cat.amount)} (${(cat.percentage * 100).toInt()}%)", color = TextSecondary, fontSize = 9.sp)
+//                            }
+                        }
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            TextButton(
+                onClick = onSeeAllClick,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("VIEW ALL CATEGORIES", color = CyanGlow, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Icon(Icons.Default.ChevronRight, null, tint = CyanGlow, modifier = Modifier.size(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun CategoryBreakdownCard(
+    uiState: InsightsUiState, onSeeAllClick: () -> Unit
+) {
+    val total = uiState.totalSpent
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = SurfaceGlass
+        ),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        )  {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier.weight(0.45f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CategoryDonutChart(
+                        categories = uiState.categoryBreakdown,
+                        totalAmount = total
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Box(
+                    modifier = Modifier.weight(0.55f)
+                ) {
+                    CategoryLegend(
+                        categories = uiState.categoryBreakdown.take(5),
+                        onSeeAllClick = onSeeAllClick
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CategoryLegend(
+    categories: List<CategorySpend>, onSeeAllClick: () -> Unit
+) {
+
+    Column {
+
+        categories.forEach { category ->
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .background(
+                            getCategoryColor(category.category),
+                            CircleShape
+                        )
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Text(
+                    text = category.category,
+                    color = TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                    fontSize = 12.sp
+                )
+
+                Text(
+                    text = "₹${category.amount.toInt()}",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                    fontSize = 12.sp
+                )
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Text(
+                    text = "${(category.percentage * 100).toInt()}%",
+                    color = Color.Gray
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        TextButton(
+            onClick = onSeeAllClick,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("VIEW ALL CATEGORIES", color = CyanGlow, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Icon(Icons.Default.ChevronRight, null, tint = CyanGlow, modifier = Modifier.size(16.dp))
+        }
+    }
+}
+
+@Composable
+fun DonutChart(data: List<CategorySpend>, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier.padding(12.dp)) {
+        var startAngle = -90f
+        data.forEach { cat ->
+            val sweep = cat.percentage * 360f
+            drawArc(
+                color = getCategoryColor(cat.category),
+                startAngle = startAngle,
+                sweepAngle = sweep,
+                useCenter = false,
+                style = Stroke(width = 42f.dp.toPx(), cap = StrokeCap.Round),
+                size = Size(size.width, size.height)
+            )
+            startAngle += sweep
+        }
+    }
+}
+
+@Composable
+fun CategoryDonutChart(
+    categories: List<CategorySpend>,
+    totalAmount: Double
+) {
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(160.dp)
+    ) {
+
+        Canvas(
+            modifier = Modifier.fillMaxSize()
+        ) {
+
+            val sweepAngles = categories.map {
+                (it.amount / totalAmount * 360f).toFloat()
+            }
+
+            var startAngle = -90f
+
+            sweepAngles.forEachIndexed { index, sweepAngle ->
+
+                drawArc(
+                    color = getCategoryColor(category = categories[index].category),
+                    startAngle = startAngle,
+                    sweepAngle = sweepAngle,
+                    useCenter = false,
+                    style = Stroke(
+                        width = 32f,
+                        cap = StrokeCap.Round
+                    )
+                )
+
+                startAngle += sweepAngle
+            }
+        }
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+
+            Text(
+                text = "₹${totalAmount.toInt()}",
+                color = Color.White,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = "Total",
+                color = Color.Gray,
+                fontSize = 14.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun PaymentModeSplitChart(split: Map<String, Double>) {
+    val upi = split["UPI"] ?: 0.0
+    val card = split["Card"] ?: 0.0
+    val total = upi + card
+    val upiRatio = if (total > 0) (upi / total).toFloat() else 0f
+    
+    Box(contentAlignment = Alignment.Center) {
+        Canvas(modifier = Modifier.size(80.dp)) {
+            drawArc(
+                color = SurfaceGlassBright,
+                startAngle = 0f,
+                sweepAngle = 360f,
+                useCenter = false,
+                style = Stroke(width = 8.dp.toPx())
+            )
+            drawArc(
+                color = CyanGlow,
+                startAngle = -90f,
+                sweepAngle = upiRatio * 360f,
+                useCenter = false,
+                style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
+            )
+        }
+        Text("${(upiRatio * 100).toInt()}%", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+fun SmallInsightRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = PremiumGold, modifier = Modifier.size(14.dp))
+        Spacer(modifier = Modifier.width(8.dp))
+        Column {
+            Text(label, color = TextSecondary, fontSize = 9.sp)
+            Text(value, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+fun BudgetStatusCard(budget: Double, spent: Double, remaining: Double, symbol: String) {
+    val progress = if (budget > 0) (spent / budget).toFloat().coerceIn(0f, 1f) else 0f
+    val isOverBudget = spent > budget && budget > 0
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(CyanGlow.copy(alpha = 0.15f), Color.Transparent)
-                )
-            )
+            .background(Brush.verticalGradient(listOf(CyanGlow.copy(alpha = 0.15f), SurfaceGlass)))
             .border(1.dp, CyanGlow.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
+            .padding(20.dp)
+    ) {
+        Column {
+            Text(if (isOverBudget) "Budget Exceeded" else "Remaining Budget", color = TextSecondary, fontSize = 12.sp)
+            Text(
+                "$symbol${formatIndianCurrency(if (isOverBudget) spent - budget else remaining)}",
+                color = if (isOverBudget) ColorFood else CyanGlow,
+                fontSize = 32.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
+                color = if (isOverBudget) ColorFood else CyanGlow,
+                trackColor = SurfaceGlassBright
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Spent: $symbol${formatIndianCurrency(spent)}", color = TextSecondary, fontSize = 11.sp)
+                Text("Budget: $symbol${formatIndianCurrency(budget)}", color = TextSecondary, fontSize = 11.sp)
+            }
+        }
+    }
+}
+
+@Composable
+fun SpendingTrendChartInteractive(data: List<DailySpend>, symbol: String) {
+    var selectedPoint by remember { mutableStateOf<DailySpend?>(null) }
+    val maxAmount = (data.maxOfOrNull { it.amount } ?: 0.0).coerceAtLeast(1000.0)
+    val textMeasurer = rememberTextMeasurer()
+
+    // Nice round number for the top of the graph (multiples of 5k or 1k)
+    val gridMax = if (maxAmount < 5000) {
+        (((maxAmount / 1000).toInt() + 1) * 1000).toDouble()
+    } else {
+        (((maxAmount / 5000).toInt() + 1) * 5000).toDouble()
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp)
+    ) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(data) {
+                    detectTapGestures { offset ->
+                        val labelWidth = 35.dp.toPx()
+                        val chartWidth = size.width - labelWidth
+                        val x = offset.x - labelWidth
+                        if (x >= 0 && chartWidth > 0) {
+                            val step = if (data.size > 1) chartWidth / (data.size - 1) else 0f
+                            val index = if (step > 0) (x / step + 0.5f).toInt().coerceIn(0, data.size - 1) else 0
+                            selectedPoint = data[index]
+                        }
+                    }
+                }
+        ) {
+                val labelWidth = 35.dp.toPx()
+                val labelHeight = 24.dp.toPx()
+                val width = size.width - labelWidth
+                val height = size.height - labelHeight
+
+                val stepX = if (data.size > 1) width / (data.size - 1) else 0f
+
+                val points = data.mapIndexed { index, daily ->
+                    val x = labelWidth + index * stepX
+                    val y = height - (daily.amount.toFloat() / gridMax.toFloat() * height).coerceIn(0f, height)
+                    androidx.compose.ui.geometry.Offset(x, y)
+                }
+
+                // 1. Grid & Y Labels
+                val divisions = 4
+                for (i in 0..divisions) {
+                    val progress = i / divisions.toFloat()
+                    val y = height - (progress * height)
+
+                    // Grid Line
+                    drawLine(
+                        color = TextSecondary.copy(alpha = 0.1f),
+                        start = androidx.compose.ui.geometry.Offset(labelWidth, y),
+                        end = androidx.compose.ui.geometry.Offset(size.width, y),
+                        strokeWidth = 1.dp.toPx()
+                    )
+
+                    // Label
+                    val amountVal = (gridMax * progress).toInt()
+                    val label = when {
+                        amountVal >= 1000 -> "$symbol${amountVal / 1000}k"
+                        else -> "$symbol$amountVal"
+                    }
+                    drawText(
+                        textMeasurer = textMeasurer,
+                        text = label,
+                        topLeft = androidx.compose.ui.geometry.Offset(0f, y - 7.dp.toPx()),
+                        style = androidx.compose.ui.text.TextStyle(color = TextSecondary, fontSize = 9.sp)
+                    )
+                }
+
+                // 2. X Labels (Dates)
+                if (data.size >= 2) {
+                    val labelIndices = if (data.size <= 5) {
+                        data.indices.toList()
+                    } else {
+                        listOf(0, data.size / 4, data.size / 2, 3 * data.size / 4, data.size - 1).distinct()
+                    }
+                    
+                    labelIndices.forEach { idx ->
+                        val p = points[idx]
+                        val date = data[idx].date
+                        val label = "${date.dayOfMonth} ${date.month.name.take(3)}"
+                        drawText(
+                            textMeasurer = textMeasurer,
+                            text = label,
+                            topLeft = androidx.compose.ui.geometry.Offset(p.x - 15.dp.toPx(), height + 8.dp.toPx()),
+                            style = androidx.compose.ui.text.TextStyle(color = TextSecondary, fontSize = 9.sp)
+                        )
+                    }
+                }
+
+                // 3. Shaded Fill
+                if (points.isNotEmpty()) {
+                    val fillPath = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(points.first().x, height)
+                        points.forEach { lineTo(it.x, it.y) }
+                        lineTo(points.last().x, height)
+                        close()
+                    }
+                    drawPath(
+                        path = fillPath,
+                        brush = Brush.verticalGradient(
+                            colors = listOf(CyanGlow.copy(alpha = 0.25f), Color.Transparent),
+                            startY = 0f,
+                            endY = height
+                        )
+                    )
+                }
+
+                // 4. Smooth Line
+                val linePath = androidx.compose.ui.graphics.Path().apply {
+                    if (points.isNotEmpty()) {
+                        moveTo(points.first().x, points.first().y)
+                        points.drop(1).forEach { lineTo(it.x, it.y) }
+                    }
+                }
+                drawPath(
+                    path = linePath,
+                    color = CyanGlow,
+                    style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
+                )
+
+                // 5. Interaction & Selected Point
+                selectedPoint?.let { sel ->
+                    val idx = data.indexOf(sel)
+                    if (idx != -1) {
+                        val p = points[idx]
+                        
+                        // Vertical indicator line
+                        drawLine(
+                            color = CyanGlow.copy(alpha = 0.3f),
+                            start = androidx.compose.ui.geometry.Offset(p.x, 0f),
+                            end = androidx.compose.ui.geometry.Offset(p.x, height),
+                            strokeWidth = 1.dp.toPx()
+                        )
+                        
+                        drawCircle(Color.White, radius = 6.dp.toPx(), center = p)
+                        drawCircle(CyanGlow, radius = 4.dp.toPx(), center = p)
+
+                        // Value Bubble
+                        val tooltip = "$symbol${formatIndianCurrency(sel.amount)}"
+                        val textLayoutResult = textMeasurer.measure(
+                            text = tooltip,
+                            style = androidx.compose.ui.text.TextStyle(
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                        
+                        val bubbleWidth = textLayoutResult.size.width.toFloat() + 16.dp.toPx()
+                        val bubbleHeight = textLayoutResult.size.height.toFloat() + 8.dp.toPx()
+                        
+                        drawRoundRect(
+                            color = CyanGlow,
+                            topLeft = androidx.compose.ui.geometry.Offset(
+                                (p.x - bubbleWidth / 2).coerceIn(0f, size.width - bubbleWidth),
+                                p.y - bubbleHeight - 10.dp.toPx()
+                            ),
+                            size = Size(bubbleWidth, bubbleHeight),
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx())
+                        )
+                        
+                        drawText(
+                            textMeasurer = textMeasurer,
+                            text = tooltip,
+                            topLeft = androidx.compose.ui.geometry.Offset(
+                                (p.x - textLayoutResult.size.width / 2).coerceIn(8.dp.toPx(), size.width - textLayoutResult.size.width - 8.dp.toPx()),
+                                p.y - bubbleHeight - 6.dp.toPx()
+                            ),
+                            style = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+@Composable
+fun CashFlowMiniCard(income: Double, expense: Double, symbol: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(SurfaceGlass)
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Total Spending", color = TextSecondary, style = MaterialTheme.typography.labelLarge)
-            Text(
-                "$currencySymbol${formatIndianCurrency(amount)}",
-                color = TextPrimary,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = (-1).sp
-            )
+            Text("Total Income", color = TextSecondary, fontSize = 11.sp)
+            Text("$symbol${formatIndianCurrency(income)}", color = ColorGroceries, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        }
+        Box(modifier = Modifier.width(1.dp).height(32.dp).background(SurfaceGlassBright).align(Alignment.CenterVertically))
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Total Expense", color = TextSecondary, fontSize = 11.sp)
+            Text("$symbol${formatIndianCurrency(expense)}", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }
     }
 }
@@ -163,10 +813,10 @@ fun TotalSpendCard(amount: Double, currencySymbol: String = "₹") {
 fun SectionHeader(title: String) {
     Text(
         text = title,
-        style = MaterialTheme.typography.titleMedium,
+        style = MaterialTheme.typography.titleSmall,
         color = TextPrimary,
         fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(vertical = 4.dp)
+        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
     )
 }
 
@@ -174,42 +824,37 @@ fun SectionHeader(title: String) {
 fun CategoryProgressItem(item: CategorySpend, currencySymbol: String = "₹") {
     val color = getCategoryColor(item.category)
     Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 CategoryIconView(category = item.category, size = 32.dp, iconSize = 16.dp)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(item.category, color = TextPrimary, fontWeight = FontWeight.Medium)
+                Text(item.category, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
             }
-            Text(
-                "$currencySymbol${formatIndianCurrency(item.amount)}",
-                color = TextPrimary,
-                fontWeight = FontWeight.Bold
-            )
+            Text("$currencySymbol${formatIndianCurrency(item.amount)}", color = TextPrimary, fontWeight = FontWeight.Bold)
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .clip(CircleShape)
-                .background(SurfaceGlassBright)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(item.percentage)
-                    .fillMaxHeight()
-                    .background(color, CircleShape)
-            )
+        LinearProgressIndicator(
+            progress = { item.percentage },
+            modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+            color = color,
+            trackColor = SurfaceGlassBright
+        )
+    }
+}
+
+@Composable
+fun VesselProgressItem(vessel: VesselSpend, symbol: String) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(vessel.accountName.uppercase(), color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text("$symbol${formatIndianCurrency(vessel.amount)}", color = TextPrimary, fontWeight = FontWeight.Bold)
         }
-        Text(
-            "${(item.percentage * 100).toInt()}% of total spend",
-            color = TextSecondary,
-            fontSize = 11.sp,
-            modifier = Modifier.padding(top = 4.dp)
+        Spacer(modifier = Modifier.height(6.dp))
+        LinearProgressIndicator(
+            progress = { vessel.percentage },
+            modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+            color = SecondaryAccent,
+            trackColor = SurfaceGlassBright,
         )
     }
 }
@@ -217,23 +862,15 @@ fun CategoryProgressItem(item: CategorySpend, currencySymbol: String = "₹") {
 @Composable
 fun MerchantListItem(merchant: MerchantSpend, currencySymbol: String = "₹") {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(SurfaceGlass)
-            .padding(12.dp),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(SurfaceGlass).padding(12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
-            Text(merchant.merchant, color = TextPrimary, fontWeight = FontWeight.Bold)
-            Text("${merchant.count} transactions", color = TextSecondary, fontSize = 12.sp)
+            Text(merchant.merchant.uppercase(), color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            Text("${merchant.count} transactions", color = TextSecondary, fontSize = 11.sp)
         }
-        Text(
-            "$currencySymbol${formatIndianCurrency(merchant.amount)}",
-            color = TextPrimary,
-            fontWeight = FontWeight.Bold
-        )
+        Text("$currencySymbol${formatIndianCurrency(merchant.amount)}", color = TextPrimary, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -244,38 +881,94 @@ fun PaymentModeCard(split: Map<String, Double>, currencySymbol: String = "₹") 
     val total = upi + card
     val upiRatio = if (total > 0) (upi / total).toFloat() else 0f
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(SurfaceGlass)
-            .padding(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
+    Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(SurfaceGlass).padding(16.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
-                Text("UPI / Digital", color = TextSecondary, fontSize = 12.sp)
+                Text("UPI / DIGITAL", color = TextSecondary, fontSize = 11.sp)
                 Text("$currencySymbol${formatIndianCurrency(upi)}", color = CyanGlow, fontWeight = FontWeight.Bold)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("Card / Others", color = TextSecondary, fontSize = 12.sp)
+                Text("CARD / OTHERS", color = TextSecondary, fontSize = 11.sp)
                 Text("$currencySymbol${formatIndianCurrency(card)}", color = TextPrimary, fontWeight = FontWeight.Bold)
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(12.dp)
-                .clip(CircleShape)
-        ) {
-            if (upiRatio > 0) {
-                Box(modifier = Modifier.weight(upiRatio).fillMaxHeight().background(CyanGlow))
+        Row(modifier = Modifier.fillMaxWidth().height(10.dp).clip(CircleShape)) {
+            if (upiRatio > 0) Box(modifier = Modifier.weight(upiRatio).fillMaxHeight().background(CyanGlow))
+            if (1f - upiRatio > 0) Box(modifier = Modifier.weight(1f - upiRatio).fillMaxHeight().background(SurfaceGlassBright))
+        }
+    }
+}
+
+@Composable
+fun InsightCard(insight: SmartInsight) {
+    Card(
+        modifier = Modifier.width(220.dp).height(85.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceGlass)
+    ) {
+        Row(modifier = Modifier.fillMaxSize().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.size(36.dp).clip(CircleShape).background(PremiumGold.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = when(insight.icon) {
+                        "warning" -> Icons.Default.Warning
+                        "check" -> Icons.Default.CheckCircle
+                        "store" -> Icons.Default.Storefront
+                        else -> Icons.AutoMirrored.Filled.TrendingUp
+                    },
+                    contentDescription = null,
+                    tint = when(insight.icon) {
+                        "warning" -> ColorFood
+                        "check" -> ColorGroceries
+                        else -> PremiumGold
+                    },
+                    modifier = Modifier.size(20.dp)
+                )
             }
-            if (1f - upiRatio > 0) {
-                Box(modifier = Modifier.weight(1f - upiRatio).fillMaxHeight().background(SurfaceGlassBright))
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(insight.title, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(insight.description, color = TextSecondary, fontSize = 10.sp, lineHeight = 14.sp)
+            }
+        }
+    }
+}
+
+@Composable
+fun PaymentChannelsSection(uiState: InsightsUiState) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        // Multi-Vessel Split
+        Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(SurfaceGlass).padding(16.dp)) {
+            Column {
+                Text("SPENDING BY SOURCE", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Show UPI and all cards
+                uiState.vesselBreakdown.forEach { vessel ->
+                    VesselProgressItem(vessel, uiState.currencySymbol)
+                }
+            }
+        }
+
+        Row(modifier = Modifier.fillMaxWidth().height(180.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(SurfaceGlass).padding(16.dp)) {
+                Column {
+                    Text("UPI vs CARD", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.weight(1f))
+                    PaymentModeSplitChart(uiState.upiVsCard)
+                }
+            }
+            
+            Box(modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(SurfaceGlass).padding(16.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("MORE INSIGHTS", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    SmallInsightRow(Icons.Default.CalendarToday, "Most Active", uiState.mostActiveDay)
+                    SmallInsightRow(Icons.Default.AccessTime, "Peak Time", uiState.peakSpendingTime)
+                    SmallInsightRow(Icons.Default.CurrencyRupee, "Avg Txn", "${uiState.currencySymbol}${uiState.avgTransactionSize.toInt()}")
+                }
             }
         }
     }

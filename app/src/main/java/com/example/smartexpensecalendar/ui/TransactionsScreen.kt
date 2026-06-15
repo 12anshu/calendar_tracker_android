@@ -1,5 +1,6 @@
 package com.example.smartexpensecalendar.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.SwapHorizontalCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -381,7 +383,12 @@ fun MovementTransactionItem(
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(SurfaceGlass.copy(alpha = 0.6f))
+            .background(SurfaceGlass.copy(alpha = 0.2f)) // Reduced background intensity
+            .border(
+                1.dp, 
+                SecondaryAccent.copy(alpha = 0.12f), // Subtle border instead of bright background
+                RoundedCornerShape(12.dp)
+            )
             .clickable { onClick() }
     ) {
         Row(
@@ -392,18 +399,18 @@ fun MovementTransactionItem(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                // Shared Movement Icon
+                // Shared Movement Icon with softer background
                 Box(
                     modifier = Modifier
                         .size(42.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(SecondaryAccent.copy(alpha = 0.2f)),
+                        .background(SecondaryAccent.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.SwapHoriz,
+                        imageVector = Icons.Default.SwapHorizontalCircle,
                         contentDescription = "Movement",
-                        tint = SecondaryAccent,
+                        tint = SecondaryAccent.copy(alpha = 0.7f),
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -413,22 +420,23 @@ fun MovementTransactionItem(
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "${debit.accountName ?: "Source"} → ${credit.accountName ?: "Target"}",
+                            text = "${debit.accountName ?: "SOURCE"} → ${credit.accountName ?: "TARGET"}".uppercase(),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary,
+                            color = TextPrimary.copy(alpha = 0.9f),
                             maxLines = 1,
                             modifier = Modifier.weight(1f, fill = false)
                         )
                         
                         Spacer(modifier = Modifier.width(6.dp))
                         Surface(
-                            color = SurfaceGlassBright.copy(alpha = 0.3f),
-                            shape = RoundedCornerShape(4.dp)
+                            color = SecondaryAccent.copy(alpha = 0.08f),
+                            shape = RoundedCornerShape(4.dp),
+                            border = BorderStroke(1.dp, SecondaryAccent.copy(alpha = 0.15f))
                         ) {
                             Text(
                                 "SETTLED",
-                                color = TextSecondary,
+                                color = SecondaryAccent.copy(alpha = 0.6f),
                                 fontSize = 8.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
@@ -438,7 +446,7 @@ fun MovementTransactionItem(
                     Text(
                         text = "Internal Movement • ${debit.category}",
                         style = MaterialTheme.typography.labelMedium,
-                        color = TextSecondary
+                        color = TextSecondary.copy(alpha = 0.7f)
                     )
                 }
             }
@@ -448,12 +456,12 @@ fun MovementTransactionItem(
                     text = "$currencySymbol${formatIndianCurrency(debit.amount)}",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
-                    color = TextSecondary // Neutral color for settlements
+                    color = TextSecondary.copy(alpha = 0.6f)
                 )
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = "Settled",
-                    tint = SecondaryAccent.copy(alpha = 0.6f),
+                    tint = SecondaryAccent.copy(alpha = 0.4f),
                     modifier = Modifier.size(14.dp)
                 )
             }
@@ -553,7 +561,7 @@ fun TransactionItem(
                                 }
 
                                 Text(
-                                    text = displayName,
+                                    text = displayName.uppercase(),
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = TextPrimary,
@@ -564,12 +572,13 @@ fun TransactionItem(
                                 if (expense.status == TransactionStatus.SETTLEMENT) {
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Surface(
-                                        color = SurfaceGlassBright.copy(alpha = 0.3f),
-                                        shape = RoundedCornerShape(4.dp)
+                                        color = SecondaryAccent.copy(alpha = 0.08f),
+                                        shape = RoundedCornerShape(4.dp),
+                                        border = BorderStroke(1.dp, SecondaryAccent.copy(alpha = 0.15f))
                                     ) {
                                         Text(
                                             "SETTLED",
-                                            color = TextSecondary,
+                                            color = SecondaryAccent.copy(alpha = 0.6f),
                                             fontSize = 8.sp,
                                             fontWeight = FontWeight.ExtraBold,
                                             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
@@ -606,7 +615,7 @@ fun TransactionItem(
                                         color = SecondaryAccent.copy(alpha = 0.8f),
                                         fontWeight = FontWeight.Medium
                                     )) {
-                                        append(expense.accountName)
+                                        append(expense.accountName.uppercase())
                                     }
                                 }
                             }

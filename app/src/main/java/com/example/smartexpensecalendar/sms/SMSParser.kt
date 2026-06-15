@@ -46,7 +46,7 @@ object SMSParser {
         Pattern.CASE_INSENSITIVE
     )
 
-    fun parse(body: String): ParsedSMS? {
+    fun parse(body: String, sender: String = ""): ParsedSMS? {
         val normalizedBody = SMSNormalizer.normalize(body)
         val uppercaseBody = normalizedBody.uppercase()
 
@@ -110,7 +110,7 @@ object SMSParser {
             accountSuffix = suffixMatcher.group(1)
         }
 
-        val accountName = AccountNameExtractor.extract(body)
+        val accountName = AccountNameExtractor.extract(body, sender)
         val quality = calculateQuality(body)
 
         return ParsedSMS(

@@ -25,17 +25,23 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.smartexpensecalendar.domain.model.DefaultCategories
 import com.example.smartexpensecalendar.domain.model.Expense
+import com.example.smartexpensecalendar.domain.model.TransactionStatus
 import com.example.smartexpensecalendar.presentation.detail.ExpenseDetailViewModel
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.ui.components.CategoryGridPicker
+import com.example.smartexpensecalendar.ui.MovementTransactionItem
 import com.example.smartexpensecalendar.core.designsystem.theme.*
+import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -214,35 +220,69 @@ fun ExpenseDetailBottomSheet(
                         }
                     }
                     
-                    items(expenses) { expense ->
-                        ExpenseRow(
-                            expense = expense,
-                            categories = categories,
-                            isEditing = editingExpenseId == expense.id,
-                            currencySymbol = currencySymbol,
-                            onEditToggle = { isEditing ->
-                                editingExpenseId = if (isEditing) expense.id else null
-                                if (isEditing) showAddSection = false
-                            },
-                            onDelete = {
-                                scope.launch {
-                                    viewModel.deleteExpense(expense)
-                                    val result = snackbarHostState.showSnackbar(
-                                        message = "Expense deleted",
-                                        actionLabel = "Undo",
-                                        duration = SnackbarDuration.Short
+                    val dayItems = expensesRaw.filter { it.date == date }
+                    val allItems = expensesRaw // Already filtered for this day in viewmodel usually, but let's be safe
+                    val handledIds = mutableSetOf<Long>()
+
+                    expensesRaw.forEach { expense ->
+                        if (expense.id in handledIds) return@forEach
+
+                        if (expense.status == TransactionStatus.SETTLEMENT && expense.linkedId != null) {
+                            // Find partner for movement card
+                            val partner = expensesRaw.find { it.id == expense.linkedId }
+                            if (partner != null) {
+                                val debit = if (expense.type == com.example.smartexpensecalendar.domain.model.TransactionType.DEBIT) expense else partner
+                                val credit = if (expense.type == com.example.smartexpensecalendar.domain.model.TransactionType.CREDIT) expense else partner
+                                
+                                item(key = "move_${debit.id}") {
+                                    MovementTransactionItem(
+                                        debit = debit,
+                                        credit = credit,
+                                        currencySymbol = currencySymbol,
+                                        onClick = { }
                                     )
-                                    if (result == SnackbarResult.ActionPerformed) {
-                                        viewModel.addExpense(expense.amount, expense.category, expense.date)
-                                    }
                                 }
-                            },
-                            onEdit = { amount, category, applyToFuture ->
-                                viewModel.updateExpense(expense, amount, category, applyToFuture)
-                                editingExpenseId = null
-                            },
-                            onAddCustomCategory = { showAddCategoryDialog = true }
-                        )
+                                handledIds.add(debit.id)
+                                handledIds.add(credit.id)
+                                return@forEach
+                            }
+                        }
+
+                        // Regular Expense Row
+                        if (expense.type == com.example.smartexpensecalendar.domain.model.TransactionType.DEBIT && 
+                            expense.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.COMPLETED) {
+                            item(key = expense.id) {
+                                ExpenseRow(
+                                    expense = expense,
+                                    categories = categories,
+                                    isEditing = editingExpenseId == expense.id,
+                                    currencySymbol = currencySymbol,
+                                    onEditToggle = { isEditing ->
+                                        editingExpenseId = if (isEditing) expense.id else null
+                                        if (isEditing) showAddSection = false
+                                    },
+                                    onDelete = {
+                                        scope.launch {
+                                            viewModel.deleteExpense(expense)
+                                            val result = snackbarHostState.showSnackbar(
+                                                message = "Expense deleted",
+                                                actionLabel = "Undo",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                            if (result == SnackbarResult.ActionPerformed) {
+                                                viewModel.addExpense(expense.amount, expense.category, expense.date)
+                                            }
+                                        }
+                                    },
+                                    onEdit = { amount, category, applyToFuture ->
+                                        viewModel.updateExpense(expense, amount, category, applyToFuture)
+                                        editingExpenseId = null
+                                    },
+                                    onAddCustomCategory = { showAddCategoryDialog = true }
+                                )
+                            }
+                        }
+                        handledIds.add(expense.id)
                     }
                 }
             }
@@ -355,23 +395,46 @@ fun ExpenseRow(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     // Unified Category Icon
                     CategoryIconView(category = expense.category)
 
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Column {
+                        val displayName = when {
+                            !expense.merchant.isNullOrBlank() -> expense.merchant
+                            !expense.accountName.isNullOrBlank() -> expense.accountName
+                            else -> "Transaction"
+                        }
+                        
                         Text(
-                            text = expense.merchant ?: "Transaction",
+                            text = displayName.uppercase(),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
                         )
+
+                        val subtitle = buildAnnotatedString {
+                            withStyle(SpanStyle(color = TextSecondary)) {
+                                append(expense.category)
+                            }
+                            if (!expense.accountName.isNullOrBlank()) {
+                                withStyle(SpanStyle(color = TextSecondary.copy(alpha = 0.5f))) {
+                                    append("  •  ")
+                                }
+                                withStyle(SpanStyle(
+                                    color = SecondaryAccent.copy(alpha = 0.8f),
+                                    fontWeight = FontWeight.Medium
+                                )) {
+                                    append(expense.accountName.uppercase())
+                                }
+                            }
+                        }
+
                         Text(
-                            text = expense.category,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = TextSecondary
+                            text = subtitle,
+                            style = MaterialTheme.typography.labelMedium
                         )
                     }
                 }
@@ -379,7 +442,7 @@ fun ExpenseRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = "$currencySymbol${"%,.0f".format(expense.amount)}",
+                            text = "$currencySymbol${formatIndianCurrency(expense.amount)}",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.ExtraBold,
                             color = TextPrimary

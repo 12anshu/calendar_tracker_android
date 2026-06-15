@@ -75,7 +75,7 @@ class SmsProviderDataSource @Inject constructor(
                 val eventType = FinancialEventTypeExtractor.extract(body, direction, mode)
                 val rawMerchant = MerchantExtractor.extractMerchant(body)
                 val normalizedMerchant = rawMerchant?.let { MerchantNormalizer.normalize(it) }
-                val accountName = AccountNameExtractor.extract(body)
+                val accountName = AccountNameExtractor.extract(body, address)
                 
                 val category = if (financialResult.isFinancial) {
                     categorizer.categorize(
