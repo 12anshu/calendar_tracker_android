@@ -43,8 +43,10 @@ class ExpenseRepositoryImpl @Inject constructor(
         return dao.getExpenseByCategoryAndDate(category, date.toString())?.toDomain()
     }
 
-    override suspend fun findSimilarExpense(amount: Double, date: LocalDate, type: com.example.smartexpensecalendar.domain.model.TransactionType): Expense? {
-        return dao.findSimilarExpense(amount, date.toString(), type.name)?.toDomain()
+    override suspend fun findSimilarExpense(amount: Double, date: LocalDate, type: com.example.smartexpensecalendar.domain.model.TransactionType, windowDays: Long): Expense? {
+        val startDate = date.minusDays(windowDays).toString()
+        val endDate = date.plusDays(windowDays).toString()
+        return dao.findSimilarInWindow(amount, type.name, startDate, endDate)?.toDomain()
     }
 
     override suspend fun findMatchingExpense(amount: Double, date: LocalDate, daysBack: Long): Expense? {

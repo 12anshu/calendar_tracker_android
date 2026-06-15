@@ -21,49 +21,62 @@ class TransactionLinker @Inject constructor(
      * Triggered primarily by Credits to find corresponding Debits within a 48h window.
      */
     suspend fun linkTransactions(startDate: LocalDate, endDate: LocalDate) {
-        // Fetch all unlinked candidates in range
-        val credits = repository.findExpensesInRange(TransactionType.CREDIT, startDate, endDate)
-            .filter { it.linkedId == null && it.status != TransactionStatus.FAILED }
+        // --- 1. CLEANUP PHASE (Brute Force Reset) ---
+        // We reset everything in the buffer window (e.g. 5 days around range) 
+        // to handle cross-month or delayed SMS logic correctly.
+        val searchStart = startDate.minusDays(5)
+        val searchEnd = endDate.plusDays(2)
 
-        // We fetch debits with a small buffer before start date to handle cross-month/latency pairs
-        val availableDebits = repository.findExpensesInRange(TransactionType.DEBIT, startDate.minusDays(2), endDate)
-            .filter { it.linkedId == null && it.status != TransactionStatus.FAILED }
+        val allInRange = repository.findExpensesInRange(TransactionType.CREDIT, searchStart, searchEnd) +
+                        repository.findExpensesInRange(TransactionType.DEBIT, searchStart, searchEnd)
+        
+        allInRange.forEach { expense ->
+            if (expense.linkedId != null || expense.status == TransactionStatus.SETTLEMENT) {
+                repository.updateExpenseStatus(expense.id, TransactionStatus.COMPLETED, null)
+            }
+        }
+
+        // --- 2. MATCHING PHASE ---
+        val credits = repository.findExpensesInRange(TransactionType.CREDIT, searchStart, searchEnd)
+            .filter { it.status != TransactionStatus.FAILED }
+
+        val availableDebits = repository.findExpensesInRange(TransactionType.DEBIT, searchStart, searchEnd)
+            .filter { it.status != TransactionStatus.FAILED }
             .toMutableList()
 
         if (credits.isEmpty() || availableDebits.isEmpty()) return
 
         credits.forEach { credit ->
-            val match = findBestMovementMatch(credit, availableDebits)
-            if (match != null) {
-                applyForcedLink(match, credit)
-                availableDebits.remove(match)
+            // 1. Try Exact Match First
+            val exactMatch = findExactMatch(credit, availableDebits)
+            if (exactMatch != null) {
+                applyForcedLink(exactMatch, credit, TransactionStatus.SETTLEMENT)
+                availableDebits.remove(exactMatch)
+            } else {
+                // 2. Try Fuzzy Match (Requires User Confirmation)
+                val fuzzyMatch = findFuzzyMatch(credit, availableDebits)
+                if (fuzzyMatch != null) {
+                    applyForcedLink(fuzzyMatch, credit, TransactionStatus.PENDING_REVIEW)
+                    availableDebits.remove(fuzzyMatch)
+                }
             }
         }
     }
 
-    private fun findBestMovementMatch(credit: Expense, debits: List<Expense>): Expense? {
-        // Priority 1: Same Day + Exact Amount
-        debits.find { 
-            it.date == credit.date && 
-            isExactAmount(it.amount, credit.amount) &&
-            isCompatibleForLinking(it, credit)
-        }?.let { return it }
-
-        // Priority 2: 48h Window + Exact Amount
-        debits.find { 
+    private fun findExactMatch(credit: Expense, debits: List<Expense>): Expense? {
+        return debits.find { 
             isWithinWindow(it.date, credit.date, 2) && 
             isExactAmount(it.amount, credit.amount) &&
             isCompatibleForLinking(it, credit)
-        }?.let { return it }
+        }
+    }
 
-        // Priority 3: 48h Window + Fuzzy Amount (for CC Bill Payments with discounts)
-        debits.find { 
+    private fun findFuzzyMatch(credit: Expense, debits: List<Expense>): Expense? {
+        return debits.find { 
             isWithinWindow(it.date, credit.date, 2) && 
             isFuzzyAmountMatch(it.amount, credit.amount) &&
             isCompatibleForLinking(it, credit)
-        }?.let { return it }
-
-        return null
+        }
     }
 
     private fun isExactAmount(a: Double, b: Double): Boolean = abs(a - b) < 0.01
@@ -75,19 +88,20 @@ class TransactionLinker @Inject constructor(
     }
 
     /**
-     * The Gatekeeper: Ensures we only link internal movements or specific refunds.
+     * Logic: Internal movements don't need merchant matching.
+     * Spend/Refunds DO need merchant matching.
      */
     private fun isCompatibleForLinking(debit: Expense, credit: Expense): Boolean {
         // --- 1. MOVEMENT INTENT (Barrier Removal) ---
         // If either side is already confirmed as a Transfer or CC Payment via Enum.
+        // We prioritize this check to allow linking even if merchant names are null/different.
         val isConfirmedMovement = 
             credit.financialEventType == FinancialEventType.TRANSFER || 
-            credit.financialEventType == FinancialEventType.CREDIT_CARD_PAYMENT
-                    ||
+            credit.financialEventType == FinancialEventType.CREDIT_CARD_PAYMENT ||
             debit.financialEventType == FinancialEventType.TRANSFER ||
             debit.financialEventType == FinancialEventType.CREDIT_CARD_PAYMENT
 
-        // If intent is confirmed, categories don't matter. Match them.
+        // If intent is confirmed, we trust the Amount + Time window 100%.
         if (isConfirmedMovement) return true
 
         // --- 2. MERCHANT LOCK (Refund Protection) ---
@@ -100,18 +114,18 @@ class TransactionLinker @Inject constructor(
         }
 
         // --- 3. GENERIC FALLBACK (India Context) ---
-        // If both have no merchant name (common in P2P), allow link.
-        if (dMerchant.isNullOrBlank() && cMerchant.isNullOrBlank()) {
+        // If one or both have no merchant name (common in P2P/generic bank debits), allow link.
+        if (dMerchant.isNullOrBlank() || cMerchant.isNullOrBlank()) {
             return true
         }
 
         return false
     }
 
-    private suspend fun applyForcedLink(debit: Expense, credit: Expense) {
+    private suspend fun applyForcedLink(debit: Expense, credit: Expense, targetStatus: TransactionStatus) {
         // 1. Unify the Category
         val finalCategory = when {
-            debit.financialEventType == FinancialEventType.CREDIT_CARD_PAYMENT ||
+            debit.financialEventType == FinancialEventType.CREDIT_CARD_PAYMENT || 
             credit.financialEventType == FinancialEventType.CREDIT_CARD_PAYMENT -> "Card Payment"
             
             debit.financialEventType == FinancialEventType.EMI_PAYMENT || 
@@ -120,36 +134,44 @@ class TransactionLinker @Inject constructor(
             else -> "Transfer"
         }
 
-        // 2. Identity Merge: Choose the most descriptive merchant name
-        // (Filter out placeholders like "Payment", "Received", "Account Transfer")
+        // 2. Identity Merge
         val dMerchant = debit.merchant
         val cMerchant = credit.merchant
         
         val enrichedMerchant = when {
-            finalCategory == "Card Payment" && !cMerchant.isNullOrBlank() -> cMerchant
-            !dMerchant.isNullOrBlank() && dMerchant != "Payment" && dMerchant != "Account Transfer" -> dMerchant
-            !cMerchant.isNullOrBlank() && cMerchant != "Received" -> cMerchant
-            else -> dMerchant ?: cMerchant
+            finalCategory == "Card Payment" && !cMerchant.isNullOrBlank() && cMerchant != "NONE" -> cMerchant
+            !dMerchant.isNullOrBlank() && dMerchant != "Payment" && dMerchant != "Account Transfer" && dMerchant != "NONE" -> dMerchant
+            !cMerchant.isNullOrBlank() && cMerchant != "Received" && cMerchant != "NONE" -> cMerchant
+            else -> if (dMerchant == "NONE" || dMerchant == "Payment") cMerchant else dMerchant ?: cMerchant
         }
 
-        // 3. Full Object Update: Force Room to refresh the UI with new status and metadata
-        val settledDebit = debit.copy(
-            merchant = enrichedMerchant,
-            category = finalCategory,
-            status = TransactionStatus.SETTLEMENT,
+        val finalMerchant = if (enrichedMerchant == "NONE") null else enrichedMerchant
+
+        // 3. Full Update Cycle: Status -> Metadata -> Upsert
+        // This triple-check ensures Room definitely notifies the UI for BOTH IDs
+        repository.updateExpenseStatus(debit.id, targetStatus, credit.id)
+        repository.updateExpenseStatus(credit.id, targetStatus, debit.id)
+        
+        repository.updateExpenseCategory(debit.id, finalCategory)
+        repository.updateExpenseCategory(credit.id, finalCategory)
+
+        val updatedDebit = debit.copy(
+            status = targetStatus, 
+            category = finalCategory, 
+            merchant = finalMerchant, 
             linkedId = credit.id
         )
-        val settledCredit = credit.copy(
-            merchant = enrichedMerchant,
-            category = finalCategory,
-            status = TransactionStatus.SETTLEMENT,
+        val updatedCredit = credit.copy(
+            status = targetStatus, 
+            category = finalCategory, 
+            merchant = finalMerchant, 
             linkedId = debit.id
         )
-
-        repository.upsertExpense(settledDebit)
-        repository.upsertExpense(settledCredit)
         
-        Log.d("TransactionLinker", "RECONCILED: ${debit.amount} -> $finalCategory ($enrichedMerchant)")
+        repository.upsertExpense(updatedDebit)
+        repository.upsertExpense(updatedCredit)
+        
+        Log.d("TransactionLinker", "RECONCILED PAIR: ${debit.id}(D) <-> ${credit.id}(C) | Amount: ${debit.amount} | Status: $targetStatus")
     }
 
     private fun isWithinWindow(d1: LocalDate, d2: LocalDate, days: Int): Boolean {

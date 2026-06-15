@@ -83,8 +83,15 @@ class SMSReceiver : BroadcastReceiver() {
 
                 val date = Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).toLocalDate()
 
-                // Deduplication - Now Type-Aware to allow Debit+Credit of same amount (Transfers)
-                if (repository.findSimilarExpense(finalParsed.amount, date, finalParsed.type) != null) return@launch
+                // --- SMART DEDUPLICATION (Window-Aware & Quality-Aware) ---
+                val existing = repository.findSimilarExpense(finalParsed.amount, date, finalParsed.type, windowDays = 1)
+                if (existing != null) {
+                    if (finalParsed.quality > existing.quality) {
+                        repository.deleteExpense(existing)
+                    } else {
+                        return@launch
+                    }
+                }
 
                 repository.upsertExpense(
                     Expense(
@@ -100,14 +107,13 @@ class SMSReceiver : BroadcastReceiver() {
                         status = finalParsed.status,
                         accountSuffix = finalParsed.accountSuffix,
                         accountName = finalParsed.accountName,
+                        quality = finalParsed.quality,
                         originalSmsId = timestamp
                     )
                 )
 
-                /* 
-                // Run Unified Linker (48h window) - PAUSED
+                // Run Unified Linker (48h window)
                 linker.linkTransactions(date.minusDays(2), date.plusDays(2))
-                */
 
                 // Notification for actual spends
                 if (finalParsed.type == com.example.smartexpensecalendar.domain.model.TransactionType.DEBIT &&

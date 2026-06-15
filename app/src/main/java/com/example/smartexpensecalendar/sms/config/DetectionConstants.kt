@@ -35,8 +35,13 @@ object DetectionConstants {
     const val MESSAGE_TYPE_MIN_THRESHOLD = 20
 
     // --- SHARED REGEX FRAGMENTS ---
-    // Covers: Rs, Rs., INR, ₹, $, Amt, Amount, Re, Re.
-    const val CURRENCY_SYMBOLS = "(?:RS\\.?|INR|₹|AMT|AMOUNT|RE\\.?|\\$)"
+    val CURRENCY_LIST = listOf(
+        "RS\\.?", "INR", "₹", "RE\\.?", "AMT", "AMOUNT", // Indian
+        "USD", "\\$", "EUR", "€", "GBP", "£",            // Global
+        "AED", "SAR", "CAD", "AUD", "SGD"                // Regional
+    )
+
+    val CURRENCY_SYMBOLS = "(?:${CURRENCY_LIST.joinToString("|")})"
 
     // --- CONTEXTUAL PENALTIES (Merged V2 Intelligence) ---
     const val FAILED_TXN_PENALTY = -100

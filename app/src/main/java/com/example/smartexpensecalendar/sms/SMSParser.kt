@@ -32,6 +32,7 @@ data class ParsedSMS(
     val status: TransactionStatus = TransactionStatus.COMPLETED,
     val accountSuffix: String? = null,
     val accountName: String? = null,
+    val quality: Int = 1,
     val confidence: Int = 0,
     val senderType: SenderType = SenderType.UNKNOWN
 )
@@ -41,46 +42,30 @@ object SMSParser {
     private val messageTypeDetector = MessageTypeDetector()
 
     private val accountSuffixRegex = Pattern.compile(
-        "(?i)(?:A/c|Acct|Card|XX|X|No|no\\.?)\\s*\\*?([0-9]{4})",
+        "(?i)(?:Card|Account|A/c|Acct|Acc|XX|X|No|ending|ending\\sin)\\s*[\\(\\[:\\-#\\s]*\\s*[*xX]*\\s*(\\d{2,4})\\b",
         Pattern.CASE_INSENSITIVE
     )
 
     fun parse(body: String): ParsedSMS? {
-        // 1. Normalize Whitespace and Currency Symbols
         val normalizedBody = SMSNormalizer.normalize(body)
         val uppercaseBody = normalizedBody.uppercase()
 
-        // --- STAGE 1: Fast-Pass Efficiency ---
-        
-        // 1.1 OTP Filter (Phrase-based with Exclusion)
         val isOtp = MessageTypePhrases.otpPhrases.any { uppercaseBody.contains(it) }
         val isOtpExclusion = MessageTypePhrases.otpExcludePhrases.any { uppercaseBody.contains(it) }
         if (isOtp && !isOtpExclusion) return null
 
-        // 1.2 Amount Check
         val amount = AmountExtractor.extractAmount(body) ?: return null
-
-        // 1.3 Broad Financial Signal
         val financialResult = FinancialDetector.detect(body)
-        
-        // --- STAGE 2: Unified Classification (Sequential Phrase Logic) ---
         
         val messageTypeResult = messageTypeDetector.detect(normalizedBody)
         var messageType = messageTypeResult.messageType
 
-        // THE ZERO-MISS DEFAULT RULE:
-        // If it's financial domain AND has an amount, but no phrase matched:
-        // We promote it to TRANSACTION to ensure visibility.
         if (messageType == MessageType.UNKNOWN && financialResult.isFinancial) {
             messageType = MessageType.TRANSACTION
         }
 
-        // If the detector determines it is NOT financial, we stop parsing.
         if (!financialResult.isFinancial) return null
 
-        // --- STAGE 3: Direction & Event Type ---
-        
-        // Use classifier direction if found, otherwise fallback to extractor
         val direction = if (messageTypeResult.detectedDirection != TransactionDirection.UNKNOWN) {
             messageTypeResult.detectedDirection
         } else {
@@ -89,12 +74,10 @@ object SMSParser {
 
         val mode = ModeExtractor.extractMode(body)
         
-        // --- DIRECTION TO TYPE MAPPING ---
-        // Crucial: Credit always results in TransactionType.CREDIT
         var type = when (direction) {
             TransactionDirection.CREDIT -> TransactionType.CREDIT
             TransactionDirection.DEBIT -> TransactionType.DEBIT
-            TransactionDirection.UNKNOWN -> TransactionType.DEBIT // Default to Debit
+            TransactionDirection.UNKNOWN -> TransactionType.DEBIT
         }
             
         var status = if (direction == TransactionDirection.UNKNOWN) 
@@ -109,12 +92,9 @@ object SMSParser {
             status = TransactionStatus.FAILED
         }
 
-        // --- STAGE 4: Final Extraction ---
-        
         val rawMerchant = MerchantExtractor.extractMerchant(body)
         var merchant = rawMerchant?.let { MerchantNormalizer.normalize(it) }
 
-        // --- ENHANCED MEAL CARD IDENTITY ---
         if (merchant.isNullOrBlank() && mode == TransactionMode.MEAL_CARD) {
             merchant = when {
                 uppercaseBody.contains("PLUXEE") -> "Pluxee Transaction"
@@ -131,6 +111,7 @@ object SMSParser {
         }
 
         val accountName = AccountNameExtractor.extract(body)
+        val quality = calculateQuality(body)
 
         return ParsedSMS(
             amount = amount,
@@ -144,8 +125,17 @@ object SMSParser {
             status = status,
             accountSuffix = accountSuffix,
             accountName = accountName,
+            quality = quality,
             confidence = calculateConfidence(amount, merchant, direction, mode)
         )
+    }
+
+    private fun calculateQuality(body: String): Int {
+        val upper = body.uppercase()
+        var score = 1
+        if (Regex("UPI\\s*REF|VPA|PAID\\s*VIA|SUCCESS|TXN\\s*ID|REF#").containsMatchIn(upper)) score = 2
+        if (Regex("VALUE\\s*DATE|AVL\\s*BAL|AVAILABLE\\s*BALANCE|A/C\\s*ENDING|CREDITED\\s*TO\\s*YOUR\\s*CARD").containsMatchIn(upper)) score = 3
+        return score
     }
 
     private fun mapToPaymentMethod(mode: TransactionMode): PaymentMethod {

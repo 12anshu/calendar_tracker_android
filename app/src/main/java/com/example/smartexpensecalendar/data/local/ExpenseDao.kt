@@ -24,8 +24,8 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE category = :category AND date = :date LIMIT 1")
     suspend fun getExpenseByCategoryAndDate(category: String, date: String): ExpenseEntity?
 
-    @Query("SELECT * FROM expenses WHERE amount = :amount AND date = :date AND type = :type LIMIT 1")
-    suspend fun findSimilarExpense(amount: Double, date: String, type: String): ExpenseEntity?
+    @Query("SELECT * FROM expenses WHERE amount = :amount AND type = :type AND date >= :startDate AND date <= :endDate LIMIT 1")
+    suspend fun findSimilarInWindow(amount: Double, type: String, startDate: String, endDate: String): ExpenseEntity?
 
     @Query("""
         SELECT * FROM expenses 

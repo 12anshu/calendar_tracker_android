@@ -158,13 +158,13 @@ class SMSSyncWorker @AssistedInject constructor(
                         .atZone(ZoneId.systemDefault())
                         .toLocalDate()
 
-                    // Reconciliation Logic
-                    var linkedId: Long? = null
-                    if (finalParsed.type == com.example.smartexpensecalendar.domain.model.TransactionType.CREDIT) {
-                        val match = repository.findMatchingExpense(finalParsed.amount, localDate, 3)
-                        if (match != null) {
-                            linkedId = match.id
-                            repository.updateExpenseStatus(match.id, finalParsed.status, null)
+                    // --- SMART DEDUPLICATION (Window-Aware & Quality-Aware) ---
+                    val existing = repository.findSimilarExpense(finalParsed.amount, localDate, finalParsed.type, windowDays = 1)
+                    if (existing != null) {
+                        if (finalParsed.quality > existing.quality) {
+                            repository.deleteExpense(existing)
+                        } else {
+                            continue
                         }
                     }
 
@@ -182,7 +182,7 @@ class SMSSyncWorker @AssistedInject constructor(
                             status = finalParsed.status,
                             accountSuffix = finalParsed.accountSuffix,
                             accountName = finalParsed.accountName,
-                            linkedId = linkedId,
+                            quality = finalParsed.quality,
                             originalSmsId = id,
                             originalSmsBody = body,
                             syncDate = System.currentTimeMillis()
@@ -204,13 +204,11 @@ class SMSSyncWorker @AssistedInject constructor(
                 val yearMonth = YearMonth.of(syncYear, syncMonth)
                 val monthName = Month.of(syncMonth).name
                 
-                /*
-                // Run Reconciliation Linker after sync - PAUSED
+                // Run Reconciliation Linker after sync
                 linker.linkTransactions(
                     startDate = yearMonth.atDay(1),
                     endDate = yearMonth.atEndOfMonth()
                 )
-                */
 
                 if (foundExpensesCount > 0) {
                     NotificationHelper.showSyncCompleteNotification(

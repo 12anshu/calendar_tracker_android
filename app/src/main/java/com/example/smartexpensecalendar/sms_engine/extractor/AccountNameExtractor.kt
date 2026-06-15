@@ -6,8 +6,24 @@ import java.util.regex.Pattern
 object AccountNameExtractor {
 
     private val bankNames = listOf(
-        "HDFC", "ICICI", "SBI", "AXIS", "KOTAK", "HSBC", "AMEX", "SCB", "PNB", "BOB", 
-        "IDFC", "CITI", "YES BANK", "STANDARD CHARTERED", "CANARA", "DBS", "FEDERAL"
+        // Private Sector
+        "HDFC", "ICICI", "AXIS", "KOTAK", "INDUSIND", "YES BANK", "FEDERAL", "RBL", 
+        "SOUTH INDIAN", "KVB", "KARUR VYSYA", "KARNATAKA BANK", "KBL", 
+        "BANDHAN", "IDFC", "CITI", "HSBC", "SCB", "STANDARD CHARTERED", "AMEX", 
+        "AMERICAN EXPRESS", "DEUTSCHE BANK", "DBS", "DIGIBANK",
+        
+        // Public Sector
+        "SBI", "STATE BANK", "PNB", "PUNJAB NATIONAL", "BOB", "BARODA", "CANARA", 
+        "UBI", "UNION BANK", "BOI", "BANK OF INDIA", "INDIAN BANK", "CBI", 
+        "CENTRAL BANK", "UCO", "BOM", "MAHABANK", "BANK OF MAHARASHTRA", "IDBI", 
+        "IOB", "INDIAN OVERSEAS", "PSB", "PUNJAB & SIND",
+        
+        // Small Finance & Payments
+        "AU BANK", "AU SMALL", "EQUITAS", "UJJIVAN", "PAYTM", "AIRTEL", "JIO", 
+        "FINO", "NSDL", "IPPB", "PAYMENTS BANK",
+        
+        // Co-operative & Regional
+        "SARASWAT", "COSMOS", "TJSB", "SVC", "NKGSB", "COOP BANK"
     )
 
     private val productTypes = listOf(
@@ -27,8 +43,10 @@ object AccountNameExtractor {
         // 2. Identify Product Type
         val product = productTypes.find { upperBody.contains(it) } ?: "Account"
         
-        // 3. Extract Suffix (Last 4 digits)
-        val suffixRegex = Pattern.compile("(?:XX|X|\\*+)\\s*(\\d{3,4})")
+        // 3. Extract Suffix (Synchronized with SMSParser robust regex)
+        val suffixRegex = Pattern.compile(
+            "(?i)(?:Card|Account|A/c|Acct|Acc|XX|X|No|ending|ending\\sin)\\s*[\\(\\[:\\-#\\s]*\\s*[*xX]*\\s*(\\d{2,4})\\b"
+        )
         val matcher = suffixRegex.matcher(upperBody)
         val suffix = if (matcher.find()) matcher.group(1) else ""
         

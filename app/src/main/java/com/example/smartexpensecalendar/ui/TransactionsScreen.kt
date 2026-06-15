@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -30,6 +31,8 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -218,36 +221,76 @@ fun TransactionsScreen(
                 }
 
                 uiState.transactions.keys.sortedDescending().forEach { date ->
+                    val dailyDebit = uiState.transactions[date]?.sumOf { 
+                        if (it.type == TransactionType.DEBIT && it.status == TransactionStatus.COMPLETED) it.amount else 0.0 
+                    } ?: 0.0
+
                     stickyHeader {
-                        TransactionDateHeader(date, uiState.transactions[date]?.sumOf { 
-                            if (it.type == TransactionType.DEBIT && it.status == TransactionStatus.COMPLETED) it.amount else 0.0 
-                        } ?: 0.0, uiState.currencySymbol)
+                        TransactionDateHeader(date, dailyDebit, uiState.currencySymbol)
                     }
 
-                    items(uiState.transactions[date] ?: emptyList()) { expense ->
-                        TransactionItem(
-                            expense = expense,
-                            categories = uiState.categories,
-                            isEditing = editingExpenseId == expense.id,
-                            currencySymbol = uiState.currencySymbol,
-                            onEditToggle = { isEditing ->
-                                editingExpenseId = if (isEditing) expense.id else null
-                            },
-                            onDelete = {
-                                viewModel.deleteExpense(expense)
-                            },
-                            onEdit = { amount, category, applyToFuture ->
-                                viewModel.updateExpense(expense, amount, category, applyToFuture)
-                                editingExpenseId = null
-                            },
-                            onClick = { 
-                                selectedSmsForDetail = expense.originalSmsBody ?: "Manual transaction - No SMS available"
-                            },
-                            onAddCustomCategory = { showAddCategoryDialog = true },
-                            onConfirmReview = {
-                                viewModel.updateExpenseStatus(expense.id, TransactionStatus.COMPLETED)
+                    // Pre-process items to identify movements
+                    val dayItems = uiState.transactions[date] ?: emptyList()
+                    val allMonthItems = uiState.transactions.values.flatten()
+                    val handledIds = mutableSetOf<Long>()
+
+                    dayItems.forEach { expense ->
+                        if (expense.id in handledIds) return@forEach
+
+                        if (expense.status == TransactionStatus.SETTLEMENT && expense.linkedId != null) {
+                            // Global partner search: Find partner anywhere in the month
+                            val partner = allMonthItems.find { it.id == expense.linkedId }
+                            if (partner != null) {
+                                // Rule: Only render the Movement Card on the date of the DEBIT 
+                                // to avoid double rendering on both dates.
+                                val debit = if (expense.type == TransactionType.DEBIT) expense else partner
+                                val credit = if (expense.type == TransactionType.CREDIT) expense else partner
+                                
+                                if (debit.date == date) {
+                                    item(key = "move_${debit.id}") {
+                                        MovementTransactionItem(
+                                            debit = debit,
+                                            credit = credit,
+                                            currencySymbol = uiState.currencySymbol,
+                                            onClick = { 
+                                                selectedSmsForDetail = "DEBIT: ${debit.originalSmsBody ?: "N/A"}\n\nCREDIT: ${credit.originalSmsBody ?: "N/A"}"
+                                            }
+                                        )
+                                    }
+                                }
+                                handledIds.add(expense.id)
+                                // If the partner was also on this same day, mark it handled
+                                if (partner.date == date) handledIds.add(partner.id)
+                                return@forEach
                             }
-                        )
+                        }
+
+                        item(key = expense.id) {
+                            TransactionItem(
+                                expense = expense,
+                                categories = uiState.categories,
+                                isEditing = editingExpenseId == expense.id,
+                                currencySymbol = uiState.currencySymbol,
+                                onEditToggle = { isEditing ->
+                                    editingExpenseId = if (isEditing) expense.id else null
+                                },
+                                onDelete = {
+                                    viewModel.deleteExpense(expense)
+                                },
+                                onEdit = { amount, category, applyToFuture ->
+                                    viewModel.updateExpense(expense, amount, category, applyToFuture)
+                                    editingExpenseId = null
+                                },
+                                onClick = { 
+                                    selectedSmsForDetail = expense.originalSmsBody ?: "Manual transaction - No SMS available"
+                                },
+                                onAddCustomCategory = { showAddCategoryDialog = true },
+                                onConfirmReview = {
+                                    viewModel.updateExpenseStatus(expense.id, TransactionStatus.COMPLETED)
+                                }
+                            )
+                        }
+                        handledIds.add(expense.id)
                     }
                 }
             }
@@ -322,6 +365,98 @@ fun TransactionDateHeader(date: LocalDate, totalDebit: Double, currencySymbol: S
                 color = TextSecondary,
                 fontWeight = FontWeight.Bold
             )
+        }
+    }
+}
+
+@Composable
+fun MovementTransactionItem(
+    debit: Expense,
+    credit: Expense,
+    currencySymbol: String = "₹",
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(SurfaceGlass.copy(alpha = 0.6f))
+            .clickable { onClick() }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                // Shared Movement Icon
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(SecondaryAccent.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SwapHoriz,
+                        contentDescription = "Movement",
+                        tint = SecondaryAccent,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "${debit.accountName ?: "Source"} → ${credit.accountName ?: "Target"}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary,
+                            maxLines = 1,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(
+                            color = SurfaceGlassBright.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                "SETTLED",
+                                color = TextSecondary,
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    Text(
+                        text = "Internal Movement • ${debit.category}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextSecondary
+                    )
+                }
+            }
+
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "$currencySymbol${formatIndianCurrency(debit.amount)}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = TextSecondary // Neutral color for settlements
+                )
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "Settled",
+                    tint = SecondaryAccent.copy(alpha = 0.6f),
+                    modifier = Modifier.size(14.dp)
+                )
+            }
         }
     }
 }
@@ -411,6 +546,8 @@ fun TransactionItem(
                                     expense.financialEventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.CREDIT_CARD_PAYMENT -> "Card Payment"
                                     expense.financialEventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.INVESTMENT -> "Investment"
                                     expense.financialEventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.REFUND -> "Refund"
+                                    expense.financialEventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.SALARY -> "Salary"
+                                    expense.financialEventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.CASHBACK -> "Cashback"
                                     expense.type == TransactionType.DEBIT -> "Payment"
                                     else -> "Received"
                                 }
@@ -424,7 +561,37 @@ fun TransactionItem(
                                     modifier = Modifier.weight(1f, fill = false)
                                 )
                                 
-                                /* [Omitted Badge Code] */
+                                if (expense.status == TransactionStatus.SETTLEMENT) {
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Surface(
+                                        color = SurfaceGlassBright.copy(alpha = 0.3f),
+                                        shape = RoundedCornerShape(4.dp)
+                                    ) {
+                                        Text(
+                                            "SETTLED",
+                                            color = TextSecondary,
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                                
+                                if (expense.status == TransactionStatus.REFUNDED) {
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Surface(
+                                        color = ColorGroceries.copy(alpha = 0.2f),
+                                        shape = RoundedCornerShape(4.dp)
+                                    ) {
+                                        Text(
+                                            "REFUNDED",
+                                            color = ColorGroceries,
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
                             }
                             
                             val subtitle = buildAnnotatedString {
@@ -456,7 +623,9 @@ fun TransactionItem(
                             text = "${if (expense.type == TransactionType.DEBIT) "-" else "+"} $currencySymbol${formatIndianCurrency(expense.amount)}",
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.ExtraBold,
-                            color = if (expense.type == TransactionType.DEBIT) TextPrimary else ColorGroceries
+                            color = if (expense.status == TransactionStatus.SETTLEMENT) TextSecondary 
+                                    else if (expense.type == TransactionType.DEBIT) TextPrimary 
+                                    else ColorGroceries
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             // Only show suffix if full accountName is missing

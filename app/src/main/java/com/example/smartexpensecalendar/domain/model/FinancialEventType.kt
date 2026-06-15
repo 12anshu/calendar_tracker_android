@@ -26,6 +26,10 @@ enum class FinancialEventType {
 
     INVESTMENT,
 
+    SALARY,
+
+    CASHBACK,
+
     UNKNOWN
 }
 

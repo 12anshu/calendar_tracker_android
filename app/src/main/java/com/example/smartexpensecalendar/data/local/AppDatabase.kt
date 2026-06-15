@@ -26,7 +26,7 @@ import androidx.room.TypeConverters
         AnalyzedSMS::class,
         MisclassifiedMessage::class
     ],
-    version = 22,
+    version = 23,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

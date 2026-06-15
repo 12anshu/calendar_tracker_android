@@ -9,6 +9,10 @@ object MerchantExtractor {
         smsText: String
     ): String? {
 
+        extractNEFTMerchant(smsText)?.let {
+            return it
+        }
+
         extractUPIMerchant(smsText)?.let {
             return it
         }
@@ -29,6 +33,25 @@ object MerchantExtractor {
     }
 
     // copy remaining methods
+    private fun extractNEFTMerchant(body: String): String? {
+        val patterns = listOf(
+            Pattern.compile("NEFT\\s+Cr-[A-Z0-9]+-([A-Z0-9\\s]+?)(?=\\s+-|\\s+\\.|-|$)", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("IMPS-[0-9]+-([A-Z0-9\\s]+?)(?=\\s+-|\\s+\\.|-|$)", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("NEFT\\s+INWARD-[A-Z0-9]+-([A-Z0-9\\s]+?)(?=\\s+-|\\s+\\.|-|$)", Pattern.CASE_INSENSITIVE)
+        )
+
+        for (pattern in patterns) {
+            val matcher = pattern.matcher(body)
+            if (matcher.find()) {
+                val merchant = matcher.group(1)?.trim()
+                if (!merchant.isNullOrBlank()) {
+                    return normalizeMerchant(cleanMerchant(merchant))
+                }
+            }
+        }
+        return null
+    }
+
     private fun extractUPIMerchant(body: String): String? {
 
         val pattern = Pattern.compile(
