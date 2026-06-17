@@ -14,7 +14,7 @@ import com.example.smartexpensecalendar.sms_engine.extractor.DirectionExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.FinancialEventTypeExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.ModeExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.AccountNameExtractor
-import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantExtractor
+import com.example.smartexpensecalendar.sms_engine.extractor.MerchantExtractor
 import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
 import com.example.smartexpensecalendar.sms.config.MessageTypePhrases
 import com.example.smartexpensecalendar.sms_engine.detector.FinancialDetector
@@ -49,6 +49,14 @@ object SMSParser {
     fun parse(body: String, sender: String = ""): ParsedSMS? {
         val normalizedBody = SMSNormalizer.normalize(body)
         val uppercaseBody = normalizedBody.uppercase()
+
+        // 1. Filter out Outward Transfer Confirmations (Status Updates)
+        // These say "successfully credited TO [recipient]", but it's our money that was debited.
+        // We don't want to count this as new Income (Credit).
+        val isOutwardConfirmation = Regex("TO\\s+[A-Za-z0-9 .]+\\s+IS\\s+SUCCESSFULLY\\s+CREDITED").containsMatchIn(uppercaseBody) ||
+                                   Regex("TRANSFER\\s+OF\\s+INR\\s+[0-9.]+\\s+TO\\s+[A-Za-z0-9 .]+\\s+IS\\s+SUCCESSFUL").containsMatchIn(uppercaseBody)
+        
+        if (isOutwardConfirmation) return null
 
         val isOtp = MessageTypePhrases.otpPhrases.any { uppercaseBody.contains(it) }
         val isOtpExclusion = MessageTypePhrases.otpExcludePhrases.any { uppercaseBody.contains(it) }
@@ -95,11 +103,25 @@ object SMSParser {
         val rawMerchant = MerchantExtractor.extractMerchant(body)
         var merchant = rawMerchant?.let { MerchantNormalizer.normalize(it) }
 
+        // --- NEW: Source-Aware Merchant Fallback ---
+        if (merchant.isNullOrBlank()) {
+            val bank = AccountNameExtractor.getFriendlyBankName(sender)
+            val suffix = AccountNameExtractor.getSuffix(body)
+            if (bank != null) {
+                merchant = if (suffix != null) "$bank [A/C $suffix]" else "$bank Transaction"
+            }
+        }
+
         if (merchant.isNullOrBlank() && mode == TransactionMode.MEAL_CARD) {
             merchant = when {
                 uppercaseBody.contains("PLUXEE") -> "Pluxee Transaction"
                 uppercaseBody.contains("SODEXO") -> "Sodexo Transaction"
                 uppercaseBody.contains("ZETA") -> "Zeta Transaction"
+                uppercaseBody.contains("EDENRED") -> "Edenred Transaction"
+                uppercaseBody.contains("SWILE") -> "Swile Transaction"
+                uppercaseBody.contains("AXIS") -> "Axis Meal Card"
+                uppercaseBody.contains("HDFC") -> "HDFC Food Card"
+                uppercaseBody.contains("ICICI") -> "ICICI Food Card"
                 else -> "Meal Card Transaction"
             }
         }
@@ -147,7 +169,7 @@ object SMSParser {
             TransactionMode.BANK_TRANSFER -> PaymentMethod.NEFT
             TransactionMode.AUTO_DEBIT -> PaymentMethod.ACH
             TransactionMode.EMI -> PaymentMethod.UNKNOWN
-            TransactionMode.MEAL_CARD -> PaymentMethod.CARD
+            TransactionMode.MEAL_CARD -> PaymentMethod.MEAL_CARD
             TransactionMode.UNKNOWN -> PaymentMethod.UNKNOWN
         }
     }

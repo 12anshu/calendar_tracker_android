@@ -47,7 +47,10 @@ object SMSKeywordRegistry {
         "MEAL CARD",
         "SODEXO",
         "ZETA",
-        "PLUXEE"
+        "PLUXEE",
+        "EDENRED",
+        "SWILE",
+        "FOOD CARD"
     )
 
     val expenseKeywords = setOf(
@@ -61,7 +64,9 @@ object SMSKeywordRegistry {
         "TXN",
         "PAYMENT SUCCESSFUL",
         "USED ON SODEXO",
-        "ZETA ACCOUNT DEBITED"
+        "ZETA ACCOUNT DEBITED",
+        "PLUXEE CARD DEBITED",
+        "EDENRED TRANSACTION"
     )
 
     val incomeKeywords = setOf(

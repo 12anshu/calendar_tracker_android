@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.smartexpensecalendar.domain.model.TransactionStatus
 import com.example.smartexpensecalendar.domain.model.TransactionType
 import com.example.smartexpensecalendar.domain.model.Expense
+import com.example.smartexpensecalendar.domain.model.EntityType
 import com.example.smartexpensecalendar.domain.repository.ExpenseRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -59,6 +60,7 @@ data class InsightsUiState(
     val remainingComparison: Comparison? = null,
     
     val categoryBreakdown: List<CategorySpend> = emptyList(),
+    val breakdownTotal: Double = 0.0,
     val topMerchants: List<MerchantSpend> = emptyList(),
     val vesselBreakdown: List<VesselSpend> = emptyList(),
     val dailyTrend: List<DailySpend> = emptyList(),
@@ -72,6 +74,11 @@ data class InsightsUiState(
     val peakSpendingTime: String = "",
     val avgTransactionSize: Double = 0.0,
     val p2pVsMerchantSplit: Pair<Int, Int> = 0 to 0, // % split
+    
+    // Meal Card Insights
+    val mealCardTotal: Double = 0.0,
+    val mealCardCount: Int = 0,
+    val topMealCardMerchants: List<MerchantSpend> = emptyList(),
     
     val isLoading: Boolean = false,
     val selectedMonth: YearMonth = YearMonth.now(),
@@ -123,12 +130,14 @@ class InsightsViewModel @Inject constructor(
         symbol: String
     ): InsightsUiState {
         val debitExpenses = expenses.filter { 
-            it.type == TransactionType.DEBIT && it.status == TransactionStatus.COMPLETED 
+            it.type == TransactionType.DEBIT && 
+            (it.status == TransactionStatus.COMPLETED || it.status == TransactionStatus.SETTLEMENT)
         }
         val currentTotalSpent = debitExpenses.sumOf { it.amount }
 
         val creditExpenses = expenses.filter {
-            it.type == TransactionType.CREDIT && it.status == TransactionStatus.COMPLETED
+            it.type == TransactionType.CREDIT && 
+            (it.status == TransactionStatus.COMPLETED || it.status == TransactionStatus.SETTLEMENT)
         }
         val currentTotalIncome = creditExpenses.sumOf { it.amount }
 
@@ -136,7 +145,8 @@ class InsightsViewModel @Inject constructor(
         
         // Previous Month Comparison
         val prevDebitExpenses = prevExpenses.filter { 
-            it.type == TransactionType.DEBIT && it.status == TransactionStatus.COMPLETED 
+            it.type == TransactionType.DEBIT && 
+            (it.status == TransactionStatus.COMPLETED || it.status == TransactionStatus.SETTLEMENT)
         }
         val prevTotalSpent = prevDebitExpenses.sumOf { it.amount }
         val prevTotalBudget = prevBudgets.values.sum()
@@ -150,14 +160,17 @@ class InsightsViewModel @Inject constructor(
         )
 
         // 2. Category Breakdown
+        val currentBreakdownTotal = debitExpenses.sumOf { it.amount }
+
         val catBreakdown = debitExpenses.groupBy { it.category }
             .map { (cat, list) ->
                 val sum = list.sumOf { it.amount }
-                CategorySpend(cat, sum, if (currentTotalSpent > 0) (sum / currentTotalSpent).toFloat() else 0f)
+                CategorySpend(cat, sum, if (currentBreakdownTotal > 0) (sum / currentBreakdownTotal).toFloat() else 0f)
             }.sortedByDescending { it.amount }
 
-        // 3. Top Merchants
-        val topMerchants = debitExpenses.filter { it.merchant != null }
+        // 3. Top Merchants (Filtered for Real Merchants only)
+        val topMerchants = debitExpenses
+            .filter { it.merchant != null && it.entityType == EntityType.MERCHANT }
             .groupBy { it.merchant!! }
             .map { (merchant, list) ->
                 MerchantSpend(merchant, list.sumOf { it.amount }, list.size)
@@ -168,7 +181,26 @@ class InsightsViewModel @Inject constructor(
             .map { (date, list) -> DailySpend(date, list.sumOf { it.amount }) }
             .sortedBy { it.date }
 
-        // 5. UPI vs Card
+        // 5. Vessel Breakdown (Spending by Source)
+        val vesselBreakdown = debitExpenses.filter { !it.accountName.isNullOrBlank() }
+            .groupBy { it.accountName!! }
+            .map { (account, list) ->
+                val sum = list.sumOf { it.amount }
+                VesselSpend(account, sum, if (currentTotalSpent > 0) (sum / currentTotalSpent).toFloat() else 0f)
+            }.sortedByDescending { it.amount }
+
+        // 6. Meal Card Insights
+        val mealCardExpenses = debitExpenses.filter { it.entityType == EntityType.MEAL_CARD }
+        val mealCardTotal = mealCardExpenses.sumOf { it.amount }
+        val mealCardCount = mealCardExpenses.size
+        val topMealCardMerchants = mealCardExpenses
+            .filter { it.merchant != null }
+            .groupBy { it.merchant!! }
+            .map { (merchant, list) ->
+                MerchantSpend(merchant, list.sumOf { it.amount }, list.size)
+            }.sortedByDescending { it.amount }.take(3)
+
+        // 7. UPI vs Card
         val upiTotal = debitExpenses.filter { 
             it.paymentMethod == com.example.smartexpensecalendar.domain.model.PaymentMethod.UPI || 
             it.category == "UPI / Digital" 
@@ -211,8 +243,9 @@ class InsightsViewModel @Inject constructor(
             remainingBudget = (currentTotalBudget - currentTotalSpent).coerceAtLeast(0.0),
             remainingComparison = remainingComp,
             categoryBreakdown = catBreakdown,
+            breakdownTotal = currentTotalSpent,
             topMerchants = topMerchants,
-            vesselBreakdown = emptyList(), 
+            vesselBreakdown = vesselBreakdown,
             dailyTrend = dailyTrend,
             smartInsights = insights,
             upiVsCard = mapOf("UPI" to upiTotal, "Card" to cardTotal),
@@ -222,6 +255,9 @@ class InsightsViewModel @Inject constructor(
             peakSpendingTime = peakTime,
             avgTransactionSize = avgTxn,
             p2pVsMerchantSplit = p2pPercent to (100 - p2pPercent),
+            mealCardTotal = mealCardTotal,
+            mealCardCount = mealCardCount,
+            topMealCardMerchants = topMealCardMerchants,
             selectedMonth = month,
             currencySymbol = symbol
         )

@@ -95,6 +95,14 @@ object ModePhrases {
         "MEAL CARD",
         "ZETA",
         "TICKET RESTAURANT",
-        "BENEFIT CARD"
+        "BENEFIT CARD",
+        "FOOD CARD",
+        "EDENRED",
+        "SWILE",
+        "RESTO FLASH",
+        "CHEQUE DEJEUNER",
+        "UPDEJEUNER",
+        "GLOVO BUSINESS",
+        "MEAL VOUCHER"
     )
 }

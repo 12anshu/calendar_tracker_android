@@ -19,7 +19,10 @@ import com.example.smartexpensecalendar.utils.NotificationHelper
 import com.example.smartexpensecalendar.domain.model.PaymentMethod
 import com.example.smartexpensecalendar.domain.model.MessageType
 import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
+import com.example.smartexpensecalendar.sms.config.SenderRegistry
 import com.example.smartexpensecalendar.sms.sender.SenderValidationEngine
+import com.example.smartexpensecalendar.sms_engine.detector.EntityTypeDetector
+import com.example.smartexpensecalendar.domain.model.EntityType
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.time.Instant
@@ -121,7 +124,7 @@ class SMSSyncWorker @AssistedInject constructor(
                     }
 
                     val senderInfo = SenderValidationEngine.validate(address)
-                    val parsed = SMSParser.parse(body)
+                    val parsed = SMSParser.parse(body, address)
                     
                     if (parsed == null) {
                         continue
@@ -158,6 +161,12 @@ class SMSSyncWorker @AssistedInject constructor(
                         .atZone(ZoneId.systemDefault())
                         .toLocalDate()
 
+                    val entityType = EntityTypeDetector.detect(
+                        merchant = normalizedMerchant,
+                        eventType = finalParsed.financialEventType,
+                        paymentMethod = finalParsed.paymentMethod
+                    )
+
                     // --- SMART DEDUPLICATION (Window-Aware & Quality-Aware) ---
                     val existing = repository.findSimilarExpense(finalParsed.amount, localDate, finalParsed.type, windowDays = 1)
                     if (existing != null) {
@@ -183,6 +192,7 @@ class SMSSyncWorker @AssistedInject constructor(
                             accountSuffix = finalParsed.accountSuffix,
                             accountName = finalParsed.accountName,
                             quality = finalParsed.quality,
+                            entityType = entityType,
                             originalSmsId = id,
                             originalSmsBody = body,
                             syncDate = System.currentTimeMillis()

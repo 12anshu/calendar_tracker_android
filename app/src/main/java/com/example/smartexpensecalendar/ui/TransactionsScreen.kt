@@ -62,6 +62,7 @@ import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.ui.components.MonthYearPicker
 import com.example.smartexpensecalendar.ui.components.CategoryGridPicker
 import com.example.smartexpensecalendar.ui.components.FintechBottomNav
+import com.example.smartexpensecalendar.utils.ExpenseDisplayUtils
 import com.example.smartexpensecalendar.core.designsystem.theme.*
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
 import java.time.LocalDate
@@ -420,12 +421,13 @@ fun MovementTransactionItem(
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "${debit.accountName ?: "SOURCE"} → ${credit.accountName ?: "TARGET"}".uppercase(),
+                            text = "${ExpenseDisplayUtils.getVesselDisplay(debit.accountName)} → ${ExpenseDisplayUtils.getVesselDisplay(credit.accountName)}",
                             style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             color = TextPrimary.copy(alpha = 0.9f),
                             maxLines = 1,
-                            modifier = Modifier.weight(1f, fill = false)
+                            fontSize = 14.sp,
+                            modifier = Modifier.weight(1f)
                         )
                         
                         Spacer(modifier = Modifier.width(6.dp))
@@ -544,24 +546,10 @@ fun TransactionItem(
 
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                val displayName = when {
-                                    !expense.merchant.isNullOrBlank() -> expense.merchant
-                                    !expense.accountName.isNullOrBlank() -> expense.accountName
-                                    expense.financialEventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.TRANSFER -> "Account Transfer"
-                                    expense.financialEventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.EMI_PAYMENT -> "EMI Payment"
-                                    expense.financialEventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.EMI_CONVERSION -> "EMI Conversion"
-                                    expense.financialEventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.CASH_WITHDRAWAL -> "Cash Withdrawal"
-                                    expense.financialEventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.CREDIT_CARD_PAYMENT -> "Card Payment"
-                                    expense.financialEventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.INVESTMENT -> "Investment"
-                                    expense.financialEventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.REFUND -> "Refund"
-                                    expense.financialEventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.SALARY -> "Salary"
-                                    expense.financialEventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.CASHBACK -> "Cashback"
-                                    expense.type == TransactionType.DEBIT -> "Payment"
-                                    else -> "Received"
-                                }
+                                val displayName = ExpenseDisplayUtils.getDisplayName(expense)
 
                                 Text(
-                                    text = displayName.uppercase(),
+                                    text = displayName,
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = TextPrimary,
@@ -615,7 +603,7 @@ fun TransactionItem(
                                         color = SecondaryAccent.copy(alpha = 0.8f),
                                         fontWeight = FontWeight.Medium
                                     )) {
-                                        append(expense.accountName.uppercase())
+                                        append(ExpenseDisplayUtils.getVesselDisplay(expense.accountName))
                                     }
                                 }
                             }

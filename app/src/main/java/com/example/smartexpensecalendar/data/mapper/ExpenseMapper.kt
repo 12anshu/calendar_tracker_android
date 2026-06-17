@@ -7,6 +7,7 @@ import com.example.smartexpensecalendar.domain.model.TransactionStatus
 import com.example.smartexpensecalendar.domain.model.TransactionType
 import com.example.smartexpensecalendar.domain.model.FinancialEventType
 import com.example.smartexpensecalendar.domain.model.PaymentMethod
+import com.example.smartexpensecalendar.domain.model.EntityType
 import java.time.LocalDate
 
 fun ExpenseEntity.toDomain(): Expense {
@@ -31,6 +32,7 @@ fun ExpenseEntity.toDomain(): Expense {
         accountSuffix = accountSuffix,
         accountName = accountName,
         quality = quality,
+        entityType = EntityType.valueOf(entityType),
         linkedId = linkedId,
         originalSmsId = originalSmsId,
         originalSmsBody = originalSmsBody,
@@ -58,6 +60,7 @@ fun Expense.toEntity(): ExpenseEntity {
         accountSuffix = accountSuffix,
         accountName = accountName,
         quality = quality,
+        entityType = entityType.name,
         linkedId = linkedId,
         originalSmsId = originalSmsId,
         originalSmsBody = originalSmsBody,

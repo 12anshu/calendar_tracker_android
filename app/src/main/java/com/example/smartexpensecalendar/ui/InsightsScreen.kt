@@ -26,6 +26,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,6 +37,7 @@ import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.ui.components.FintechBottomNav
 import com.example.smartexpensecalendar.core.designsystem.theme.*
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
+import kotlin.math.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,6 +120,7 @@ fun OverviewTab(uiState: InsightsUiState) {
                     symbol = uiState.currencySymbol,
                     comparison = uiState.spentComparison,
                     icon = Icons.Default.ShoppingCart,
+                    iconTint = ColorFood,
                     modifier = Modifier.weight(1f)
                 )
                 SnapshotMiniCard(
@@ -126,6 +129,7 @@ fun OverviewTab(uiState: InsightsUiState) {
                     symbol = uiState.currencySymbol,
                     comparison = uiState.budgetComparison,
                     icon = Icons.Default.AccountBalanceWallet,
+                    iconTint = PremiumGold,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -138,6 +142,7 @@ fun OverviewTab(uiState: InsightsUiState) {
                 symbol = uiState.currencySymbol,
                 comparison = uiState.remainingComparison,
                 icon = Icons.Default.Savings,
+                iconTint = CyanGlow,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -189,16 +194,36 @@ fun AnalyticsTab(uiState: InsightsUiState) {
         contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
     ) {
         item {
-            SectionHeader("Payment Channels")
             PaymentChannelsSection(uiState)
         }
 
-        item {
-            SectionHeader("Top Merchants")
+        if (uiState.mealCardTotal > 0) {
+            item {
+                MealCardInsightsSection(uiState)
+            }
         }
 
-        items(uiState.topMerchants) { merchant ->
-            MerchantListItem(merchant, uiState.currencySymbol)
+        item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(SurfaceGlass)
+                    .padding(16.dp)
+            ) {
+                Column {
+                    Text("TOP MERCHANTS", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    if (uiState.topMerchants.isEmpty()) {
+                        Text("No merchant data found", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(vertical = 16.dp).align(Alignment.CenterHorizontally))
+                    } else {
+                        uiState.topMerchants.forEachIndexed { index, merchant ->
+                            MerchantListItem(merchant, index, uiState.currencySymbol)
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -210,6 +235,7 @@ fun SnapshotMiniCard(
     symbol: String,
     comparison: Comparison?,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconTint: Color = CyanGlow,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -220,7 +246,7 @@ fun SnapshotMiniCard(
     ) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, null, tint = CyanGlow, modifier = Modifier.size(16.dp))
+                Icon(icon, null, tint = iconTint, modifier = Modifier.size(30.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(title, color = TextSecondary, fontSize = 11.sp)
             }
@@ -343,24 +369,31 @@ fun CategoryDonutSection(uiState: InsightsUiState, onSeeAllClick: () -> Unit) {
 fun CategoryBreakdownCard(
     uiState: InsightsUiState, onSeeAllClick: () -> Unit
 ) {
-    val total = uiState.totalSpent
+    val total = uiState.breakdownTotal
 
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = SurfaceGlass
         ),
-        shape = RoundedCornerShape(20.dp)
+        border = BorderStroke(
+            1.dp,
+            Color.White.copy(alpha = 0.05f)
+        )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(
+                horizontal = 20.dp,
+                vertical = 20.dp
+            )
         )  {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
-                    modifier = Modifier.weight(0.45f),
+                    modifier = Modifier.weight(0.42f),
                     contentAlignment = Alignment.Center
                 ) {
                     CategoryDonutChart(
@@ -369,10 +402,11 @@ fun CategoryBreakdownCard(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(20.dp))
 
                 Box(
-                    modifier = Modifier.weight(0.55f)
+                    modifier = Modifier.weight(0.58f),
+                    contentAlignment = Alignment.CenterEnd
                 ) {
                     CategoryLegend(
                         categories = uiState.categoryBreakdown.take(5),
@@ -390,16 +424,13 @@ fun CategoryLegend(
 ) {
 
     Column {
-
         categories.forEach { category ->
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-
                 Box(
                     modifier = Modifier
                         .size(12.dp)
@@ -419,20 +450,12 @@ fun CategoryLegend(
                     modifier = Modifier.weight(1f),
                     fontSize = 12.sp
                 )
-
                 Text(
                     text = "₹${category.amount.toInt()}",
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.width(60.dp),
+                    textAlign = TextAlign.End,
+                    color = TextPrimary,
                     fontSize = 12.sp
-                )
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Text(
-                    text = "${(category.percentage * 100).toInt()}%",
-                    color = Color.Gray
                 )
             }
         }
@@ -471,55 +494,88 @@ fun CategoryDonutChart(
     categories: List<CategorySpend>,
     totalAmount: Double
 ) {
+    val textMeasurer = rememberTextMeasurer()
+    val displayTotal = if (totalAmount > 0) totalAmount else categories.sumOf { it.amount.toDouble() }
 
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.size(160.dp)
+        modifier = Modifier.size(150.dp)
     ) {
-
         Canvas(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize().padding(12.dp)
         ) {
+            val strokeWidth = 24.dp.toPx()
+            val arcSize = Size(size.width - strokeWidth, size.height - strokeWidth)
+            val topLeftOffset = androidx.compose.ui.geometry.Offset(strokeWidth / 2, strokeWidth / 2)
 
-            val sweepAngles = categories.map {
-                (it.amount / totalAmount * 360f).toFloat()
+            if (displayTotal <= 0 || categories.isEmpty()) {
+                // Draw a grey placeholder donut
+                drawArc(
+                    color = SurfaceGlassBright,
+                    startAngle = 0f,
+                    sweepAngle = 360f,
+                    useCenter = false,
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Butt),
+                    size = arcSize,
+                    topLeft = topLeftOffset
+                )
+                return@Canvas
             }
 
             var startAngle = -90f
 
-            sweepAngles.forEachIndexed { index, sweepAngle ->
-
+            categories.forEach { category ->
+                val percentage = if (displayTotal > 0) category.amount / displayTotal else 0.0
+                val sweepAngle = (percentage * 360f).toFloat()
+                if (sweepAngle < 0.1f) return@forEach
+                
+                val color = getCategoryColor(category = category.category)
+                
+                // Draw Segment
                 drawArc(
-                    color = getCategoryColor(category = categories[index].category),
+                    color = color,
                     startAngle = startAngle,
                     sweepAngle = sweepAngle,
                     useCenter = false,
                     style = Stroke(
-                        width = 32f,
-                        cap = StrokeCap.Round
-                    )
+                        width = strokeWidth,
+                        cap = StrokeCap.Butt
+                    ),
+                    size = arcSize,
+                    topLeft = topLeftOffset
                 )
 
+                // Draw percentage on donut if segment is large enough
+                if (sweepAngle > 30f) {
+                    val midAngle = startAngle + sweepAngle / 2f
+                    val angleRad = Math.toRadians(midAngle.toDouble())
+                    
+                    val radius = (size.minDimension - strokeWidth) / 2f
+                    val x = center.x + radius * cos(angleRad).toFloat()
+                    val y = center.y + radius * sin(angleRad).toFloat()
+
+                    val percentage = (category.amount / displayTotal * 100).toInt()
+                    val percentageText = "$percentage%"
+                    val textLayoutResult = textMeasurer.measure(
+                        text = percentageText,
+                        style = androidx.compose.ui.text.TextStyle(
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                    
+                    drawText(
+                        textLayoutResult = textLayoutResult,
+                        topLeft = androidx.compose.ui.geometry.Offset(
+                            x - textLayoutResult.size.width / 2f,
+                            y - textLayoutResult.size.height / 2f
+                        )
+                    )
+                }
+                
                 startAngle += sweepAngle
             }
-        }
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-
-            Text(
-                text = "₹${totalAmount.toInt()}",
-                color = Color.White,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = "Total",
-                color = Color.Gray,
-                fontSize = 14.sp
-            )
         }
     }
 }
@@ -860,17 +916,58 @@ fun VesselProgressItem(vessel: VesselSpend, symbol: String) {
 }
 
 @Composable
-fun MerchantListItem(merchant: MerchantSpend, currencySymbol: String = "₹") {
+fun MerchantListItem(merchant: MerchantSpend, index: Int, currencySymbol: String = "₹") {
     Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(SurfaceGlass).padding(12.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
-            Text(merchant.merchant.uppercase(), color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-            Text("${merchant.count} transactions", color = TextSecondary, fontSize = 11.sp)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+            Text(
+                text = "${index + 1}",
+                color = TextSecondary,
+                fontSize = 12.sp,
+                modifier = Modifier.width(20.dp)
+            )
+            
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(SurfaceGlassBright),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Storefront,
+                    null,
+                    tint = PremiumGold,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            Column {
+                Text(
+                    merchant.merchant.uppercase(),
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text("${merchant.count} orders", color = TextSecondary, fontSize = 10.sp)
+            }
         }
-        Text("$currencySymbol${formatIndianCurrency(merchant.amount)}", color = TextPrimary, fontWeight = FontWeight.Bold)
+        
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                "$currencySymbol${formatIndianCurrency(merchant.amount)}",
+                color = TextPrimary,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp
+            )
+        }
     }
 }
 
@@ -938,6 +1035,51 @@ fun InsightCard(insight: SmartInsight) {
 }
 
 @Composable
+fun MealCardInsightsSection(uiState: InsightsUiState) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(SurfaceGlass)
+            .padding(16.dp)
+    ) {
+        Column {
+            Text("MEAL CARD USAGE", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column {
+                    Text("Spent", color = TextSecondary, fontSize = 10.sp)
+                    Text("${uiState.currencySymbol}${formatIndianCurrency(uiState.mealCardTotal)}", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Transactions", color = TextSecondary, fontSize = 10.sp)
+                    Text("${uiState.mealCardCount}", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+            }
+            
+            if (uiState.topMealCardMerchants.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = SurfaceGlassBright)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("TOP MEAL CARD MERCHANTS", color = TextSecondary, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                uiState.topMealCardMerchants.forEachIndexed { index, merchant ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("${index + 1}. ${merchant.merchant.uppercase()}", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        Text("${uiState.currencySymbol}${formatIndianCurrency(merchant.amount)}", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun PaymentChannelsSection(uiState: InsightsUiState) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         // Multi-Vessel Split
@@ -946,28 +1088,51 @@ fun PaymentChannelsSection(uiState: InsightsUiState) {
                 Text("SPENDING BY SOURCE", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // Show UPI and all cards
-                uiState.vesselBreakdown.forEach { vessel ->
-                    VesselProgressItem(vessel, uiState.currencySymbol)
+                if (uiState.vesselBreakdown.isEmpty()) {
+                    Text("No source data found", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(vertical = 8.dp).align(Alignment.CenterHorizontally))
+                } else {
+                    uiState.vesselBreakdown.forEach { vessel ->
+                        VesselProgressItem(vessel, uiState.currencySymbol)
+                    }
                 }
             }
         }
 
-        Row(modifier = Modifier.fillMaxWidth().height(180.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(SurfaceGlass).padding(16.dp)) {
-                Column {
-                    Text("UPI vs CARD", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Row(modifier = Modifier.fillMaxWidth().height(200.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(modifier = Modifier.weight(0.45f).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(SurfaceGlass).padding(16.dp)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("UPI vs CARD", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.Start))
                     Spacer(modifier = Modifier.weight(1f))
                     PaymentModeSplitChart(uiState.upiVsCard)
+                    Spacer(modifier = Modifier.weight(1f))
+                    
+                    // Small legend
+                    val upi = uiState.upiVsCard["UPI"] ?: 0.0
+                    val card = uiState.upiVsCard["Card"] ?: 0.0
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(8.dp).background(CyanGlow, CircleShape))
+                            Spacer(Modifier.width(6.dp))
+                            Text("UPI: ${uiState.currencySymbol}${formatIndianCurrency(upi)}", fontSize = 10.sp, color = TextPrimary)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(8.dp).background(SurfaceGlassBright, CircleShape))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Card: ${uiState.currencySymbol}${formatIndianCurrency(card)}", fontSize = 10.sp, color = TextPrimary)
+                        }
+                    }
                 }
             }
             
-            Box(modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(SurfaceGlass).padding(16.dp)) {
+            Box(modifier = Modifier.weight(0.55f).fillMaxHeight().clip(RoundedCornerShape(16.dp)).background(SurfaceGlass).padding(16.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("MORE INSIGHTS", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     SmallInsightRow(Icons.Default.CalendarToday, "Most Active", uiState.mostActiveDay)
                     SmallInsightRow(Icons.Default.AccessTime, "Peak Time", uiState.peakSpendingTime)
                     SmallInsightRow(Icons.Default.CurrencyRupee, "Avg Txn", "${uiState.currencySymbol}${uiState.avgTransactionSize.toInt()}")
+                    
+                    val p2p = uiState.p2pVsMerchantSplit.first
+                    SmallInsightRow(Icons.Default.CompareArrows, "P2P vs Merchant", "$p2p% / ${100-p2p}%")
                 }
             }
         }

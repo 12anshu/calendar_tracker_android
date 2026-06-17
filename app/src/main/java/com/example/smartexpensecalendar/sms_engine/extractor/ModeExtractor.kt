@@ -34,7 +34,8 @@ object ModeExtractor {
             text,
             ModePhrases.mealCardPhrases,
             TransactionMode.MEAL_CARD,
-            scores
+            scores,
+            weight = 15 // High boost for specific food card providers
         )
 
         scorePhrases(
@@ -129,6 +130,14 @@ object ModeExtractor {
             scores
         )
 
+        scoreKeywords(
+            text,
+            ModeKeywords.mealCardKeywords,
+            TransactionMode.MEAL_CARD,
+            scores,
+            weight = 5
+        )
+
         // --- UPI PRECEDENCE & VPA DETECTION ---
         // 1. Check for the '@' symbol (Generic VPA signal)
         if (text.contains("@")) {
@@ -149,11 +158,12 @@ object ModeExtractor {
         text: String,
         phrases: Set<String>,
         mode: TransactionMode,
-        scores: MutableMap<TransactionMode, Int>
+        scores: MutableMap<TransactionMode, Int>,
+        weight: Int = 5
     ) {
         phrases.forEach {
             if (text.contains(it)) {
-                scores[mode] = scores.getValue(mode) + 5
+                scores[mode] = scores.getValue(mode) + weight
             }
         }
     }
@@ -162,11 +172,12 @@ object ModeExtractor {
         text: String,
         keywords: Set<String>,
         mode: TransactionMode,
-        scores: MutableMap<TransactionMode, Int>
+        scores: MutableMap<TransactionMode, Int>,
+        weight: Int = 1
     ) {
         keywords.forEach {
             if (text.contains(it)) {
-                scores[mode] = scores.getValue(mode) + 1
+                scores[mode] = scores.getValue(mode) + weight
             }
         }
     }

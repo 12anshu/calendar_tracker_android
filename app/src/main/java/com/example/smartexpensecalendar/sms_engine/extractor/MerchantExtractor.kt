@@ -1,6 +1,6 @@
-package com.example.smartexpensecalendar.sms_engine.normalizer
+package com.example.smartexpensecalendar.sms_engine.extractor
 
-import com.example.smartexpensecalendar.sms_engine.extractor.ExtractionUtils
+import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
 import java.util.regex.Pattern
 
 object MerchantExtractor {
@@ -151,7 +151,15 @@ object MerchantExtractor {
 
             "(?i)paid to (.+?)(?: on| via|\\.|,|$)",
 
-            "(?i)sent to (.+?)(?: on| via|\\.|,|$)",
+            // --- TRANSFER PAYEES (Deep Research Patterns) ---
+            "(?i)to\\s+([A-Za-z][A-Za-z0-9 .]{2,30}?)\\s+via\\s+(?:NEFT|IMPS|RTGS|UPI|BANK|TRANSFER)",
+            "(?i)transferred to\\s+([A-Za-z][A-Za-z0-9 .]{2,30}?)(?:\\s+via|\\s+Ref|\\.|\\s+on|$)",
+            "(?i)to pay\\s+([A-Za-z][A-Za-z0-9 .]{2,30}?)(?:\\.|\\s+The|\\s+Ref|$)",
+            "(?i)towards\\s+([A-Za-z][A-Za-z0-9 .]{2,30}?)(?:\\.|\\s+Ref|\\s+via|$)",
+            "(?i)beneficiary\\s+([A-Za-z][A-Za-z0-9 .]{2,30}?)(?:\\s+is|\\.|\\s+Ref|$)",
+            "(?i)remit to\\s+([A-Za-z][A-Za-z0-9 .]{2,30}?)(?:\\.|\\s+via|$)",
+            "(?i)payment made to\\s+([A-Za-z][A-Za-z0-9 .]{2,30}?)(?:\\.|\\s+Ref|$)",
+            "(?i)sent to\\s+([A-Za-z][A-Za-z0-9 .]{2,30}?)(?:\\.|\\s+on|$)",
 
             "(?i)merchant[: ]+(.+?)(?:\\.|,|$)",
 
@@ -230,7 +238,22 @@ object MerchantExtractor {
         "available limit",
         "not you?",
         "call",
-        "any assistance"
+        "any assistance",
+        "emi facility",
+        "balance transfer",
+        "credit card",
+        "statement generated",
+        "usage settings",
+        "airport lounge",
+        "reward points",
+        "cashback offer",
+        "monthly statement",
+        "amount due",
+        "statement",
+        "statement generated",
+        "cashback",
+        "payment due",
+        "minimum amount"
     )
 
     private fun cleanMerchant(

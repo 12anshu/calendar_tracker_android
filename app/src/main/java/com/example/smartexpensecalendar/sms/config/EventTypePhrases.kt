@@ -119,7 +119,15 @@ object EventTypePhrases {
         "ZETA",
         "TICKET RESTAURANT",
         "PLUXEE",
-        "MEAL VOUCHER"
+        "MEAL VOUCHER",
+        "FOOD CARD",
+        "BENEFIT CARD",
+        "EDENRED",
+        "SWILE",
+        "RESTO FLASH",
+        "CHEQUE DEJEUNER",
+        "UPDEJEUNER",
+        "GLOVO BUSINESS"
     )
 
 }

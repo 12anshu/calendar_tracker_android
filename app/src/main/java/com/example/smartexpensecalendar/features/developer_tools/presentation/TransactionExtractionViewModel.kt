@@ -11,7 +11,7 @@ import com.example.smartexpensecalendar.sms_engine.extractor.AmountExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.DirectionExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.FinancialEventTypeExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.ModeExtractor
-import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantExtractor
+import com.example.smartexpensecalendar.sms_engine.extractor.MerchantExtractor
 import com.example.smartexpensecalendar.features.developer_tools.service.CsvExportService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow

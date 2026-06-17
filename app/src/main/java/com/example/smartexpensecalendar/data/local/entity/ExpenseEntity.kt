@@ -23,6 +23,7 @@ data class ExpenseEntity(
     val accountSuffix: String?,
     val accountName: String?,
     val quality: Int = 1,
+    val entityType: String = "MERCHANT",
     val linkedId: Long?,
     val originalSmsId: Long?,
     val originalSmsBody: String?,

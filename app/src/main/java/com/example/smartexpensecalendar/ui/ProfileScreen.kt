@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.smartexpensecalendar.presentation.profile.ProfileViewModel
+import com.example.smartexpensecalendar.features.beta_audit.BetaAuditViewModel
 import com.example.smartexpensecalendar.ui.components.PremiumFeatureCard
 import com.example.smartexpensecalendar.ui.components.FintechBottomNav
 import com.example.smartexpensecalendar.ui.navigation.Screen
@@ -33,11 +34,21 @@ import com.example.smartexpensecalendar.core.designsystem.theme.*
 @Composable
 fun ProfileScreen(
     navController: NavController,
-    viewModel: ProfileViewModel = hiltViewModel()
+    viewModel: ProfileViewModel = hiltViewModel(),
+    auditViewModel: BetaAuditViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val auditStatus by auditViewModel.exportStatus.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
     var showCurrencyPicker by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(auditStatus) {
+        auditStatus?.let {
+            snackbarHostState.showSnackbar(it)
+            auditViewModel.clearStatus()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -54,6 +65,7 @@ fun ProfileScreen(
         bottomBar = {
             FintechBottomNav(navController = navController)
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = BackgroundStart
     ) { padding ->
         LazyColumn(
@@ -130,6 +142,14 @@ fun ProfileScreen(
                     subtitle = "Analyze SMS patterns & detection",
                     icon = Icons.Default.DeveloperMode,
                     onClick = { navController.navigate(Screen.DeveloperDashboard.route) }
+                )
+            }
+            item {
+                PreferenceItem(
+                    title = "BETA AUDIT EXPORT",
+                    subtitle = "Generate full audit package (ZIP)",
+                    icon = Icons.Default.Download,
+                    onClick = { auditViewModel.runBetaAudit() }
                 )
             }
             // --------------------------------------------------

@@ -86,4 +86,14 @@ object EventTypeKeywords {
         "CASH DEPOSIT",
         "DEPOSITED"
     )
+
+    val mealCardKeywords = setOf(
+        "MEAL CARD",
+        "SODEXO",
+        "ZETA",
+        "PLUXEE",
+        "EDENRED",
+        "SWILE",
+        "TICKET RESTAURANT"
+    )
 }

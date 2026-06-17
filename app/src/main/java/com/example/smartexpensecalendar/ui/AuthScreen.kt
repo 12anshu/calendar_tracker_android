@@ -53,11 +53,17 @@ fun AuthScreen(
     }
 
     LaunchedEffect(uiState.isChoiceMade) {
-        if (uiState.isChoiceMade) {
+        if (uiState.isChoiceMade && !forceShow) {
             navController.navigate(Screen.Home.route) {
                 popUpTo(Screen.Auth.route) { inclusive = true }
             }
         }
+    }
+
+    if (uiState.isChoiceMade && !forceShow) {
+        // Show nothing or a loading indicator while navigating
+        Box(modifier = Modifier.fillMaxSize().background(BackgroundStart))
+        return
     }
 
     Box(

@@ -36,7 +36,8 @@ enum class FinancialEventType {
 fun FinancialEventType.requiresMerchant(): Boolean {
     return when (this) {
         FinancialEventType.EXPENSE,
-        FinancialEventType.CREDIT_CARD_SPEND -> true
+        FinancialEventType.CREDIT_CARD_SPEND,
+        FinancialEventType.MEAL_CARD -> true
 
         else -> false
     }

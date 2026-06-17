@@ -33,6 +33,7 @@ import com.example.smartexpensecalendar.ui.components.MonthYearPicker
 import com.example.smartexpensecalendar.ui.components.FintechBottomNav
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
+import com.example.smartexpensecalendar.utils.ExpenseDisplayUtils
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -252,7 +253,7 @@ fun SmsInboxItem(
         Row(verticalAlignment = Alignment.CenterVertically) {
             val vesselInfo = buildAnnotatedString {
                 withStyle(SpanStyle(color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)) {
-                    append(sms.merchant ?: "NONE")
+                    append(sms.merchant?.uppercase() ?: "NONE")
                 }
                 append(" | ")
                 withStyle(SpanStyle(color = TextSecondary, fontSize = 11.sp)) {
@@ -262,7 +263,7 @@ fun SmsInboxItem(
                     append(" | ")
                 }
                 withStyle(SpanStyle(color = SecondaryAccent.copy(alpha = 0.8f), fontSize = 11.sp)) {
-                    append(sms.accountName ?: "UNKNOWN")
+                    append(ExpenseDisplayUtils.getVesselDisplay(sms.accountName))
                 }
             }
             Text(text = vesselInfo, modifier = Modifier.weight(1f), maxLines = 1)
@@ -497,7 +498,7 @@ fun SmsDetailDialog(sms: AnalyzedSMS, onDismiss: () -> Unit) {
                 if (!sms.accountName.isNullOrBlank()) {
                     Column {
                         Text("Account/Card", color = TextSecondary, fontSize = 11.sp)
-                        Text(sms.accountName, color = SecondaryAccent, fontWeight = FontWeight.Bold)
+                        Text(ExpenseDisplayUtils.getVesselDisplay(sms.accountName), color = SecondaryAccent, fontWeight = FontWeight.Bold)
                     }
                 }
 

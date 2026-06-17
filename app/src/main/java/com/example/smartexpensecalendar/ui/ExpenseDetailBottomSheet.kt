@@ -40,6 +40,7 @@ import com.example.smartexpensecalendar.presentation.detail.ExpenseDetailViewMod
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.ui.components.CategoryGridPicker
 import com.example.smartexpensecalendar.ui.MovementTransactionItem
+import com.example.smartexpensecalendar.utils.ExpenseDisplayUtils
 import com.example.smartexpensecalendar.core.designsystem.theme.*
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
 import kotlinx.coroutines.launch
@@ -402,14 +403,10 @@ fun ExpenseRow(
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Column {
-                        val displayName = when {
-                            !expense.merchant.isNullOrBlank() -> expense.merchant
-                            !expense.accountName.isNullOrBlank() -> expense.accountName
-                            else -> "Transaction"
-                        }
+                        val displayName = ExpenseDisplayUtils.getDisplayName(expense)
                         
                         Text(
-                            text = displayName.uppercase(),
+                            text = displayName,
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
@@ -427,7 +424,7 @@ fun ExpenseRow(
                                     color = SecondaryAccent.copy(alpha = 0.8f),
                                     fontWeight = FontWeight.Medium
                                 )) {
-                                    append(expense.accountName.uppercase())
+                                    append(ExpenseDisplayUtils.getVesselDisplay(expense.accountName))
                                 }
                             }
                         }

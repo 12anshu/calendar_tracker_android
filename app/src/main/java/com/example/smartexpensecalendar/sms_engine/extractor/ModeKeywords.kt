@@ -61,4 +61,14 @@ object ModeKeywords {
         "CASH DEPOSIT",
         "WITHDRAWN AT ATM"
     )
+
+    val mealCardKeywords = setOf(
+        "PLUXEE",
+        "SODEXO",
+        "ZETA",
+        "EDENRED",
+        "SWILE",
+        "MEAL CARD",
+        "FOOD CARD"
+    )
 }

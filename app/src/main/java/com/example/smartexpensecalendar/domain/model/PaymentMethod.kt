@@ -10,5 +10,6 @@ enum class PaymentMethod {
     RTGS,
     ACH,
     CASH,
+    MEAL_CARD,
     UNKNOWN
 }

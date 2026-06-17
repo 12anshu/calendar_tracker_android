@@ -110,7 +110,7 @@ interface ExpenseDao {
     @Query("SELECT name FROM custom_categories")
     fun getAllCustomCategories(): Flow<List<String>>
 
-    @Query("SELECT merchant, category, COUNT(*) as frequency FROM expenses WHERE merchant IS NOT NULL GROUP BY merchant ORDER BY frequency DESC")
+    @Query("SELECT merchant, category, COUNT(*) as frequency FROM expenses WHERE merchant IS NOT NULL AND entityType = 'MERCHANT' GROUP BY merchant ORDER BY frequency DESC")
     fun getActiveMerchantStats(): Flow<List<ActiveMerchantEntity>>
 }
 

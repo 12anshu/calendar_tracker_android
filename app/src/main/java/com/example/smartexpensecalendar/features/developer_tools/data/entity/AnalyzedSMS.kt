@@ -27,6 +27,7 @@ data class AnalyzedSMS(
     val merchant: String? = null,
     val transactionMode: String = "UNKNOWN",
     val accountName: String? = null,
+    val entityType: String = "MERCHANT",
     val isReviewed: Boolean = false,
     val isFlagged: Boolean = false
 )

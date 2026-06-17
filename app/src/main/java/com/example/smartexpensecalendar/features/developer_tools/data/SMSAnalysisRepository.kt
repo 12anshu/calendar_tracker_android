@@ -15,7 +15,7 @@ import com.example.smartexpensecalendar.sms_engine.extractor.AmountExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.DirectionExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.FinancialEventTypeExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.ModeExtractor
-import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantExtractor
+import com.example.smartexpensecalendar.sms_engine.extractor.MerchantExtractor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map

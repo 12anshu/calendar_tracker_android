@@ -19,35 +19,60 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.smartexpensecalendar.R
+import com.example.smartexpensecalendar.presentation.splash.SplashViewModel
 import com.example.smartexpensecalendar.ui.components.AppLogoText
 import com.example.smartexpensecalendar.ui.navigation.Screen
 import com.example.smartexpensecalendar.core.designsystem.theme.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 @Composable
-fun SplashScreen(navController: NavController) {
+fun SplashScreen(
+    navController: NavController,
+    viewModel: SplashViewModel = hiltViewModel()
+) {
     val scale = remember { Animatable(0f) }
     val alpha = remember { Animatable(0f) }
 
     LaunchedEffect(key1 = true) {
-        scale.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(
-                durationMillis = 800,
-                easing = {
-                    OvershootInterpolator(2f).getInterpolation(it)
-                }
+        // Decide destination immediately
+        viewModel.checkDestination()
+
+        // Animation and minimum delay in parallel
+        val animationScale = launch {
+            scale.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = 800,
+                    easing = {
+                        OvershootInterpolator(2f).getInterpolation(it)
+                    }
+                )
             )
-        )
-        alpha.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(durationMillis = 800)
-        )
-        delay(1500L)
-        navController.navigate(Screen.Auth.createRoute(force = false)) {
-            popUpTo(Screen.Splash.route) { inclusive = true }
+        }
+        val animationAlpha = launch {
+            alpha.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 800)
+            )
+        }
+        
+        delay(1500L) // Wait for total splash duration
+        
+        // Ensure animations finished
+        animationScale.join()
+        animationAlpha.join()
+
+        viewModel.navigationEvent.collectLatest { destination ->
+            destination?.let {
+                navController.navigate(it) {
+                    popUpTo(Screen.Splash.route) { inclusive = true }
+                }
+            }
         }
     }
 
