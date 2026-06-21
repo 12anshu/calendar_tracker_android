@@ -2,6 +2,10 @@ package com.example.smartexpensecalendar.data.local
 
 import androidx.room.TypeConverter
 import com.example.smartexpensecalendar.domain.model.SubscriptionTier
+import com.example.smartexpensecalendar.domain.model.TransactionDirection
+import com.example.smartexpensecalendar.sms_engine.model.ExtractionEvidence
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 
 class Converters {
     @TypeConverter
@@ -12,6 +16,31 @@ class Converters {
     @TypeConverter
     fun toSubscriptionTier(tier: String): SubscriptionTier {
         return SubscriptionTier.valueOf(tier)
+    }
+
+    @TypeConverter
+    fun fromTransactionDirection(direction: TransactionDirection): String {
+        return direction.name
+    }
+
+    @TypeConverter
+    fun toTransactionDirection(direction: String): TransactionDirection {
+        return try {
+            TransactionDirection.valueOf(direction)
+        } catch (e: Exception) {
+            TransactionDirection.UNKNOWN
+        }
+    }
+
+    @TypeConverter
+    fun fromExtractionEvidenceList(value: List<ExtractionEvidence>): String {
+        return Gson().toJson(value)
+    }
+
+    @TypeConverter
+    fun toExtractionEvidenceList(value: String): List<ExtractionEvidence> {
+        val listType = object : TypeToken<List<ExtractionEvidence>>() {}.type
+        return Gson().fromJson(value, listType)
     }
 
     @TypeConverter

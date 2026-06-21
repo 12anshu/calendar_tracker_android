@@ -8,6 +8,8 @@ import android.provider.MediaStore
 import com.example.smartexpensecalendar.domain.model.ProcessingStatus
 import com.example.smartexpensecalendar.domain.model.TransactionType
 import com.example.smartexpensecalendar.domain.model.PaymentMethod
+import com.example.smartexpensecalendar.domain.model.FinancialEventType
+import com.example.smartexpensecalendar.sms.reconciliation.duplicate.*
 import com.example.smartexpensecalendar.domain.repository.ExpenseRepository
 import com.example.smartexpensecalendar.features.developer_tools.data.SMSAnalysisRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -125,11 +127,62 @@ class BetaAuditExporter @Inject constructor(
                 ))
             }
 
-            // 4. duplicate_detection_report.csv (Contextual info on Engine logic)
+            // 4. duplicate_detection_report.csv
+            val dupResults = mutableListOf<List<String>>()
+            val processedFinancial = mutableListOf<com.example.smartexpensecalendar.features.developer_tools.data.entity.AnalyzedSMS>()
+            
+            // Temporary mapping for scoring
+            fun analyzedToExpense(sms: com.example.smartexpensecalendar.features.developer_tools.data.entity.AnalyzedSMS): com.example.smartexpensecalendar.domain.model.Expense {
+                return com.example.smartexpensecalendar.domain.model.Expense(
+                    amount = sms.amount ?: 0.0,
+                    category = sms.category ?: "",
+                    date = LocalDate.now(),
+                    merchant = sms.merchant,
+                    financialEventType = FinancialEventType.valueOf(sms.financialEventType),
+                    paymentMethod = com.example.smartexpensecalendar.domain.model.PaymentMethod.valueOf(mapModeToPaymentMethod(sms.transactionMode)),
+                    source = com.example.smartexpensecalendar.domain.model.ExpenseSource.SMS,
+                    type = if (sms.financialEventType.contains("INCOME")) TransactionType.CREDIT else TransactionType.DEBIT,
+                    senderId = sms.sender
+                )
+            }
+
+            financialSms.sortedBy { it.timestamp }.forEach { incoming ->
+                val incomingExpense = analyzedToExpense(incoming)
+                var foundMatch = false
+                
+                for (existing in processedFinancial) {
+                    // Check 30 min window
+                    if (Math.abs(incoming.timestamp - existing.timestamp) <= 30 * 60 * 1000) {
+                        val existingExpense = analyzedToExpense(existing)
+                        val match = DuplicateMatcher.calculateMatchScore(incomingExpense, existingExpense)
+                        
+                        if (match.score >= 60) {
+                            val winner = if (incoming.confidence > existing.confidence) "INCOMING" else "EXISTING"
+                            dupResults.add(listOf(
+                                existing.id.toString(),
+                                incoming.id.toString(),
+                                incoming.amount.toString(),
+                                incoming.merchant ?: "",
+                                match.score.toString(),
+                                match.decision.name,
+                                match.reason,
+                                winner
+                            ))
+                            if (match.decision == DuplicateDecision.DUPLICATE) foundMatch = true
+                        }
+                    }
+                }
+                if (!foundMatch) processedFinancial.add(incoming)
+            }
+
             createCsv(File(auditDir, "duplicate_detection_report.csv"), listOf(
-                "logic", "status", "reason"
+                "existing_transaction", "incoming_transaction", "amount", "merchant", "score", "decision", "reason", "winner"
             )) {
-                listOf(listOf("Quality Tier Overwrite", "ACTIVE", "Higher quality bank alerts overwrite low-confidence SMS fragments"))
+                if (dupResults.isEmpty()) {
+                    listOf(listOf("INFO", "N/A", "N/A", "N/A", "N/A", "N/A", "No duplicates detected in sample", "N/A"))
+                } else {
+                    dupResults
+                }
             }
 
             // 5. unknown_message_report.csv
@@ -232,13 +285,14 @@ class BetaAuditExporter @Inject constructor(
 
             // 10. transaction_extraction_results.csv (The core technical extraction report)
             createCsv(File(auditDir, "transaction_extraction_results.csv"), listOf(
-                "sms_id", "transaction_detected", "amount", "currency", "merchant_name", 
+                "sms_id", "sender_id", "transaction_detected", "amount", "currency", "merchant_name", 
                 "merchant_confidence", "transaction_type", "account_identifier", "card_identifier", 
-                "upi_identifier", "timestamp_extracted", "extraction_confidence", "regex_used", "parser_used", "payment_method"
+                "upi_identifier", "transaction_time", "extraction_confidence", "regex_used", "parser_used", "payment_method"
             )) {
                 financialSms.map { sms ->
                     listOf(
                         sms.id.toString(),
+                        sms.sender,
                         "true",
                         sms.amount?.toString() ?: "0.0",
                         "INR",
@@ -259,7 +313,7 @@ class BetaAuditExporter @Inject constructor(
 
             // 11. transaction_ledger_validation.csv
             createCsv(File(auditDir, "transaction_ledger_validation.csv"), listOf(
-                "sms_id", "sender", "message_type", "is_financial", "in_expense_table", 
+                "sms_id", "sender", "transaction_time", "message_type", "entity_type", "is_financial", "in_expense_table", 
                 "expense_id", "expense_amount", "expense_merchant", "validation_status", "sms_body"
             )) {
                 analyzedSms.map { sms ->
@@ -276,7 +330,9 @@ class BetaAuditExporter @Inject constructor(
                     listOf(
                         sms.id.toString(),
                         sms.sender,
+                        sms.timestamp.toString(),
                         sms.messageType,
+                        sms.entityType,
                         sms.isFinancial.toString(),
                         inExpense.toString(),
                         expense?.id?.toString() ?: "",

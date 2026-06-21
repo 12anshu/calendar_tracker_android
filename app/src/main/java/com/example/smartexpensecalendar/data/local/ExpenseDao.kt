@@ -12,6 +12,8 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE date = :date")
     fun getExpensesForDate(date: String): Flow<List<ExpenseEntity>>
 
+    @Query("SELECT * FROM expenses WHERE id = :id LIMIT 1")
+    fun getExpenseById(id: Long): Flow<ExpenseEntity?>
     @Query("SELECT * FROM expenses WHERE date LIKE :monthPrefix || '%'")
     fun getExpensesForMonth(monthPrefix: String): Flow<List<ExpenseEntity>>
 
@@ -35,6 +37,9 @@ interface ExpenseDao {
         ORDER BY date DESC
     """)
     suspend fun findExpensesInRange(type: String, startDate: String, endDate: String): List<ExpenseEntity>
+
+    @Query("SELECT * FROM expenses WHERE amount = :amount AND type = :type AND (transactionTime BETWEEN :startMillis AND :endMillis)")
+    suspend fun findPotentialDuplicates(amount: Double, type: String, startMillis: Long, endMillis: Long): List<ExpenseEntity>
 
     @Query("UPDATE expenses SET status = :status, linkedId = :linkedId WHERE id = :id")
     suspend fun updateExpenseStatus(id: Long, status: String, linkedId: Long?)
@@ -112,6 +117,9 @@ interface ExpenseDao {
 
     @Query("SELECT merchant, category, COUNT(*) as frequency FROM expenses WHERE merchant IS NOT NULL AND entityType = 'MERCHANT' GROUP BY merchant ORDER BY frequency DESC")
     fun getActiveMerchantStats(): Flow<List<ActiveMerchantEntity>>
+
+    @Query("SELECT * FROM expenses WHERE merchant = :merchant")
+    fun getTransactionsByMerchant(merchant: String): Flow<List<ExpenseEntity>>
 }
 
 data class ActiveMerchantEntity(

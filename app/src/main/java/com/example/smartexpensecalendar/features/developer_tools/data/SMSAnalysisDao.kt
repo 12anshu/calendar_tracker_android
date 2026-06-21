@@ -28,13 +28,15 @@ interface SMSAnalysisDao {
             )
             OR messageType = :messageType
         )
+        AND (:direction IS NULL OR direction = :direction)
         ORDER BY CASE WHEN :isAsc = 1 THEN score END ASC, CASE WHEN :isAsc = 0 THEN score END DESC
     """)
     fun getAllAnalyzedSMS(
         query: String = "", 
         isAsc: Boolean = false,
         financial: Boolean? = null,
-        messageType: String? = null
+        messageType: String? = null,
+        direction: String? = null
     ): PagingSource<Int, AnalyzedSMS>
 
     @Query("SELECT COUNT(*) FROM analyzed_sms")
@@ -46,6 +48,18 @@ interface SMSAnalysisDao {
     @Query("SELECT COUNT(*) FROM analyzed_sms WHERE isFinancial = 0")
     fun getNonFinancialSMSCount(): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM analyzed_sms WHERE timestamp >= :start AND timestamp <= :end AND isFinancial = 1")
+    fun getFinancialSMSCountForMonth(start: Long, end: Long): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM analyzed_sms WHERE timestamp >= :start AND timestamp <= :end AND isFinancial = 0")
+    fun getNonFinancialSMSCountForMonth(start: Long, end: Long): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM analyzed_sms WHERE timestamp >= :start AND timestamp <= :end AND isFinancial = 1 AND messageType = 'TRANSACTION'")
+    fun getFinancialTransactionCountForMonth(start: Long, end: Long): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM analyzed_sms WHERE timestamp >= :start AND timestamp <= :end AND direction = :direction")
+    fun getDirectionCountForMonth(start: Long, end: Long, direction: String): Flow<Int>
+
     @Query("SELECT COUNT(*) FROM analyzed_sms WHERE score > 70")
     fun getHighConfidenceFinancialCount(): Flow<Int>
 
@@ -54,6 +68,12 @@ interface SMSAnalysisDao {
 
     @Query("SELECT COUNT(*) FROM analyzed_sms WHERE messageType = :type")
     fun getMessageTypeCount(type: String): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM analyzed_sms WHERE isFinancial = 1 AND messageType = 'TRANSACTION'")
+    fun getFinancialTransactionCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM analyzed_sms WHERE direction = :direction")
+    fun getDirectionCount(direction: String): Flow<Int>
 
     @Query("""
         SELECT COUNT(*)
@@ -109,6 +129,7 @@ interface SMSAnalysisDao {
         AND (:eventType IS NULL OR financialEventType = :eventType)
         AND (:reviewed IS NULL OR isReviewed = :reviewed)
         AND (:flagged IS NULL OR isFlagged = :flagged)
+        AND (:direction IS NULL OR direction = :direction)
         AND (message LIKE '%' || :query || '%' OR sender LIKE '%' || :query || '%')
         ORDER BY timestamp DESC
     """)
@@ -120,7 +141,8 @@ interface SMSAnalysisDao {
         messageType: String? = null,
         eventType: String? = null,
         reviewed: Boolean? = null,
-        flagged: Boolean? = null
+        flagged: Boolean? = null,
+        direction: String? = null
     ): Flow<List<AnalyzedSMS>>
 
     @Query("SELECT * FROM analyzed_sms WHERE messageType = 'TRANSACTION' ORDER BY timestamp DESC")

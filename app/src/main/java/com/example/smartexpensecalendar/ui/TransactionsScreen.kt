@@ -53,20 +53,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.smartexpensecalendar.domain.model.DefaultCategories
 import com.example.smartexpensecalendar.domain.model.Expense
 import com.example.smartexpensecalendar.domain.model.TransactionStatus
 import com.example.smartexpensecalendar.domain.model.TransactionType
 import com.example.smartexpensecalendar.presentation.transactions.TransactionsViewModel
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.ui.components.MonthYearPicker
-import com.example.smartexpensecalendar.ui.components.CategoryGridPicker
 import com.example.smartexpensecalendar.ui.components.FintechBottomNav
 import com.example.smartexpensecalendar.utils.ExpenseDisplayUtils
 import com.example.smartexpensecalendar.core.designsystem.theme.*
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
+import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
 
@@ -85,8 +85,6 @@ fun TransactionsScreen(
     var searchQueryLocal by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
 
-    var selectedSmsForDetail by remember { mutableStateOf<String?>(null) }
-    var editingExpenseId by remember { mutableStateOf<Long?>(null) }
     var showAddCategoryDialog by remember { mutableStateOf(false) }
 
     // Sync local search query with ViewModel state (e.g., when search is cleared externally)
@@ -256,7 +254,9 @@ fun TransactionsScreen(
                                             credit = credit,
                                             currencySymbol = uiState.currencySymbol,
                                             onClick = { 
-                                                selectedSmsForDetail = "DEBIT: ${debit.originalSmsBody ?: "N/A"}\n\nCREDIT: ${credit.originalSmsBody ?: "N/A"}"
+                                                navController.navigate(
+                                                    com.example.smartexpensecalendar.ui.navigation.Screen.TransactionDetails.createRoute(debit.id)
+                                                )
                                             }
                                         )
                                     }
@@ -271,23 +271,12 @@ fun TransactionsScreen(
                         item(key = expense.id) {
                             TransactionItem(
                                 expense = expense,
-                                categories = uiState.categories,
-                                isEditing = editingExpenseId == expense.id,
                                 currencySymbol = uiState.currencySymbol,
-                                onEditToggle = { isEditing ->
-                                    editingExpenseId = if (isEditing) expense.id else null
+                                onClick = {
+                                    navController.navigate(
+                                        "transaction_details/${expense.id}"
+                                    )
                                 },
-                                onDelete = {
-                                    viewModel.deleteExpense(expense)
-                                },
-                                onEdit = { amount, category, applyToFuture ->
-                                    viewModel.updateExpense(expense, amount, category, applyToFuture)
-                                    editingExpenseId = null
-                                },
-                                onClick = { 
-                                    selectedSmsForDetail = expense.originalSmsBody ?: "Manual transaction - No SMS available"
-                                },
-                                onAddCustomCategory = { showAddCategoryDialog = true },
                                 onConfirmReview = {
                                     viewModel.updateExpenseStatus(expense.id, TransactionStatus.COMPLETED)
                                 }
@@ -311,26 +300,6 @@ fun TransactionsScreen(
                 viewModel.setType(type)
                 showFilterSheet = false
             }
-        )
-    }
-
-    if (selectedSmsForDetail != null) {
-        AlertDialog(
-            onDismissRequest = { selectedSmsForDetail = null },
-            title = { Text("Original SMS", color = TextPrimary, fontWeight = FontWeight.Bold) },
-            text = { 
-                Text(
-                    text = selectedSmsForDetail!!,
-                    color = TextSecondary,
-                    style = MaterialTheme.typography.bodyMedium
-                ) 
-            },
-            confirmButton = {
-                TextButton(onClick = { selectedSmsForDetail = null }) {
-                    Text("Close", color = CyanGlow)
-                }
-            },
-            containerColor = BackgroundEnd
         )
     }
 }
@@ -383,19 +352,19 @@ fun MovementTransactionItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(SurfaceGlass.copy(alpha = 0.2f)) // Reduced background intensity
             .border(
                 1.dp, 
                 SecondaryAccent.copy(alpha = 0.12f), // Subtle border instead of bright background
-                RoundedCornerShape(12.dp)
+                RoundedCornerShape(18.dp)
             )
             .clickable { onClick() }
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 12.dp),
+                .padding(horizontal = 12.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -474,172 +443,119 @@ fun MovementTransactionItem(
 @Composable
 fun TransactionItem(
     expense: Expense,
-    categories: List<String>,
-    isEditing: Boolean,
     currencySymbol: String = "₹",
-    onEditToggle: (Boolean) -> Unit,
-    onDelete: () -> Unit,
-    onEdit: (Double, String, Boolean) -> Unit,
     onClick: () -> Unit,
-    onAddCustomCategory: () -> Unit,
     onConfirmReview: () -> Unit
 ) {
-    val categoryColor = getCategoryColor(expense.category)
-    var editAmount by remember(isEditing) { mutableStateOf(expense.amount.toString()) }
-    var editCategory by remember(isEditing) { mutableStateOf(expense.category) }
-    var applyToFuture by remember(isEditing) { mutableStateOf(false) }
-    var expanded by remember { mutableStateOf(false) }
+    val time = expense.transactionTime ?: expense.createdAt
+    val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
+    val timeStr = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).format(timeFormatter)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(SurfaceGlass)
             .border(
-                1.dp, 
-                if (isEditing) CyanGlow.copy(alpha = 0.5f) else if (expense.status == TransactionStatus.PENDING_REVIEW) PremiumGold.copy(alpha = 0.3f) else Color.Transparent, 
-                RoundedCornerShape(12.dp)
+                1.dp,
+                if (expense.status == TransactionStatus.PENDING_REVIEW) PremiumGold.copy(alpha = 0.3f) else Color.Transparent,
+                RoundedCornerShape(18.dp)
             )
+            .clickable { onClick() }
     ) {
-        if (isEditing) {
-            // ... [Same editing code]
-        } else {
-            Column {
-                if (expense.status == TransactionStatus.PENDING_REVIEW) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(PremiumGold.copy(alpha = 0.1f))
-                            .padding(horizontal = 12.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            "Uncertain Transaction - Please verify",
-                            color = PremiumGold,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        TextButton(
-                            onClick = onConfirmReview,
-                            contentPadding = PaddingValues(0.dp),
-                            modifier = Modifier.height(20.dp)
-                        ) {
-                            Text("Confirm", color = CyanGlow, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold)
-                        }
-                    }
-                }
-
+        Column {
+            if (expense.status == TransactionStatus.PENDING_REVIEW) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onClick() }
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                        .background(PremiumGold.copy(alpha = 0.1f))
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                        CategoryIconView(category = expense.category, size = 42.dp, iconSize = 20.dp)
+                    Text(
+                        "Uncertain Transaction - Please verify",
+                        color = PremiumGold,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    TextButton(
+                        onClick = onConfirmReview,
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.height(20.dp)
+                    ) {
+                        Text("Confirm", color = CyanGlow, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold)
+                    }
+                }
+            }
 
-                        Spacer(modifier = Modifier.width(12.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    CategoryIconView(category = expense.category, size = 42.dp, iconSize = 20.dp)
 
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                val displayName = ExpenseDisplayUtils.getDisplayName(expense)
+                    Spacer(modifier = Modifier.width(12.dp))
 
-                                Text(
-                                    text = displayName,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary,
-                                    maxLines = 1,
-                                    modifier = Modifier.weight(1f, fill = false)
-                                )
-                                
-                                if (expense.status == TransactionStatus.SETTLEMENT) {
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Surface(
-                                        color = SecondaryAccent.copy(alpha = 0.08f),
-                                        shape = RoundedCornerShape(4.dp),
-                                        border = BorderStroke(1.dp, SecondaryAccent.copy(alpha = 0.15f))
-                                    ) {
-                                        Text(
-                                            "SETTLED",
-                                            color = SecondaryAccent.copy(alpha = 0.6f),
-                                            fontSize = 8.sp,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                                        )
-                                    }
-                                }
-                                
-                                if (expense.status == TransactionStatus.REFUNDED) {
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Surface(
-                                        color = ColorGroceries.copy(alpha = 0.2f),
-                                        shape = RoundedCornerShape(4.dp)
-                                    ) {
-                                        Text(
-                                            "REFUNDED",
-                                            color = ColorGroceries,
-                                            fontSize = 8.sp,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                                        )
-                                    }
-                                }
-                            }
-                            
-                            val subtitle = buildAnnotatedString {
-                                withStyle(SpanStyle(color = TextSecondary)) {
-                                    append(expense.category)
-                                }
-                                if (!expense.accountName.isNullOrBlank()) {
-                                    withStyle(SpanStyle(color = TextSecondary.copy(alpha = 0.5f))) {
-                                        append("  •  ")
-                                    }
-                                    withStyle(SpanStyle(
-                                        color = SecondaryAccent.copy(alpha = 0.8f),
-                                        fontWeight = FontWeight.Medium
-                                    )) {
-                                        append(ExpenseDisplayUtils.getVesselDisplay(expense.accountName))
-                                    }
-                                }
-                            }
+                    Column(modifier = Modifier.weight(1f)) {
+                        val displayName = ExpenseDisplayUtils.getDisplayName(expense)
 
+                        Text(
+                            text = displayName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary,
+                            maxLines = 1
+                        )
+
+                        Text(
+                            text = "${expense.category}  •  $timeStr",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextSecondary
+                        )
+                    }
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "${if (expense.type == TransactionType.DEBIT) "-" else "+"} $currencySymbol${formatIndianCurrency(expense.amount)}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = if (expense.status == TransactionStatus.SETTLEMENT) TextSecondary
+                        else if (expense.type == TransactionType.DEBIT) Color(0xFFF87171)
+                        else ColorGroceries
+                    )
+                    if (expense.status == TransactionStatus.SETTLEMENT) {
+                        Surface(
+                            color = SecondaryAccent.copy(alpha = 0.08f),
+                            shape = RoundedCornerShape(4.dp),
+                            border = BorderStroke(1.dp, SecondaryAccent.copy(alpha = 0.15f))
+                        ) {
                             Text(
-                                text = subtitle,
-                                style = MaterialTheme.typography.labelMedium
+                                "SETTLED",
+                                color = SecondaryAccent.copy(alpha = 0.6f),
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                             )
                         }
-                    }
-
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = "${if (expense.type == TransactionType.DEBIT) "-" else "+"} $currencySymbol${formatIndianCurrency(expense.amount)}",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = if (expense.status == TransactionStatus.SETTLEMENT) TextSecondary 
-                                    else if (expense.type == TransactionType.DEBIT) TextPrimary 
-                                    else ColorGroceries
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Only show suffix if full accountName is missing
-                            if (expense.accountSuffix != null && expense.accountName.isNullOrBlank()) {
-                                Text(
-                                    text = "XX${expense.accountSuffix}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = TextSecondary
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                            }
-                            IconButton(onClick = { onEditToggle(true) }, modifier = Modifier.size(24.dp)) {
-                                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TextSecondary, modifier = Modifier.size(16.dp))
-                            }
-                            IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = ColorTransport, modifier = Modifier.size(16.dp))
-                            }
+                    } else if (expense.status == TransactionStatus.REFUNDED) {
+                        Surface(
+                            color = ColorGroceries.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                "REFUNDED",
+                                color = ColorGroceries,
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
                         }
                     }
                 }
@@ -745,7 +661,7 @@ fun FilterBottomSheet(
                 onClick = { onApply(tempCategory, tempType) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = CyanGlow, contentColor = BackgroundStart),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(18.dp)
             ) {
                 Text("Apply Filters", fontWeight = FontWeight.Bold)
             }

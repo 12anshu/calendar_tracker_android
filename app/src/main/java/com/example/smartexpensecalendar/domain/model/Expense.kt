@@ -34,6 +34,8 @@ data class Expense(
     val status: TransactionStatus = TransactionStatus.COMPLETED,
     val accountSuffix: String? = null, // e.g., "9490" or "XX47"
     val accountName: String? = null,   // New Field: e.g. "HDFC Card 6774"
+    val transactionTime: Long? = null,
+    val senderId: String? = null,
     val quality: Int = 1,
     val entityType: EntityType = EntityType.MERCHANT,
     val linkedId: Long? = null,        // Link between debit and credit/settlement

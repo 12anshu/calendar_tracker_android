@@ -1,194 +1,136 @@
 package com.example.smartexpensecalendar.sms_engine.detector
 
-import com.example.smartexpensecalendar.sms.config.DetectionConstants
-
 object DetectionPatterns {
 
-    val amountRegex = Regex(
-        "${DetectionConstants.CURRENCY_SYMBOLS}\\s*([\\d,]+(?:\\.\\d{1,2})?)",
-        RegexOption.IGNORE_CASE
+    // --- ATOMIC: BANK ENTITIES ---
+    val BANKS = listOf(
+        "HDFC", "ICICI", "AXIS", "SBI", "KOTAK", "YES BANK", "IDFC", "RBL", "FEDERAL",
+        "CITI", "HSBC", "SCB", "AMEX", "DBS", "DIGIBANK", "STANDARD CHARTERED",
+        "BARODA", "PNB", "CANARA", "UNION BANK", "INDIAN BANK", "BOI", "UCO", "BOM",
+        "IDBI", "IOB", "PSB", "AU BANK", "EQUITAS", "UJJIVAN", "FINO", "NSDL", "IPPB",
+        "PAYTM", "AIRTEL", "JIO", "SARASWAT", "COSMOS", "TJSB", "SVC", "NKGSB"
     )
 
-    val upiRegex = listOf(
-        Regex(
-            "[A-Za-z0-9._-]+@[A-Za-z0-9._-]+",
-            RegexOption.IGNORE_CASE
-        ),
-        Regex(
-            "UPI\\s*ID\\s*[:\\-]?\\s*[A-Za-z0-9._-]+@[A-Za-z0-9._-]+",
-            RegexOption.IGNORE_CASE
-        ),
-        Regex(
-            "VPA\\s*[:\\-]?\\s*[A-Za-z0-9._-]+@[A-Za-z0-9._-]+",
-            RegexOption.IGNORE_CASE
-        ),
-        Regex(
-            "\\b\\d{10}@\\w+",
-            RegexOption.IGNORE_CASE
-        )
-    )
-    val accountPatterns = listOf(
+    // --- ATOMIC: INSTRUMENTS ---
+    val INSTRUMENT_BANK = listOf("BANK", "BK", "BNK", "BRANCH", "BR.")
+    val INSTRUMENT_CARD = listOf("CARD", "CRD", "CR", "CD", "DEBIT", "CREDIT", "DC", "CC", "VISA", "MASTERCARD", "RUPAY")
+    val INSTRUMENT_ACCOUNT = listOf("A/C", "ACC", "ACCT", "ACCOUNT", "ACCNT", "SAVINGS", "CURRENT", "LOAN", "OVERDRAFT", "OD", "A/C NO", "ACCOUNT NO")
+    val INSTRUMENT_MEAL = listOf("MEAL", "FOOD", "BENEFIT", "VOUCHER", "SODEXO", "PLUXEE", "ZETA", "EDENRED", "SWILE")
+    val INSTRUMENT_WALLET = listOf("WALLET", "WLT", "CASH", "PREPAID", "AMAZON PAY", "PAYTM", "PHONEPE", "MOBIKWIK")
+    val INSTRUMENT_POINTS = listOf("POINTS", "REWARDS", "RP", "COINS", "MILES", "CASHBACK")
 
-        Regex(
-            "ACCOUNT\\s*(NO|NUMBER|ENDING)?",
-            RegexOption.IGNORE_CASE
-        ),
-        Regex(
-            "A/C\\s*(NO|NUMBER|ENDING)?",
-            RegexOption.IGNORE_CASE
-        ),
-        Regex(
-            "\\*{4,}\\d{3,6}",
-            RegexOption.IGNORE_CASE
-        ),
-        Regex(
-            "XX\\d{3,6}",
-            RegexOption.IGNORE_CASE
-        ),
-        Regex(
-            "A/C\\sXX\\d{3,6}",
-            RegexOption.IGNORE_CASE
-        ),
-        Regex(
-            "\\*{2,}\\d{3,6}",
-            RegexOption.IGNORE_CASE
-        ),
-        Regex(
-            "A/C\\s*ENDING\\s*\\d+",
-            RegexOption.IGNORE_CASE
-        ),
+    // --- ATOMIC: STRUCTURAL CONNECTORS ---
+    val SUFFIX_MARKERS = listOf("ENDING", "ENDING IN", "ENDING WITH", "XX", "X", "NO.", "NO", "#")
+    val PREPOSITIONS = listOf("AT", "ON", "TO", "VIA", "FOR", "USING", "THROUGH", "TOWARDS", "BY", "FROM")
 
-        Regex(
-            "AC\\s*(NO|NUMBER|ENDING)?\\s*\\d+",
-            RegexOption.IGNORE_CASE
-        ),
+    // --- ATOMIC: STATISTICAL HINTS ---
+    val DEBIT_HINTS = listOf("TXN", "RS.", "INR")
 
-        Regex(
-            "X{2,}\\d{3,6}",
-            RegexOption.IGNORE_CASE
-        ),
+    // --- ATOMIC: MODE INDICATORS ---
+    val MODE_UPI = listOf("UPI", "VPA", "GPAY", "GOOGLE PAY", "PHONEPE", "PAYTM", "BHIM", "MOBIKWIK", "@YBL", "@OKSBI", "@OKHDFCBANK", "@PAYTM", "@APL")
+    val MODE_BANK_TRANSFER = listOf("IMPS", "NEFT", "RTGS", "FUND TRANSFER", "MONEY TRANSFER", "BANK TRANSFER", "BENEFICIARY")
+    val MODE_AUTO_DEBIT = listOf("AUTOPAY", "AUTO DEBIT", "E-MANDATE", "STANDING INSTRUCTION", "ECS", "SI DEBIT")
+    val MODE_CASH = listOf("CASH", "ATM", "WITHDRAWAL", "DEPOSIT")
 
-        Regex(
-            "DEBIT CARD\\s*(ENDING)?\\s*\\d+",
-            RegexOption.IGNORE_CASE
-        )
-    )
+    // --- ATOMIC: VERBS ---
+    val VERBS_STATUS = listOf("SUCCESSFUL", "COMPLETED", "PROCESSED", "SUBMITTED", "PENDING", "FAILED", "DECLINED", "CANCELLED")
 
-    val cardPatterns = listOf(
+    // --- ATOMIC: TIME & AUXILIARY ---
+    val AUX_PRESENT = listOf("IS", "HAS", "DONE", "NOW")
+    val AUX_PAST = listOf("WAS", "HAD")
+    val AUX_FUTURE = listOf("WILL", "DUE", "UPCOMING", "REMINDER")
 
-        Regex(
-            "CARD\\s*[Xx*]{0,4}\\d{3,6}",
-            RegexOption.IGNORE_CASE
-        ),
 
-        Regex(
-            "CARD ENDING\\s*\\d+",
-            RegexOption.IGNORE_CASE
-        )
-    )
+    // --- COMPOSITE: PHRASES (Event Types) ---
+    val PHRASES_REFUND = listOf("REFUND INITIATED", "REFUND PROCESSED", "REFUND COMPLETED", "REFUND SUCCESSFUL", "REFUND CREDITED", "AMOUNT REVERSED", "REVERSAL PROCESSED", "CHARGE REVERSAL")
+    val PHRASES_CC_PAYMENT = listOf("CREDIT CARD PAYMENT", "CARD BILL PAYMENT", "PAID TOWARDS YOUR CREDIT CARD", "PAYMENT RECEIVED FOR YOUR CARD", "CREDIT CARD DUES PAID", "PAYMENT RECEIVED ON", "RECEIVED TOWARDS YOUR CREDIT CARD", "PAYMENT OF {CUR}", "PAYMENT HAS BEEN RECEIVED", "RECEIVED ON CREDIT CARD")
+    val PHRASES_TRANSFER = listOf("FUND TRANSFER", "MONEY TRANSFER", "ACCOUNT TO ACCOUNT", "BENEFICIARY TRANSFER", "TRANSFERRED TO", "TRANSFERRED FROM", "IMPS TRANSFER", "NEFT TRANSFER", "RTGS TRANSFER", "UPI TRANSFER")
+    val PHRASES_EMI = listOf("EMI PAYMENT", "EMI DEBITED", "LOAN INSTALLMENT", "INSTALLMENT DEDUCTED", "EMI DEDUCTED", "TOWARDS LOAN", "LOAN REPAYMENT", "EMI PROCESSED")
+    val PHRASES_INVESTMENT = listOf("MUTUAL FUND PURCHASE", "SIP INSTALLMENT", "SIP PAYMENT", "FD BOOKED", "RD INSTALLMENT", "NPS CONTRIBUTION", "DEMAT PURCHASE", "STOCK PURCHASE")
 
-    val balancePatterns = listOf(
+    // --- COMPOSITE: REGEX GENERATORS ---
 
-        Regex(
-            "CURRENT BALANCE",
-            RegexOption.IGNORE_CASE
-        ),
+    /**
+     * Matches a bank structural mention like "HDFC Bank A/c XX1234" or "AXIS CARD 4567"
+     */
+    val bankStructureRegex: Regex by lazy {
+        val banks = BANKS.joinToString("|")
+        val instruments = (INSTRUMENT_BANK + INSTRUMENT_CARD + INSTRUMENT_ACCOUNT + INSTRUMENT_MEAL).distinct().joinToString("|")
+        val suffixes = SUFFIX_MARKERS.joinToString("|")
+        // Matches: BankName [Instrument] [Suffix] [Numbers]
+        Regex("(?i)\\b($banks)\\b(?:\\s+($instruments))?(?:\\s+($suffixes))?\\s*[\\(\\[:\\-#\\s]*\\s*[*xX]*\\s*(\\d{2,4})\\b")
+    }
 
-        Regex(
-            "AVAILABLE BALANCE",
-            RegexOption.IGNORE_CASE
-        ),
+    /**
+     * Standard Account Suffix Extractor
+     */
+    val accountSuffixRegex = Regex("(?i)(?:Card|Account|A/c|Acct|Acc|XX|X|No|ending|ending\\sin)\\s*[\\(\\[:\\-#\\s]*\\s*[*xX]*\\s*(\\d{2,4})\\b")
 
-        Regex(
-            "\\bBAL\\b",
-            RegexOption.IGNORE_CASE
-        ),
+    /**
+     * Matches standalone bank entities like "DBS BANK" or "ICICI BK"
+     */
+    val bankEntityRegex: Regex by lazy {
+        val banks = BANKS.joinToString("|")
+        val types = INSTRUMENT_BANK.joinToString("|")
+        Regex("(?i)\\b($banks)(?:\\s+($types))?\\b")
+    }
 
-        Regex(
-            "AVL BAL",
-            RegexOption.IGNORE_CASE
-        ),
-
-        Regex(
-            "TOTAL BAL",
-            RegexOption.IGNORE_CASE
-        ),
-
-        Regex(
-            "LOW BALANCE",
-            RegexOption.IGNORE_CASE
-        ),
-
-        Regex(
-            "OUTSTANDING",
-            RegexOption.IGNORE_CASE
-        ),
-
-        Regex(
-            "OUTSTANDING\\s*BAL(ANCE)?",
-            RegexOption.IGNORE_CASE
-        ),
-
-        Regex(
-            "LEDGER\\s*BAL(ANCE)?",
-            RegexOption.IGNORE_CASE
-        )
-    )
-
-    val merchantPatterns = listOf(
-        Regex(
-            "(?:AT|TO|INFO|FOR)\\s+([A-Z0-9\\s*]+?)(?=\\s+ON|\\s+USING|\\s+LINKED|\\s+REF|\\s+DATE|\\.)",
-            RegexOption.IGNORE_CASE
-        ),
-        Regex(
-            "VPA\\s+([A-Za-z0-9._-]+@[A-Za-z0-9._-]+)",
-            RegexOption.IGNORE_CASE
-        )
-    )
-
-    val referenceNumberPatterns = listOf(
-        Regex(
-            "(?:REF|TXN|ID|UPI)\\s*(?:NO|NUMBER)?[:\\s-]*([A-Z0-9]{8,})",
-            RegexOption.IGNORE_CASE
-        )
-    )
-
-    // --- CONTEXTUAL INTELLIGENCE PATTERNS (V2) ---
+    val amountRegex = Regex("(?i)(?:RS\\.?|INR|₹|RE\\.?|AMT|AMOUNT)\\s*([0-9,]+(?:\\.\\d{2})?)")
     
+    val upiRegex = listOf(
+        Regex("(?i)BY\\s+UPI"),
+        Regex("(?i)VIA\\s+UPI"),
+        Regex("(?i)[a-zA-Z0-9._-]+@[a-zA-Z]{3,}") // VPA Pattern
+    )
+
+    // Patterns for filtering out Outward Transfer Confirmations
+    val outwardConfirmationRegex = listOf(
+        Regex("TO\\s+[A-Za-z0-9 .]+\\s+IS\\s+SUCCESSFULLY\\s+CREDITED"),
+        Regex("TRANSFER\\s+OF\\s+INR\\s+[0-9.]+\\s+TO\\s+[A-Za-z0-9 .]+\\s+IS\\s+SUCCESSFUL")
+    )
+
+    // Quality Scoring Signals
+    val qualitySignalsTier2 = Regex("UPI\\s*REF|VPA|PAID\\s*VIA|SUCCESS|TXN\\s*ID|REF#")
+    val qualitySignalsTier3 = Regex("VALUE\\s*DATE|AVL\\s*BAL|AVAILABLE\\s*BALANCE|A/C\\s*ENDING|CREDITED\\s*TO\\s*YOUR\\s*CARD")
+
+    // Amount Scoring signals
+    val amountScoringVerbs = Regex("SPENT|PAID|DEBITED|PURCHASE|CREDITED|RECEIVED|TXN|TRANSFER")
+    val amountReportingSignals = Regex("LIMIT|BALANCE|AVL|BAL|OUTSTANDING|TOTAL")
+
     val explicitAnchors = listOf(
-        Regex("A/C\\s*(NO|NUMBER|ENDING)?", RegexOption.IGNORE_CASE),
-        Regex("CARD\\s*(NO|NUMBER|ENDING)?", RegexOption.IGNORE_CASE),
-        Regex("DEBIT\\s*CARD|CREDIT\\s*CARD", RegexOption.IGNORE_CASE),
-        Regex("ENDING\\s*IN\\s*\\d{4}", RegexOption.IGNORE_CASE)
+        Regex("(?i)BANK"), Regex("(?i)A/C"), Regex("(?i)ACCOUNT"), 
+        Regex("(?i)CARD"), Regex("(?i)ENDING"), Regex("(?i)XX\\d{2,4}")
     )
 
     val reportingIdentifiers = listOf(
-        Regex("UNITS|NAV|FOLIO|PRAN|PORTFOLIO|VALUATION", RegexOption.IGNORE_CASE),
-        Regex("CONTRIBUTION|STATEMENT|OUTSTANDING|LOYALTY|POINTS", RegexOption.IGNORE_CASE),
-        Regex("LIMIT|AVAILABLE\\s*LIMIT|CREDIT\\s*LIMIT", RegexOption.IGNORE_CASE),
-        Regex("PLAN|DATA\\s*BAL|VALIDITY", RegexOption.IGNORE_CASE),
-        Regex("ORDER|ORDER\\s*#|ENJOY\\s*YOUR", RegexOption.IGNORE_CASE)
+        Regex("(?i)BAL(?:ANCE)?\\s+IS"),
+        Regex("(?i)AVL\\s+BAL"),
+        Regex("(?i)LIMIT\\s+IS"),
+        Regex("(?i)STMT\\s+GEN")
     )
 
+    // Keywords that indicate a message is NOT a transaction (Kill switches)
     val failureKillSwitches = listOf(
-        Regex("FAILED", RegexOption.IGNORE_CASE),
-        Regex("DECLINED", RegexOption.IGNORE_CASE),
-        Regex("UNSUCCESSFUL", RegexOption.IGNORE_CASE),
-        Regex("REJECTED", RegexOption.IGNORE_CASE),
-        Regex("CANCELLED", RegexOption.IGNORE_CASE)
+        Regex("(?i)FAILED"), Regex("(?i)DECLINED"), Regex("(?i)CANCELLED"), 
+        Regex("(?i)REJECTED"), Regex("(?i)INSUFFICIENT"), Regex("(?i)REVERSED")
     )
     
     val refundOverrides = listOf(
-        Regex("HAS\\s*BEEN\\s*REFUNDED", RegexOption.IGNORE_CASE),
-        Regex("AMOUNT\\s*REVERSED", RegexOption.IGNORE_CASE),
-        Regex("CREDITED\\s*BACK", RegexOption.IGNORE_CASE),
-        Regex("REFUND\\s*SUCCESSFUL", RegexOption.IGNORE_CASE)
+        Regex("(?i)REFUND"), Regex("(?i)REVERSAL")
     )
 
-    // --- BROAD ANCHORS FOR SAFETY CATCH ---
-    val broadAnchors = listOf(
-        Regex("A/C|ACCT|ACCOUNT|BANK|CARD|VPA|UPI\\s*ID|WALLET|ENDING|XX\\d{2,}|[X*]{2,}\\d{3,6}", RegexOption.IGNORE_CASE),
-        Regex("PAYTM|GPAY|PHONEPE|GOOGLE\\s*PAY|AMAZON\\s*PAY|ZETA|SODEXO", RegexOption.IGNORE_CASE),
-        Regex("HDFC|ICICI|SBI|AXIS|KOTAK|HSBC|AMEX|SCB|PNB|BOB|IDFC|CITI", RegexOption.IGNORE_CASE)
-    )
+    // Broad anchors for identifying the start of merchant strings
+    val broadAnchors = (PREPOSITIONS + listOf("SPENT", "PURCHASED", "PAID")).distinct()
+
+    // --- CATEGORY KEYWORDS (Fallback Logic) ---
+    val CAT_FUEL = setOf("FUEL", "PETROL", "SHELL", "HPCL", "IOCL", "INDIANOIL", "BHARAT PETROLEUM", "BPCL")
+    val CAT_RENT = setOf("RENT", "FLAT", "MAINTENANCE", "HOUSING", "MYGATE", "NOBROKER")
+    val CAT_MEDICAL = setOf("HOSPITAL", "PHARMACY", "CLINIC", "DOCTOR", "HEALTHCARE", "DIAGNOSTIC", "MEDPLUS", "APOLLO")
+    val CAT_ENTERTAINMENT = setOf("NETFLIX", "SPOTIFY", "DISNEY", "HOTSTAR", "YOUTUBE", "PRIME", "TICKET", "PVR", "INOX")
+    val CAT_BILL_PAYMENT = setOf("AIRTEL", "JIO", "VODAFONE", "IDEA", "ELECTRICITY", "WATER", "GAS", "BESCOM", "RECHARGE")
+    val CAT_SHOPPING = setOf("AMAZON", "FLIPKART", "MYNTRA", "AJIO", "RETAIL", "FASHION", "ZIVAME", "NYKAA", "LIFESTYLE", "PANTALOONS", "MAX")
+    val CAT_TRAVEL = setOf("UBER", "OLA", "RAPIDO", "METRO", "RAIL", "IRCTC", "FLIGHT", "MAKEMYTRIP", "INDIGO", "AIR INDIA")
+    val CAT_FOOD = setOf("SWIGGY", "ZOMATO", "FOOD", "RESTAURANT", "CAFE", "BAKERY", "EATCLUB", "DOMINOS", "PIZZA", "BURGER", "KFC", "MCDONALD")
+    val CAT_GROCERIES = setOf("BIGBASKET", "BLINKIT", "ZEPTO", "DMART", "GROCERY", "SUPERMARKET", "RELIANCE FRESH", "JIOMART", "BBDAILY")
+    val CAT_INVESTMENT = setOf("INVEST", "MUTUAL", "SIP", "STOCK", "GROWW", "ZERODHA", "TRADING", "COIN", "SMALLCASE", "INDMONEY")
 }

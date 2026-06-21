@@ -1,352 +1,153 @@
 package com.example.smartexpensecalendar.sms_engine.extractor
 
 import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
+import com.example.smartexpensecalendar.sms.config.MerchantRegistry
+import com.example.smartexpensecalendar.sms_engine.detector.DetectionPatterns
 import java.util.regex.Pattern
 
 object MerchantExtractor {
 
-    fun extractMerchant(
-        smsText: String
-    ): String? {
+    private data class MerchantCandidate(val text: String, val baseScore: Int, val score: Int = 0)
 
-        extractNEFTMerchant(smsText)?.let {
-            return it
-        }
+    fun extractMerchant(smsText: String): String? {
+        val candidates = mutableListOf<MerchantCandidate>()
 
-        extractUPIMerchant(smsText)?.let {
-            return it
-        }
+        // 1. Specific High-Confidence Patterns (80-90 pts)
+        candidates.addAll(extractHighConfidenceCandidates(smsText))
 
-        extractMerchantFromLines(smsText)?.let {
-            return it
-        }
+        // 2. Generic Patterns (50-60 pts)
+        candidates.addAll(extractGenericPatterns(smsText))
 
-        extractMerchantFromPatterns(smsText)?.let {
-            return it
-        }
+        // 3. Line-based Heuristics (40 pts)
+        candidates.addAll(extractFromLines(smsText))
 
-        extractMerchantFromVPA(smsText)?.let {
-            return it
-        }
-
-        return null
+        // 4. Score and Pick Winner
+        return evaluateCandidates(candidates, smsText)
     }
 
-    // copy remaining methods
-    private fun extractNEFTMerchant(body: String): String? {
-        val patterns = listOf(
+    private fun extractHighConfidenceCandidates(body: String): List<MerchantCandidate> {
+        val list = mutableListOf<MerchantCandidate>()
+
+        // NEFT/IMPS specific
+        val neftPatterns = listOf(
             Pattern.compile("NEFT\\s+Cr-[A-Z0-9]+-([A-Z0-9\\s]+?)(?=\\s+-|\\s+\\.|-|$)", Pattern.CASE_INSENSITIVE),
             Pattern.compile("IMPS-[0-9]+-([A-Z0-9\\s]+?)(?=\\s+-|\\s+\\.|-|$)", Pattern.CASE_INSENSITIVE),
             Pattern.compile("NEFT\\s+INWARD-[A-Z0-9]+-([A-Z0-9\\s]+?)(?=\\s+-|\\s+\\.|-|$)", Pattern.CASE_INSENSITIVE)
         )
-
-        for (pattern in patterns) {
-            val matcher = pattern.matcher(body)
-            if (matcher.find()) {
-                val merchant = matcher.group(1)?.trim()
-                if (!merchant.isNullOrBlank()) {
-                    return normalizeMerchant(cleanMerchant(merchant))
-                }
-            }
-        }
-        return null
-    }
-
-    private fun extractUPIMerchant(body: String): String? {
-
-        val pattern = Pattern.compile(
-            "@UPI[_ ]+([A-Za-z0-9 ]+)",
-            Pattern.CASE_INSENSITIVE
-        )
-
-        val matcher = pattern.matcher(body)
-
-        if (matcher.find()) {
-
-            val merchant = matcher.group(1)
-                ?.replace("\\b\\d+\\b$".toRegex(), "")
-                ?.trim()
-
-            return normalizeMerchant(cleanMerchant(merchant))
+        neftPatterns.forEach { p ->
+            val m = p.matcher(body)
+            if (m.find()) m.group(1)?.let { list.add(MerchantCandidate(it, 90)) }
         }
 
-        return null
-    }
-
-    private fun extractMerchantFromLines(
-        body: String
-    ): String? {
-
-        val lines = body.lines()
-
-        for (line in lines) {
-
-            val text = line.trim()
-
-            if (text.isBlank())
-                continue
-
-            if (ExtractionUtils.merchantPrefixes.any {
-                    text.startsWith(it, true)
-                }) {
-
-                return normalizeMerchant(cleanMerchant(text))
-            }
-
-            if (
-                text.length in 4..40 &&
-                !ExtractionUtils.containsBankKeywords(text) &&
-                !ExtractionUtils.containsDate(text) &&
-                !ExtractionUtils.containsAmount(text)
-            ) {
-
-                if (
-                    !ExtractionUtils.containsAmount(text) && !ExtractionUtils.containsDate(text) && !ExtractionUtils.containsBankKeywords(text) && text.any { it.isLetter() }
-                ) {
-                    return normalizeMerchant(cleanMerchant(text))
-                }
-            }
-        }
-
-        for (line in lines) {
-
-            val text = line.trim()
-
-            if (
-                text.length in 4..40 &&
-                text.matches(
-                    Regex("^[A-Z0-9 _.-]+$")
-                )
-            ) {
-                if (looksLikeMerchant(text)) {
-                    return normalizeMerchant(cleanMerchant(text))
-                }
-            }
-        }
-
-        return null
-    }
-
-    private fun extractMerchantFromPatterns(
-        body: String
-    ): String? {
-
-        val patterns = listOf(
-            "(?i)\\bon\\s+([A-Za-z][A-Za-z0-9 .&@_\\-]{2,50}?)(?:\\.|,|\\s+via|\\s+using|\\s+for|$)",
-            "(?i)At\\s+([A-Za-z0-9@._\\-]+?)\\s+by UPI",
-
-            "(?i)at\\s+\\.\\.([A-Za-z0-9 _\\-]+?)_\\s+on",
-
-            "(?i)at (.+?)(?: on| via|\\.|,|$)",
-
-            "(?i)spent using .*? card .*? on .*? on ([A-Za-z0-9* _.-]+?)(?:\\.| Avl|$)",
-
-            "(?i)on\\s+\\d{2}-[A-Za-z]{3}-\\d{2}\\s+on\\s+([A-Za-z0-9* _.-]+?)(?:\\.| Avl|$)",
-
-            "(?i)purchased at ([A-Za-z0-9* _.-]+?)(?: on| via|\\.|,|$)",
-
-            "(?i)info[: ]+([A-Za-z0-9* _.-]+?)(?: on| via|\\.|,|$)",
-
-            "(?i)spent at (.+?)(?: on| via|\\.|,|$)",
-
-            "(?i)paid to (.+?)(?: on| via|\\.|,|$)",
-
-            // --- TRANSFER PAYEES (Deep Research Patterns) ---
+        // Transfer anchors (Deep Research Patterns)
+        val transferPatterns = listOf(
             "(?i)to\\s+([A-Za-z][A-Za-z0-9 .]{2,30}?)\\s+via\\s+(?:NEFT|IMPS|RTGS|UPI|BANK|TRANSFER)",
             "(?i)transferred to\\s+([A-Za-z][A-Za-z0-9 .]{2,30}?)(?:\\s+via|\\s+Ref|\\.|\\s+on|$)",
             "(?i)to pay\\s+([A-Za-z][A-Za-z0-9 .]{2,30}?)(?:\\.|\\s+The|\\s+Ref|$)",
             "(?i)towards\\s+([A-Za-z][A-Za-z0-9 .]{2,30}?)(?:\\.|\\s+Ref|\\s+via|$)",
             "(?i)beneficiary\\s+([A-Za-z][A-Za-z0-9 .]{2,30}?)(?:\\s+is|\\.|\\s+Ref|$)",
-            "(?i)remit to\\s+([A-Za-z][A-Za-z0-9 .]{2,30}?)(?:\\.|\\s+via|$)",
             "(?i)payment made to\\s+([A-Za-z][A-Za-z0-9 .]{2,30}?)(?:\\.|\\s+Ref|$)",
-            "(?i)sent to\\s+([A-Za-z][A-Za-z0-9 .]{2,30}?)(?:\\.|\\s+on|$)",
-
-            "(?i)merchant[: ]+(.+?)(?:\\.|,|$)",
-
-            "(?i)for (.+?)(?: on| via|\\.|,|$)",
-
-            "(?i)for\\s+([A-Za-z0-9 ._\\-]+?)\\s*(?:\\n|txn|dt:|via:|$)",
-
-            "(?i)At\\s+(.+?)\\s*(?:\\n|by\\s+upi|on\\s+\\d|$)"
+            "(?i)For IMPS\\s+-(.+?)-" 
         )
-
-        for (patternStr in patterns) {
-
-            val matcher =
-                Pattern.compile(patternStr).matcher(body)
-
-            while (matcher.find()) {
-
-                val cleaned = cleanMerchant(matcher.group(1))
-
-                if (
-                    cleaned != null &&
-                    looksLikeMerchant(cleaned)
-                ) {
-                    return normalizeMerchant(cleaned)
-                }
-            }
+        transferPatterns.forEach { p ->
+            val m = Pattern.compile(p).matcher(body)
+            if (m.find()) m.group(1)?.let { list.add(MerchantCandidate(it, 85)) }
         }
 
-        return null
+        // UPI Handles
+        val upiMatcher = Pattern.compile("@UPI[_ ]+([A-Za-z0-9 ]+)", Pattern.CASE_INSENSITIVE).matcher(body)
+        if (upiMatcher.find()) upiMatcher.group(1)?.let { 
+            list.add(MerchantCandidate(it.replace("\\b\\d+\\b$".toRegex(), ""), 80)) 
+        }
+
+        return list
     }
 
-    private fun extractMerchantFromVPA(
-        body: String
-    ): String? {
+    private fun extractGenericPatterns(body: String): List<MerchantCandidate> {
+        val list = mutableListOf<MerchantCandidate>()
+        val patterns = listOf(
+            "(?i)\\bon\\s+([A-Za-z][A-Za-z0-9 .&@_\\-]{2,50}?)(?:\\.|,|\\s+via|\\s+using|\\s+for|$)",
+            "(?i)At\\s+([A-Za-z0-9@._\\-]+?)\\s+by UPI",
+            "(?i)at (.+?)(?: on| via|\\.|,|$)",
+            "(?i)spent at (.+?)(?: on| via|\\.|,|$)",
+            "(?i)paid to (.+?)(?: on| via|\\.|,|$)",
+            "(?i)merchant[: ]+(.+?)(?:\\.|,|$)",
+            "(?i)for (.+?)(?: on| via|\\.|,|$)"
+        )
+        patterns.forEach { p ->
+            val m = Pattern.compile(p).matcher(body)
+            if (m.find()) m.group(1)?.let { list.add(MerchantCandidate(it, 55)) }
+        }
+        return list
+    }
 
-        val matcher = Pattern.compile(
-            "\\b([a-zA-Z0-9._-]+)@([a-zA-Z]+)\\b"
-        ).matcher(body)
-
-        if (matcher.find()) {
-
-            val handle =
-                matcher.group(1)?.lowercase() ?: return null
-
-            if (
-                handle.contains("swiggy") ||
-                handle.contains("zomato") ||
-                handle.contains("amazon") ||
-                handle.contains("uber")
-            ) {
-
-                return normalizeMerchant(cleanMerchant(handle))
+    private fun extractFromLines(body: String): List<MerchantCandidate> {
+        val list = mutableListOf<MerchantCandidate>()
+        body.lines().forEach { line ->
+            val text = line.trim()
+            if (text.length in 3..40 && !ExtractionUtils.containsAmount(text) && !ExtractionUtils.containsDate(text)) {
+                list.add(MerchantCandidate(text, 40))
             }
         }
+        return list
+    }
 
-        return null
+    private fun evaluateCandidates(candidates: List<MerchantCandidate>, fullBody: String): String? {
+        if (candidates.isEmpty()) return null
+
+        val scored = candidates.map { candidate ->
+            var finalScore = candidate.baseScore
+            val text = candidate.text.trim()
+            val upper = text.uppercase()
+
+            // 1. REJECTION RULES (Strict)
+            if (text.length < 3) return@map candidate.copy(score = -1000)
+            
+            // --- NEW ROBUST STRUCTURAL CHECK ---
+            // If the candidate matches our dynamic Bank Structure regex, it's a technical word, not a merchant.
+            if (DetectionPatterns.bankStructureRegex.containsMatchIn(text)) return@map candidate.copy(score = -1000)
+            if (DetectionPatterns.bankEntityRegex.containsMatchIn(text)) return@map candidate.copy(score = -1000)
+            
+            if (text.all { !it.isLetter() }) return@map candidate.copy(score = -1000)
+
+            // 2. INVALID PHRASES PENALTY (-100)
+            if (isInvalidMerchant(upper)) finalScore -= 100
+
+            // 3. REGISTRY BONUS (+40)
+            val isKnown = MerchantRegistry.merchants.any { def ->
+                def.canonicalName.uppercase() == upper || def.aliases.any { it.uppercase() == upper }
+            }
+            if (isKnown) finalScore += 40
+
+            // 4. POSITION BONUS (+10 if in first 30% of message)
+            if (fullBody.indexOf(text) < fullBody.length * 0.3) finalScore += 10
+
+            candidate.copy(score = finalScore)
+        }
+
+        // Pick highest score >= 50
+        val winner = scored.filter { it.score >= 50 }.maxByOrNull { it.score }
+        return winner?.text?.let { cleanAndNormalize(it) }
+    }
+
+    private fun cleanAndNormalize(raw: String): String? {
+        val cleaned = raw.replace("(?i)^at ".toRegex(), "")
+            .replace("(?i)^paid to ".toRegex(), "")
+            .replace("(?i)AMZN".toRegex(), "Amazon")
+            .replace("[._*@#-]".toRegex(), " ")
+            .replace("\\s+".toRegex(), " ")
+            .trim()
+
+        return MerchantNormalizer.normalize(cleaned)
     }
 
     private val invalidMerchantPhrases = setOf(
-        "neft txn",
-        "via neft",
-        "bill payment system",
-        "is successfully credited",
-        "referral benefits",
-        "transaction successful",
-        "credited",
-        "debited",
-        "https",
-        "payment received",
-        "otp for",
-        "bank account",
-        "account no",
-        "account ending",
-        "a/c no",
-        "card ending",
-        "available limit",
-        "not you?",
-        "call",
-        "any assistance",
-        "emi facility",
-        "balance transfer",
-        "credit card",
-        "statement generated",
-        "usage settings",
-        "airport lounge",
-        "reward points",
-        "cashback offer",
-        "monthly statement",
-        "amount due",
-        "statement",
-        "statement generated",
-        "cashback",
-        "payment due",
-        "minimum amount"
+        "NEFT TXN", "VIA NEFT", "SUCCESSFULLY CREDITED", "DEBITED", "CREDITED", 
+        "BANK ACCOUNT", "ACCOUNT NO", "A/C NO", "CARD ENDING", "LIMIT", "AVAILABLE",
+        "NOT YOU?", "CALL", "ANY ASSISTANCE", "TRACKING IS", "RECEIVED!", "OTP", "REF"
     )
 
-    private fun cleanMerchant(
-        merchant: String?
-    ): String? {
-
-        if (merchant.isNullOrBlank())
-            return null
-
-        if (isInvalidMerchant(merchant)) {
-            return null
-        }
-
-        val cleaned = merchant
-
-            .replace("(?i)^at ".toRegex(), "")
-            .replace("(?i)^paid to ".toRegex(), "")
-            .replace("(?i)^sent to ".toRegex(), "")
-            .replace("(?i)^merchant[: ]+".toRegex(), "")
-            .replace("(?i)RAZ\\*".toRegex(), "")
-            .replace("(?i)PAYTM\\*".toRegex(), "")
-            .replace("(?i)AMZN".toRegex(), "Amazon")
-            .replace("(?i)BUNDL".toRegex(), "Swiggy")
-
-            .replace("(?i)TECHNOLOGIES".toRegex(), "")
-            .replace("(?i)INSTAMART".toRegex(), "")
-            .replace("(?i)PRIVATE".toRegex(), "")
-            .replace("(?i)PVT".toRegex(), "")
-            .replace("(?i)LIMITED".toRegex(), "")
-            .replace("(?i)LTD".toRegex(), "")
-            .replace("(?i)CORP".toRegex(), "")
-            .replace("(?i)SOLUTIONS".toRegex(), "")
-            .replace("(?i)SERVICES".toRegex(), "")
-            .replace("(?i)ENTERPRISES".toRegex(), "")
-            .replace("(?i)RETAIL".toRegex(), "")
-            .replace("(?i)INDIA".toRegex(), "")
-            .replace("(?i)MARKETING".toRegex(), "")
-            .replace("(?i)COMMERCE".toRegex(), "")
-            .replace("(?i)TRADING".toRegex(), "")
-
-            .replace("[._*@#]".toRegex(), " ")
-            .replace("\\s+".toRegex(), " ")
-
-            .replace("(?i)ZOMATO PAY".toRegex(), "Zomato")
-            .replace("(?i)SWIGGY LIMITED".toRegex(), "Swiggy")
-            .replace("(?i)UBER INDIA".toRegex(), "Uber")
-
-            .replace("^\\.+".toRegex(), "")
-            .replace("\\.+$".toRegex(), "")
-            .replace("_+$".toRegex(), "")
-            .replace("\\d+$".toRegex(), "")
-
-            .replace("^\\.+".toRegex(), "")
-            .replace("_+$".toRegex(), "")
-            .replace("\\.{2,}".toRegex(), "")
-
-            .replace("_".toRegex(), " ")
-            .replace("(?i)^Q\\d+@YBL$".toRegex(), "Unknown UPI Merchant")
-            .replace("(?i)^PAYTM.*@PTYS$".toRegex(), "Paytm")
-
-            .trim()
-
-        return cleaned
-            .split(" ")
-            .take(3)
-            .joinToString(" ") { word ->
-                word.lowercase().replaceFirstChar { it.uppercase() }
-            }
-            .ifBlank { null }
+    private fun isInvalidMerchant(upper: String): Boolean {
+        return invalidMerchantPhrases.any { upper.contains(it) }
     }
-
-    private fun isInvalidMerchant(
-        merchant: String
-    ): Boolean {
-
-        val value = merchant.lowercase()
-
-        return invalidMerchantPhrases.any {
-            value.contains(it)
-        }
-    }
-
-    private fun normalizeMerchant(
-        merchant: String?
-    ): String? {
-        return MerchantNormalizer.normalize(merchant)
-    }
-
-    private fun looksLikeMerchant(text: String): Boolean {
-        return !ExtractionUtils.containsAmount(text) &&
-                !ExtractionUtils.containsDate(text) &&
-                !ExtractionUtils.containsBankKeywords(text) &&
-                text.length in 3..50
-    }
-
 }

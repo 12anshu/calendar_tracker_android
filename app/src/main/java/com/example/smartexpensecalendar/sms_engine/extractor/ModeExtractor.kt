@@ -1,14 +1,11 @@
 package com.example.smartexpensecalendar.sms_engine.extractor
 
 import com.example.smartexpensecalendar.domain.model.TransactionMode
-import com.example.smartexpensecalendar.sms.config.ModePhrases
+import com.example.smartexpensecalendar.sms_engine.detector.DetectionPatterns
 
 object ModeExtractor {
 
-    fun extractMode(
-        smsText: String
-    ): TransactionMode {
-
+    fun extractMode(smsText: String): TransactionMode {
         val text = smsText.uppercase()
 
         val scores = mutableMapOf(
@@ -22,129 +19,33 @@ object ModeExtractor {
             TransactionMode.MEAL_CARD to 0
         )
 
-        // Phrases
-        scorePhrases(
-            text,
-            ModePhrases.cardPhrases,
-            TransactionMode.CARD,
-            scores
-        )
+        // 1. UPI Scoring
+        scoreWords(text, DetectionPatterns.MODE_UPI, TransactionMode.UPI, scores, 5)
+        if (text.contains("@")) scores[TransactionMode.UPI] = scores.getValue(TransactionMode.UPI) + 10
 
-        scorePhrases(
-            text,
-            ModePhrases.mealCardPhrases,
-            TransactionMode.MEAL_CARD,
-            scores,
-            weight = 15 // High boost for specific food card providers
-        )
+        // 2. Card Scoring
+        scoreWords(text, DetectionPatterns.INSTRUMENT_CARD, TransactionMode.CARD, scores, 5)
 
-        scorePhrases(
-            text,
-            ModePhrases.upiPhrases,
-            TransactionMode.UPI,
-            scores
-        )
+        // 3. Meal Card Scoring (Higher weight for specific providers)
+        scoreWords(text, DetectionPatterns.INSTRUMENT_MEAL, TransactionMode.MEAL_CARD, scores, 15)
 
-        scorePhrases(
-            text,
-            ModePhrases.bankTransferPhrases,
-            TransactionMode.BANK_TRANSFER,
-            scores
-        )
+        // 4. Bank Transfer Scoring
+        scoreWords(text, DetectionPatterns.MODE_BANK_TRANSFER, TransactionMode.BANK_TRANSFER, scores, 5)
+        scoreWords(text, DetectionPatterns.INSTRUMENT_ACCOUNT, TransactionMode.BANK_TRANSFER, scores, 2)
 
-        scorePhrases(
-            text,
-            ModePhrases.emiPhrases,
-            TransactionMode.EMI,
-            scores
-        )
+        // 5. Auto Debit Scoring
+        scoreWords(text, DetectionPatterns.MODE_AUTO_DEBIT, TransactionMode.AUTO_DEBIT, scores, 10)
 
-        scorePhrases(
-            text,
-            ModePhrases.autoDebitPhrases,
-            TransactionMode.AUTO_DEBIT,
-            scores
-        )
+        // 6. Wallet Scoring
+        scoreWords(text, DetectionPatterns.INSTRUMENT_WALLET, TransactionMode.WALLET, scores, 5)
 
-        scorePhrases(
-            text,
-            ModePhrases.walletPhrases,
-            TransactionMode.WALLET,
-            scores
-        )
+        // 7. Cash Scoring
+        scoreWords(text, DetectionPatterns.MODE_CASH, TransactionMode.CASH, scores, 5)
 
-        scorePhrases(
-            text,
-            ModePhrases.cashPhrases,
-            TransactionMode.CASH,
-            scores
-        )
+        // 8. EMI Scoring
+        if (text.contains("EMI")) scores[TransactionMode.EMI] = scores.getValue(TransactionMode.EMI) + 10
 
-        // Keywords
-        scoreKeywords(
-            text,
-            ModeKeywords.cardKeywords,
-            TransactionMode.CARD,
-            scores
-        )
-
-        scoreKeywords(
-            text,
-            ModeKeywords.upiKeywords,
-            TransactionMode.UPI,
-            scores
-        )
-
-        scoreKeywords(
-            text,
-            ModeKeywords.bankTransferKeywords,
-            TransactionMode.BANK_TRANSFER,
-            scores
-        )
-
-        scoreKeywords(
-            text,
-            ModeKeywords.emiKeywords,
-            TransactionMode.EMI,
-            scores
-        )
-
-        scoreKeywords(
-            text,
-            ModeKeywords.autoDebitKeywords,
-            TransactionMode.AUTO_DEBIT,
-            scores
-        )
-
-        scoreKeywords(
-            text,
-            ModeKeywords.walletKeywords,
-            TransactionMode.WALLET,
-            scores
-        )
-
-        scoreKeywords(
-            text,
-            ModeKeywords.cashKeywords,
-            TransactionMode.CASH,
-            scores
-        )
-
-        scoreKeywords(
-            text,
-            ModeKeywords.mealCardKeywords,
-            TransactionMode.MEAL_CARD,
-            scores,
-            weight = 5
-        )
-
-        // --- UPI PRECEDENCE & VPA DETECTION ---
-        // 1. Check for the '@' symbol (Generic VPA signal)
-        if (text.contains("@")) {
-            scores[TransactionMode.UPI] = (scores[TransactionMode.UPI] ?: 0) + 10
-        }
-
-        // 2. Return the highest score, favoring UPI in case of ties (Composite transactions)
+        // Final Decision: Return the highest score, favoring UPI in case of ties
         return scores.maxWithOrNull { a, b ->
             if (a.value == b.value) {
                 if (a.key == TransactionMode.UPI) 1 else -1
@@ -154,29 +55,15 @@ object ModeExtractor {
         }?.takeIf { it.value > 0 }?.key ?: TransactionMode.UNKNOWN
     }
 
-    private fun scorePhrases(
+    private fun scoreWords(
         text: String,
-        phrases: Set<String>,
+        words: List<String>,
         mode: TransactionMode,
         scores: MutableMap<TransactionMode, Int>,
-        weight: Int = 5
+        weight: Int
     ) {
-        phrases.forEach {
-            if (text.contains(it)) {
-                scores[mode] = scores.getValue(mode) + weight
-            }
-        }
-    }
-
-    private fun scoreKeywords(
-        text: String,
-        keywords: Set<String>,
-        mode: TransactionMode,
-        scores: MutableMap<TransactionMode, Int>,
-        weight: Int = 1
-    ) {
-        keywords.forEach {
-            if (text.contains(it)) {
+        words.forEach { word ->
+            if (text.contains(word.uppercase())) {
                 scores[mode] = scores.getValue(mode) + weight
             }
         }

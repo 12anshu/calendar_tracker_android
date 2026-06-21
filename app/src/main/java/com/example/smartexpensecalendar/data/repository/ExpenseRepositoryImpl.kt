@@ -24,6 +24,10 @@ class ExpenseRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getExpenseById(id: Long): Flow<Expense?> {
+        return dao.getExpenseById(id).map { it?.toDomain() }
+    }
+
     override fun getExpensesForMonth(year: Int, month: Int): Flow<List<Expense>> {
         val monthStr = String.format("%04d-%02d", year, month)
         return dao.getExpensesForMonth(monthStr).map { entities ->
@@ -47,6 +51,10 @@ class ExpenseRepositoryImpl @Inject constructor(
         val startDate = date.minusDays(windowDays).toString()
         val endDate = date.plusDays(windowDays).toString()
         return dao.findSimilarInWindow(amount, type.name, startDate, endDate)?.toDomain()
+    }
+
+    override suspend fun findPotentialDuplicates(amount: Double, type: com.example.smartexpensecalendar.domain.model.TransactionType, startTime: Long, endTime: Long): List<Expense> {
+        return dao.findPotentialDuplicates(amount, type.name, startTime, endTime).map { it.toDomain() }
     }
 
     override suspend fun findMatchingExpense(amount: Double, date: LocalDate, daysBack: Long): Expense? {
@@ -192,5 +200,11 @@ class ExpenseRepositoryImpl @Inject constructor(
 
     override fun getActiveMerchantStats(): Flow<List<com.example.smartexpensecalendar.data.local.ActiveMerchantEntity>> {
         return dao.getActiveMerchantStats()
+    }
+
+    override fun getTransactionsByMerchant(merchant: String): Flow<List<Expense>> {
+        return dao.getTransactionsByMerchant(merchant).map { entities ->
+            entities.map { it.toDomain() }
+        }
     }
 }

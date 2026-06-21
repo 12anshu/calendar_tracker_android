@@ -157,16 +157,18 @@ fun DashboardView(
 
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SummaryCard("Transact", uiState.transactionCount.toString(), Icons.Default.SwapHoriz, Modifier.weight(1f), CyanGlow)
+                SummaryCard("Confirmed Txn", uiState.financialTransactionCount.toString(), Icons.Default.CheckCircle, Modifier.weight(1.2f), CyanGlow)
                 SummaryCard("Obligation", uiState.obligationCount.toString(), Icons.Default.PriorityHigh, Modifier.weight(1f), ColorFood)
                 SummaryCard("Info", uiState.informationCount.toString(), Icons.Default.Info, Modifier.weight(1f), SecondaryAccent)
-                SummaryCard(
-                    "Unknown",
-                    uiState.unknownCount.toString(),
-                    Icons.Default.Help,
-                    Modifier.weight(1f),
-                    Color.Gray
-                )
+            }
+        }
+
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SummaryCard("Debit", uiState.debitCount.toString(), Icons.Default.ArrowOutward, Modifier.weight(1f), ColorFood)
+                SummaryCard("Credit", uiState.creditCount.toString(), Icons.Default.ArrowDownward, Modifier.weight(1f), PrimaryAccent)
+                SummaryCard("Dir Unknown", uiState.unknownDirectionCount.toString(), Icons.Default.QuestionMark, Modifier.weight(1f), Color.Gray)
+                SummaryCard("Unknown Type", uiState.unknownCount.toString(), Icons.Default.Help, Modifier.weight(1f), Color.Gray)
             }
         }
 
@@ -331,9 +333,11 @@ fun SectionHeader(title: String) {
 @Composable
 fun AllSmsView(viewModel: SMSAnalysisViewModel, onSmsClick: (AnalyzedSMS) -> Unit) {
     val smsItems = viewModel.analyzedSMSPaged.collectAsLazyPagingItems()
+    val uiState by viewModel.uiState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
     val financialFilter by viewModel.financialFilter.collectAsState()
     val messageTypeFilter by viewModel.messageTypeFilter.collectAsState()
+    val directionFilter by viewModel.directionFilter.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -382,27 +386,39 @@ fun AllSmsView(viewModel: SMSAnalysisViewModel, onSmsClick: (AnalyzedSMS) -> Uni
         ) {
 
             FilterChip(
-                selected = financialFilter == null,
+                selected = financialFilter == null && messageTypeFilter == null,
                 onClick = {
                     viewModel.setFinancialFilter(null)
+                    viewModel.setMessageTypeFilter(null)
                 },
-                label = { Text("All") }
+                label = { Text("All (${uiState.totalCount})") }
             )
 
             FilterChip(
-                selected = financialFilter == true,
+                selected = financialFilter == true && messageTypeFilter == null,
                 onClick = {
                     viewModel.setFinancialFilter(true)
+                    viewModel.setMessageTypeFilter(null)
                 },
-                label = { Text("Financial") }
+                label = { Text("Fin (${uiState.financialCount})") }
             )
 
             FilterChip(
                 selected = financialFilter == false,
                 onClick = {
                     viewModel.setFinancialFilter(false)
+                    viewModel.setMessageTypeFilter(null)
                 },
-                label = { Text("Non-Fin") }
+                label = { Text("Non-Fin (${uiState.nonFinancialCount})") }
+            )
+
+            FilterChip(
+                selected = financialFilter == true && messageTypeFilter == "UNKNOWN",
+                onClick = {
+                    viewModel.setFinancialFilter(true)
+                    viewModel.setMessageTypeFilter("UNKNOWN")
+                },
+                label = { Text("Unknown (${uiState.unknownCount})") }
             )
         }
 
@@ -417,6 +433,7 @@ fun AllSmsView(viewModel: SMSAnalysisViewModel, onSmsClick: (AnalyzedSMS) -> Uni
                 selected = messageTypeFilter == "TRANSACTION",
                 onClick = {
                     viewModel.setMessageTypeFilter("TRANSACTION")
+                    viewModel.setFinancialFilter(true)
                 },
                 label = { Text("Txn") }
             )
@@ -425,6 +442,7 @@ fun AllSmsView(viewModel: SMSAnalysisViewModel, onSmsClick: (AnalyzedSMS) -> Uni
                 selected = messageTypeFilter == "OBLIGATION",
                 onClick = {
                     viewModel.setMessageTypeFilter("OBLIGATION")
+                    viewModel.setFinancialFilter(true)
                 },
                 label = { Text("Obligation") }
             )
@@ -433,6 +451,7 @@ fun AllSmsView(viewModel: SMSAnalysisViewModel, onSmsClick: (AnalyzedSMS) -> Uni
                 selected = messageTypeFilter == "INFORMATION",
                 onClick = {
                     viewModel.setMessageTypeFilter("INFORMATION")
+                    viewModel.setFinancialFilter(true)
                 },
                 label = { Text("Info") }
             )
@@ -441,14 +460,47 @@ fun AllSmsView(viewModel: SMSAnalysisViewModel, onSmsClick: (AnalyzedSMS) -> Uni
                 selected = messageTypeFilter == "PROMOTIONAL",
                 onClick = {
                     viewModel.setMessageTypeFilter("PROMOTIONAL")
+                    viewModel.setFinancialFilter(true)
                 },
                 label = { Text("Promo") }
             )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
 
             FilterChip(
-                selected = messageTypeFilter == "UNKNOWN",
+                selected = directionFilter == null,
                 onClick = {
-                    viewModel.setMessageTypeFilter("UNKNOWN")
+                    viewModel.setDirectionFilter(null)
+                },
+                label = { Text("All Directions") }
+            )
+
+            FilterChip(
+                selected = directionFilter == "DEBIT",
+                onClick = {
+                    viewModel.setDirectionFilter("DEBIT")
+                },
+                label = { Text("Debit") }
+            )
+
+            FilterChip(
+                selected = directionFilter == "CREDIT",
+                onClick = {
+                    viewModel.setDirectionFilter("CREDIT")
+                },
+                label = { Text("Credit") }
+            )
+
+            FilterChip(
+                selected = directionFilter == "UNKNOWN",
+                onClick = {
+                    viewModel.setDirectionFilter("UNKNOWN")
                 },
                 label = { Text("Unknown") }
             )
@@ -658,6 +710,55 @@ fun MessageReviewView(sms: AnalyzedSMS?, viewModel: SMSAnalysisViewModel, onComp
 
         item { DetectorExplanationPanel(sms.scoreBreakdown) }
         
+        item {
+            // Message Type Analysis Card
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        SurfaceGlass.copy(alpha = 0.3f),
+                        RoundedCornerShape(8.dp)
+                    )
+                    .padding(16.dp)
+            ) {
+                Text("MESSAGE TYPE ANALYSIS", color = CyanGlow, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Transaction", color = TextSecondary, fontSize = 11.sp)
+                        Text("${sms.transactionScore}", color = if (sms.transactionScore > 0) CyanGlow else TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
+                    Column {
+                        Text("Obligation", color = TextSecondary, fontSize = 11.sp)
+                        Text("${sms.obligationScore}", color = if (sms.obligationScore > 0) ColorFood else TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
+                    Column {
+                        Text("Information", color = TextSecondary, fontSize = 11.sp)
+                        Text("${sms.informationScore}", color = if (sms.informationScore > 0) SecondaryAccent else TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Current Type: ", color = TextSecondary, fontSize = 12.sp)
+                    Surface(
+                        color = PremiumGold.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            sms.messageType,
+                            color = PremiumGold,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+        }
+
         item {
             SignalList("Matched Keywords", sms.matchedKeywords, PrimaryAccent)
         }

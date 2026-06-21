@@ -1,6 +1,7 @@
 package com.example.smartexpensecalendar.sms_engine.extractor
 
 import com.example.smartexpensecalendar.sms.config.DetectionConstants
+import com.example.smartexpensecalendar.sms_engine.detector.DetectionPatterns
 import java.util.regex.Pattern
 
 object AmountExtractor {
@@ -48,12 +49,12 @@ object AmountExtractor {
             val contextWindow = upperText.substring(lookBackStart, candidate.endIndex)
 
             // +100 Bonus for Action Verbs (The transaction intent)
-            if (Regex("SPENT|PAID|DEBITED|PURCHASE|CREDITED|RECEIVED|TXN|TRANSFER").containsMatchIn(contextWindow)) {
+            if (DetectionPatterns.amountScoringVerbs.containsMatchIn(contextWindow)) {
                 candidate.score += 100
             }
 
             // -200 Penalty for Reporting Context (The balance/limit noise)
-            if (Regex("LIMIT|BALANCE|AVL|BAL|OUTSTANDING|TOTAL").containsMatchIn(contextWindow)) {
+            if (DetectionPatterns.amountReportingSignals.containsMatchIn(contextWindow)) {
                 candidate.score -= 200
             }
         }

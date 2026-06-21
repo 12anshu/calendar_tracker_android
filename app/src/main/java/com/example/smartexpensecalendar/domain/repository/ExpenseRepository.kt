@@ -9,6 +9,8 @@ import java.time.LocalDate
 interface ExpenseRepository {
     // Expense operations
     fun getExpensesForDate(date: LocalDate): Flow<List<Expense>>
+
+    fun getExpenseById(id: Long): Flow<Expense?>
     fun getExpensesForMonth(year: Int, month: Int): Flow<List<Expense>>
     suspend fun upsertExpense(expense: Expense)
     suspend fun deleteExpense(expense: Expense)
@@ -16,6 +18,7 @@ interface ExpenseRepository {
     suspend fun isSmsIdProcessed(smsId: Long): Boolean
     
     suspend fun findSimilarExpense(amount: Double, date: LocalDate, type: com.example.smartexpensecalendar.domain.model.TransactionType, windowDays: Long = 1): Expense?
+    suspend fun findPotentialDuplicates(amount: Double, type: com.example.smartexpensecalendar.domain.model.TransactionType, startTime: Long, endTime: Long): List<Expense>
     suspend fun findMatchingExpense(amount: Double, date: LocalDate, daysBack: Long): Expense?
     suspend fun findExpensesInRange(type: com.example.smartexpensecalendar.domain.model.TransactionType, startDate: LocalDate, endDate: LocalDate): List<Expense>
     suspend fun updateExpenseStatus(id: Long, status: com.example.smartexpensecalendar.domain.model.TransactionStatus, linkedId: Long?)
@@ -48,4 +51,6 @@ interface ExpenseRepository {
     suspend fun addCustomCategory(name: String)
 
     fun getActiveMerchantStats(): Flow<List<com.example.smartexpensecalendar.data.local.ActiveMerchantEntity>>
+
+    fun getTransactionsByMerchant(merchant: String): Flow<List<Expense>>
 }

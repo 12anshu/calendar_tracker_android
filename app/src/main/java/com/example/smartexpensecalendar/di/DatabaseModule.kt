@@ -48,6 +48,13 @@ object DatabaseModule {
         }
     }
 
+    private val MIGRATION_24_25 = object : Migration(24, 25) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE expenses ADD COLUMN transactionTime INTEGER")
+            db.execSQL("ALTER TABLE expenses ADD COLUMN senderId TEXT")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
@@ -55,7 +62,7 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "smart_expense.db"
-        ).addMigrations(MIGRATION_23_24)
+        ).addMigrations(MIGRATION_23_24, MIGRATION_24_25)
             .fallbackToDestructiveMigration()
             .build()
     }

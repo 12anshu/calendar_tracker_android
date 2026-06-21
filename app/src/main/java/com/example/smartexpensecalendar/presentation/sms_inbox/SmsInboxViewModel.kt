@@ -1,5 +1,6 @@
 package com.example.smartexpensecalendar.presentation.sms_inbox
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.smartexpensecalendar.data.local.DataStoreManager
@@ -21,8 +22,15 @@ data class SmsInboxUiState(
     val financialFilter: Boolean? = null,
     val messageTypeFilter: String? = null,
     val financialEventTypeFilter: String? = null,
+    val directionFilter: String? = null,
     val reviewStatusFilter: ReviewStatus = ReviewStatus.ALL,
-    val selectedMonth: YearMonth = YearMonth.now()
+    val selectedMonth: YearMonth = YearMonth.now(),
+    val financialCount: Int = 0,
+    val nonFinancialCount: Int = 0,
+    val financialTransactionCount: Int = 0,
+    val debitCount: Int = 0,
+    val creditCount: Int = 0,
+    val unknownDirectionCount: Int = 0
 )
 
 enum class ReviewStatus { ALL, PENDING, DONE, FLAGGED }
@@ -40,6 +48,9 @@ class SmsInboxViewModel @Inject constructor(
     private val _reviewStatusFilter = MutableStateFlow(ReviewStatus.ALL)
     private val _selectedMonth = MutableStateFlow(YearMonth.now())
 
+    private val _directionFilter =
+        MutableStateFlow<String?>(null)
+
     init {
         viewModelScope.launch {
             dataStoreManager.selectedMonth.collect { month ->
@@ -55,7 +66,8 @@ class SmsInboxViewModel @Inject constructor(
         _financialFilter,
         _messageTypeFilter,
         _financialEventTypeFilter,
-        _reviewStatusFilter
+        _reviewStatusFilter,
+        _directionFilter
     ) { params ->
         val month = params[0] as YearMonth
         val query = params[1] as String
@@ -63,6 +75,7 @@ class SmsInboxViewModel @Inject constructor(
         val type = params[3] as String?
         val eventType = params[4] as String?
         val reviewStatus = params[5] as ReviewStatus
+        val direction = params[6] as String?
 
         val start = month.atDay(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val end = month.atEndOfMonth().atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -74,7 +87,23 @@ class SmsInboxViewModel @Inject constructor(
         }
         val isFlagged: Boolean? = if (reviewStatus == ReviewStatus.FLAGGED) true else null
 
-        dao.getFilteredAnalyzedSMS(start, end, query, financial, type, eventType, isReviewed, isFlagged).map { list ->
+        combine(
+            dao.getFilteredAnalyzedSMS(start, end, query, financial, type, eventType, isReviewed, isFlagged, direction),
+            dao.getFinancialSMSCountForMonth(start, end),
+            dao.getNonFinancialSMSCountForMonth(start, end),
+            dao.getFinancialTransactionCountForMonth(start, end),
+            dao.getDirectionCountForMonth(start, end, "DEBIT"),
+            dao.getDirectionCountForMonth(start, end, "CREDIT"),
+            dao.getDirectionCountForMonth(start, end, "UNKNOWN")
+        ) { args ->
+            val list = args[0] as List<AnalyzedSMS>
+            val finCount = args[1] as Int
+            val nonFinCount = args[2] as Int
+            val finTxnCount = args[3] as Int
+            val debitCount = args[4] as Int
+            val creditCount = args[5] as Int
+            val unknownDirCount = args[6] as Int
+
             val grouped = list.groupBy { 
                 java.time.Instant.ofEpochMilli(it.timestamp)
                     .atZone(ZoneId.systemDefault())
@@ -86,8 +115,15 @@ class SmsInboxViewModel @Inject constructor(
                 financialFilter = financial,
                 messageTypeFilter = type,
                 financialEventTypeFilter = eventType,
+                directionFilter = direction,
                 reviewStatusFilter = reviewStatus,
-                selectedMonth = month
+                selectedMonth = month,
+                financialCount = finCount,
+                nonFinancialCount = nonFinCount,
+                financialTransactionCount = finTxnCount,
+                debitCount = debitCount,
+                creditCount = creditCount,
+                unknownDirectionCount = unknownDirCount
             )
         }
     }.flatMapLatest { it }
@@ -109,6 +145,10 @@ class SmsInboxViewModel @Inject constructor(
 
     fun setFinancialEventTypeFilter(type: String?) {
         _financialEventTypeFilter.value = type
+    }
+
+    fun setDirectionFilter(direction: String?) {
+        _directionFilter.value = direction
     }
 
     fun setReviewStatusFilter(status: ReviewStatus) {

@@ -106,15 +106,15 @@ fun CalendarDayCell(
     onClick: () -> Unit
 ) {
     val heatmapColor = when {
-        totalAmount > 5001 -> HeatmapHigh.copy(alpha = 0.1f)
-        totalAmount > 1001 -> HeatmapMedium.copy(alpha = 0.1f)
-        totalAmount > 0 -> HeatmapLow.copy(alpha = 0.1f)
+        totalAmount > 5001 -> HeatmapHigh.copy(alpha = 0.2f)
+        totalAmount > 1001 -> HeatmapMedium.copy(alpha = 0.2f)
+        totalAmount > 0 -> HeatmapLow.copy(alpha = 0.2f)
         else -> Color.Transparent
     }
     val calendarTextColor = when {
-        totalAmount > 5001 -> CalendarTextHigh
-        totalAmount > 1001 -> CalendarTextMedium
-        totalAmount > 0 -> CalendarTextSmall
+        totalAmount > 5001 -> CalendarTextHigh.copy(alpha = 0.9f)
+        totalAmount > 1001 -> CalendarTextMedium.copy(alpha = 0.9f)
+        totalAmount > 0 -> CalendarTextSmall.copy(alpha = 0.9f)
         else -> Color.Transparent
     }
 

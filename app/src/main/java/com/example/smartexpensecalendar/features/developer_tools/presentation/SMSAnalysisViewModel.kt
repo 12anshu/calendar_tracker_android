@@ -27,10 +27,16 @@ data class SMSAnalysisUiState(
     val lowConfidenceCount: Int = 0,
 
     val transactionCount: Int = 0,
+    val financialTransactionCount: Int = 0,
     val obligationCount: Int = 0,
     val informationCount: Int = 0,
     val promotionalCount: Int = 0,
     val unknownCount: Int = 0,
+
+    val debitCount: Int = 0,
+    val creditCount: Int = 0,
+    val unknownDirectionCount: Int = 0,
+
     val isAnalyzing: Boolean = false,
     val progress: Float = 0f,
     val patternGroups: List<PatternGroup> = emptyList(),
@@ -57,26 +63,30 @@ class SMSAnalysisViewModel @Inject constructor(
     private val _isScoreAsc = MutableStateFlow(false)
     private val _financialFilter = MutableStateFlow<Boolean?>(null)
     private val _messageTypeFilter = MutableStateFlow<String?>(null)
+    private val _directionFilter = MutableStateFlow<String?>(null)
 
     val financialFilter = _financialFilter.asStateFlow()
     val messageTypeFilter = _messageTypeFilter.asStateFlow()
+    val directionFilter = _directionFilter.asStateFlow()
 
     val analyzedSMSPaged: Flow<PagingData<AnalyzedSMS>> = combine(
         _searchQuery, 
         _isScoreAsc, 
         _financialFilter, 
-        _messageTypeFilter
-    ) { query, isAsc, fin, type ->
-        FilterParams(query, isAsc, fin, type)
+        _messageTypeFilter,
+        _directionFilter
+    ) { query, isAsc, fin, type, direction ->
+        FilterParams(query, isAsc, fin, type, direction)
     }.flatMapLatest { params ->
-        repository.getAnalyzedSMSPaged(params.query, params.isAsc, params.financial, params.messageType)
+        repository.getAnalyzedSMSPaged(params.query, params.isAsc, params.financial, params.messageType, params.direction)
     }.cachedIn(viewModelScope)
 
     private data class FilterParams(
         val query: String,
         val isAsc: Boolean,
         val financial: Boolean?,
-        val messageType: String?
+        val messageType: String?,
+        val direction: String?
     )
 
     init {
@@ -92,10 +102,14 @@ class SMSAnalysisViewModel @Inject constructor(
                 repository.getHighConfidenceFinancialCount(),
                 repository.getLowConfidenceFinancialCount(),
                 repository.getTransactionCount(),
+                repository.getFinancialTransactionCount(),
                 repository.getObligationCount(),
                 repository.getInformationCount(),
                 repository.getPromotionalCount(),
                 repository.getUnknownFinancialCount(),
+                repository.getDebitCount(),
+                repository.getCreditCount(),
+                repository.getUnknownDirectionCount(),
                 repository.getTopFinancialKeywords(),
                 repository.getTopNegativeKeywords(),
                 repository.getTopFinancialSenders(),
@@ -112,14 +126,18 @@ class SMSAnalysisViewModel @Inject constructor(
                     highConfidenceCount = args[7] as Int,
                     lowConfidenceCount = args[8] as Int,
                     transactionCount = args[9] as Int,
-                    obligationCount = args[10] as Int,
-                    informationCount = args[11] as Int,
-                    promotionalCount = args[12] as Int,
-                    unknownCount = args[13] as Int,
-                    topFinancialKeywords = args[14] as List<Pair<String, Int>>,
-                    topNegativeKeywords = args[15] as List<Pair<String, Int>>,
-                    topFinancialSenders = args[16] as List<SenderCount>,
-                    topNonFinancialSenders = args[17] as List<SenderCount>
+                    financialTransactionCount = args[10] as Int,
+                    obligationCount = args[11] as Int,
+                    informationCount = args[12] as Int,
+                    promotionalCount = args[13] as Int,
+                    unknownCount = args[14] as Int,
+                    debitCount = args[15] as Int,
+                    creditCount = args[16] as Int,
+                    unknownDirectionCount = args[17] as Int,
+                    topFinancialKeywords = args[18] as List<Pair<String, Int>>,
+                    topNegativeKeywords = args[19] as List<Pair<String, Int>>,
+                    topFinancialSenders = args[20] as List<SenderCount>,
+                    topNonFinancialSenders = args[21] as List<SenderCount>
                 )
             }.collect { 
                 _uiState.value = it
@@ -143,6 +161,10 @@ class SMSAnalysisViewModel @Inject constructor(
 
     fun setMessageTypeFilter(type: String?) {
         _messageTypeFilter.value = type
+    }
+
+    fun setDirectionFilter(direction: String?) {
+        _directionFilter.value = direction
     }
 
     fun runFullAnalysis() {

@@ -324,10 +324,11 @@ fun HomeScreen(
             }
         }
 
-        // Expense Detail Sheet
+        // Daily Transaction Screen (Bottom Sheet)
         if (showDetailSheet && selectedDate != null) {
-            ExpenseDetailBottomSheet(
+            DailyTransactionScreen(
                 date = selectedDate!!,
+                navController = navController,
                 onDismiss = { 
                     showDetailSheet = false 
                     selectedDate = LocalDate.now()

@@ -95,7 +95,7 @@ fun CategoryGridPicker(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                    columns = GridCells.Fixed(1),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.weight(1f)
@@ -143,7 +143,12 @@ fun CategoryPickerItem(
             .padding(12.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        )
+         {
             CategoryIconView(category = category, size = 36.dp, iconSize = 18.dp)
             Spacer(modifier = Modifier.height(8.dp))
             Text(

@@ -26,7 +26,7 @@ val ColorTransport = Color(0xFFFB7185)
 val ColorOthers = Color(0xFF2DD4BF)
 
 // Heatmap Colors
-val HeatmapHigh = Color(0xFFFF4D4D)
+val HeatmapHigh = Color(0xFFF44336)
 val HeatmapMedium = Color(0xFFFFBF00)
 val HeatmapLow = Color(0xFF22C55E)
 

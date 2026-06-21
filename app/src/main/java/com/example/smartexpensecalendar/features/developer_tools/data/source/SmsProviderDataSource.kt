@@ -7,16 +7,18 @@ import com.example.smartexpensecalendar.features.developer_tools.engine.SMSPatte
 import com.example.smartexpensecalendar.sms.SMSNormalizer
 import com.example.smartexpensecalendar.sms_engine.detector.FinancialDetector
 import com.example.smartexpensecalendar.domain.model.MessageType
-import com.example.smartexpensecalendar.sms_engine.detector.MessageTypeDetector
+import com.example.smartexpensecalendar.domain.model.TransactionDirection
+import com.example.smartexpensecalendar.sms_engine.message_type.MessageTypeDetector
 import com.example.smartexpensecalendar.sms_engine.extractor.AmountExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.FinancialEventTypeExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.ModeExtractor
-import com.example.smartexpensecalendar.sms_engine.extractor.DirectionExtractor
+import com.example.smartexpensecalendar.sms_engine.direction.DirectionExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.AccountNameExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.MerchantExtractor
 import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
 import com.example.smartexpensecalendar.sms_engine.detector.EntityTypeDetector
 import com.example.smartexpensecalendar.sms.sender.SenderValidationEngine
+import com.example.smartexpensecalendar.sms_engine.model.ExtractionResult
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -71,7 +73,21 @@ class SmsProviderDataSource @Inject constructor(
 
                 // Extract Metadata for enriched SMS view
                 val amount = AmountExtractor.extractAmount(body)
-                val direction = DirectionExtractor.extractDirection(body)
+
+                val directionResult =
+                    if (
+                        financialResult.isFinancial &&
+                        messageTypeResult?.messageType == MessageType.TRANSACTION
+                    ) {
+                        DirectionExtractor.extract(body)
+                    } else {
+                        emptyDirectionResult
+                    }
+
+                val direction = directionResult.value ?: TransactionDirection.UNKNOWN
+                val directionEvidence = directionResult.evidence.map {
+                    "${it.source}:${it.matchedText}"
+                }
                 val mode = ModeExtractor.extractMode(body)
                 val eventType = FinancialEventTypeExtractor.extract(body, direction, mode)
                 val rawMerchant = MerchantExtractor.extractMerchant(body)
@@ -102,7 +118,7 @@ class SmsProviderDataSource @Inject constructor(
                 }
 
                 val accountName = AccountNameExtractor.extract(body, address)
-                
+
                 val entityType = EntityTypeDetector.detect(
                     merchant = normalizedMerchant,
                     eventType = eventType,
@@ -124,6 +140,10 @@ class SmsProviderDataSource @Inject constructor(
                         message = body,
                         timestamp = date,
                         normalizedMessage = normalized,
+                        direction = direction,
+                        directionConfidence = directionResult.confidence,
+                        directionScore = directionResult.score,
+                        directionEvidence = directionEvidence,
                         senderType = senderInfo.senderType.name,
                         isFinancial = financialResult.isFinancial,
                         score = financialResult.score,
@@ -135,6 +155,9 @@ class SmsProviderDataSource @Inject constructor(
                         scoreBreakdown = financialResult.scoreBreakdown,
                         template = template,
                         messageType = messageTypeResult?.messageType?.name ?: MessageType.UNKNOWN.name,
+                        transactionScore = messageTypeResult?.scores?.get(MessageType.TRANSACTION) ?: 0,
+                        obligationScore = messageTypeResult?.scores?.get(MessageType.OBLIGATION) ?: 0,
+                        informationScore = messageTypeResult?.scores?.get(MessageType.INFORMATION) ?: 0,
                         financialEventType = eventType.name,
                         category = category,
                         amount = amount,
@@ -158,6 +181,14 @@ class SmsProviderDataSource @Inject constructor(
             }
         }
     }
+
+    private val emptyDirectionResult =
+        ExtractionResult(
+            value = TransactionDirection.UNKNOWN,
+            confidence = 0,
+            score = 0,
+            evidence = emptyList()
+        )
 
     private fun mapToPaymentMethod(mode: com.example.smartexpensecalendar.domain.model.TransactionMode): com.example.smartexpensecalendar.domain.model.PaymentMethod {
         return when (mode) {

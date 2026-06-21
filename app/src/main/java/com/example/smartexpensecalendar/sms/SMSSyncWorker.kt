@@ -23,6 +23,8 @@ import com.example.smartexpensecalendar.sms.config.SenderRegistry
 import com.example.smartexpensecalendar.sms.sender.SenderValidationEngine
 import com.example.smartexpensecalendar.sms_engine.detector.EntityTypeDetector
 import com.example.smartexpensecalendar.domain.model.EntityType
+import com.example.smartexpensecalendar.sms.reconciliation.duplicate.DuplicateMatcher
+import com.example.smartexpensecalendar.sms.reconciliation.duplicate.DuplicateDecision
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.time.Instant
@@ -167,37 +169,54 @@ class SMSSyncWorker @AssistedInject constructor(
                         paymentMethod = finalParsed.paymentMethod
                     )
 
-                    // --- SMART DEDUPLICATION (Window-Aware & Quality-Aware) ---
-                    val existing = repository.findSimilarExpense(finalParsed.amount, localDate, finalParsed.type, windowDays = 1)
-                    if (existing != null) {
-                        if (finalParsed.quality > existing.quality) {
-                            repository.deleteExpense(existing)
-                        } else {
-                            continue
+                    // --- NEW UPGRADED DUPLICATE DETECTION (Phase 1) ---
+                    val windowMinutes = getWindowMinutes(finalParsed.paymentMethod, finalParsed.financialEventType)
+                    val startTime = date - (windowMinutes * 60 * 1000)
+                    val endTime = date + (windowMinutes * 60 * 1000)
+                    
+                    val candidates = repository.findPotentialDuplicates(finalParsed.amount, finalParsed.type, startTime, endTime)
+                    
+                    val incomingExpensePlaceholder = Expense(
+                        amount = finalParsed.amount,
+                        category = category,
+                        date = localDate,
+                        merchant = normalizedMerchant,
+                        financialEventType = finalParsed.financialEventType,
+                        paymentMethod = finalParsed.paymentMethod,
+                        confidence = finalParsed.confidence,
+                        source = ExpenseSource.SMS,
+                        type = finalParsed.type,
+                        status = finalParsed.status,
+                        accountSuffix = finalParsed.accountSuffix,
+                        accountName = finalParsed.accountName,
+                        transactionTime = date,
+                        senderId = address,
+                        quality = finalParsed.quality,
+                        entityType = entityType
+                    )
+
+                    var isDuplicate = false
+                    for (existing in candidates) {
+                        val matchResult = DuplicateMatcher.calculateMatchScore(incomingExpensePlaceholder, existing)
+                        if (matchResult.decision == DuplicateDecision.DUPLICATE) {
+                            if (finalParsed.quality > existing.quality) {
+                                repository.deleteExpense(existing)
+                            } else {
+                                isDuplicate = true
+                                break
+                            }
                         }
                     }
+                    
+                    if (isDuplicate) {
+                        continue
+                    }
 
-                    repository.upsertExpense(
-                        Expense(
-                            amount = finalParsed.amount,
-                            category = category,
-                            date = localDate,
-                            merchant = normalizedMerchant,
-                            financialEventType = finalParsed.financialEventType,
-                            paymentMethod = finalParsed.paymentMethod,
-                            confidence = finalParsed.confidence,
-                            source = ExpenseSource.SMS,
-                            type = finalParsed.type,
-                            status = finalParsed.status,
-                            accountSuffix = finalParsed.accountSuffix,
-                            accountName = finalParsed.accountName,
-                            quality = finalParsed.quality,
-                            entityType = entityType,
-                            originalSmsId = id,
-                            originalSmsBody = body,
-                            syncDate = System.currentTimeMillis()
-                        )
-                    )
+                    repository.upsertExpense(incomingExpensePlaceholder.copy(
+                        originalSmsId = id,
+                        originalSmsBody = body,
+                        syncDate = System.currentTimeMillis()
+                    ))
 
                     repository.logSMSProcessing(
                         SMSProcessingLog(
@@ -250,5 +269,15 @@ class SMSSyncWorker @AssistedInject constructor(
             "total_read" to totalReadCount,
             "expenses_found" to foundExpensesCount
         ))
+    }
+
+    private fun getWindowMinutes(method: PaymentMethod, eventType: com.example.smartexpensecalendar.domain.model.FinancialEventType): Long {
+        return when {
+            method == PaymentMethod.UPI -> 10
+            method == PaymentMethod.CARD || method == PaymentMethod.CREDIT_CARD || method == PaymentMethod.DEBIT_CARD -> 30
+            method == PaymentMethod.IMPS -> 30
+            method == PaymentMethod.NEFT || eventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.TRANSFER -> 120
+            else -> 1440 // 1 day
+        }
     }
 }

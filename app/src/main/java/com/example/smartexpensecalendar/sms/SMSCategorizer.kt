@@ -1,6 +1,7 @@
 package com.example.smartexpensecalendar.sms
 
 import com.example.smartexpensecalendar.domain.repository.ExpenseRepository
+import com.example.smartexpensecalendar.sms_engine.detector.DetectionPatterns
 import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -68,16 +69,16 @@ class SMSCategorizer @Inject constructor(
 
         // --- 5. KEYWORD-BASED MATCHING (FALLBACK) ---
         return when {
-            containsAny(upperMerchant, setOf("FUEL", "PETROL", "SHELL", "HPCL", "IOCL", "INDIANOIL", "BHARAT PETROLEUM", "BPCL")) -> "Fuel"
-            containsAny(upperMerchant, setOf("RENT", "FLAT", "MAINTENANCE", "HOUSING", "MYGATE", "NOBROKER")) -> "Rent & Maintenance"
-            containsAny(upperMerchant, setOf("HOSPITAL", "PHARMACY", "CLINIC", "DOCTOR", "HEALTHCARE", "DIAGNOSTIC", "MEDPLUS", "APOLLO")) -> "Medical"
-            containsAny(upperMerchant, setOf("NETFLIX", "SPOTIFY", "DISNEY", "HOTSTAR", "YOUTUBE", "PRIME", "TICKET", "PVR", "INOX")) -> "Entertainment"
-            containsAny(upperMerchant, setOf("AIRTEL", "JIO", "VODAFONE", "IDEA", "ELECTRICITY", "WATER", "GAS", "BESCOM", "RECHARGE")) -> "Bill Payment"
-            containsAny(upperMerchant, setOf("AMAZON", "FLIPKART", "MYNTRA", "AJIO", "RETAIL", "FASHION", "ZIVAME", "NYKAA", "LIFESTYLE", "PANTALOONS", "MAX")) -> "Shopping"
-            containsAny(upperMerchant, setOf("UBER", "OLA", "RAPIDO", "METRO", "RAIL", "IRCTC", "FLIGHT", "MAKEMYTRIP", "INDIGO", "AIR INDIA")) -> "Travel"
-            containsAny(upperMerchant, setOf("SWIGGY", "ZOMATO", "FOOD", "RESTAURANT", "CAFE", "BAKERY", "EATCLUB", "DOMINOS", "PIZZA", "BURGER", "KFC", "MCDONALD")) -> "Food"
-            containsAny(upperMerchant, setOf("BIGBASKET", "BLINKIT", "ZEPTO", "DMART", "GROCERY", "SUPERMARKET", "RELIANCE FRESH", "JIOMART", "BBDAILY")) -> "Groceries"
-            containsAny(upperMerchant, setOf("INVEST", "MUTUAL", "SIP", "STOCK", "GROWW", "ZERODHA", "TRADING", "COIN", "SMALLCASE", "INDMONEY")) -> "Investment"
+            containsAny(upperMerchant, DetectionPatterns.CAT_FUEL) -> "Fuel"
+            containsAny(upperMerchant, DetectionPatterns.CAT_RENT) -> "Rent & Maintenance"
+            containsAny(upperMerchant, DetectionPatterns.CAT_MEDICAL) -> "Medical"
+            containsAny(upperMerchant, DetectionPatterns.CAT_ENTERTAINMENT) -> "Entertainment"
+            containsAny(upperMerchant, DetectionPatterns.CAT_BILL_PAYMENT) -> "Bill Payment"
+            containsAny(upperMerchant, DetectionPatterns.CAT_SHOPPING) -> "Shopping"
+            containsAny(upperMerchant, DetectionPatterns.CAT_TRAVEL) -> "Travel"
+            containsAny(upperMerchant, DetectionPatterns.CAT_FOOD) -> "Food"
+            containsAny(upperMerchant, DetectionPatterns.CAT_GROCERIES) -> "Groceries"
+            containsAny(upperMerchant, DetectionPatterns.CAT_INVESTMENT) -> "Investment"
             paymentMethod == com.example.smartexpensecalendar.domain.model.PaymentMethod.UPI -> "UPI / Digital"
             eventType == com.example.smartexpensecalendar.domain.model.FinancialEventType.INCOME -> "Money Received"
             else -> "Payment"

@@ -22,6 +22,8 @@ data class ExpenseEntity(
     val status: String, // COMPLETED, SETTLEMENT, REFUNDED, FAILED
     val accountSuffix: String?,
     val accountName: String?,
+    val transactionTime: Long?,
+    val senderId: String?,
     val quality: Int = 1,
     val entityType: String = "MERCHANT",
     val linkedId: Long?,

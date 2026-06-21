@@ -10,13 +10,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,8 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
@@ -33,41 +28,41 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.smartexpensecalendar.domain.model.DefaultCategories
 import com.example.smartexpensecalendar.domain.model.Expense
 import com.example.smartexpensecalendar.domain.model.TransactionStatus
+import com.example.smartexpensecalendar.domain.model.TransactionType
 import com.example.smartexpensecalendar.presentation.detail.ExpenseDetailViewModel
 import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.ui.components.CategoryGridPicker
-import com.example.smartexpensecalendar.ui.MovementTransactionItem
+import com.example.smartexpensecalendar.ui.navigation.Screen
 import com.example.smartexpensecalendar.utils.ExpenseDisplayUtils
 import com.example.smartexpensecalendar.core.designsystem.theme.*
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
-import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExpenseDetailBottomSheet(
+fun DailyTransactionScreen(
     date: LocalDate,
+    navController: androidx.navigation.NavController,
     onDismiss: () -> Unit,
     viewModel: ExpenseDetailViewModel = hiltViewModel()
 ) {
     val expensesRaw by viewModel.getExpensesForDate(date).collectAsState(initial = emptyList())
     val categories by viewModel.categories.collectAsState()
     val currencySymbol by viewModel.currencySymbol.collectAsState()
-    val expenses = expensesRaw.filter { 
-        it.type == com.example.smartexpensecalendar.domain.model.TransactionType.DEBIT &&
-        it.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.COMPLETED
-    }
+    
+    // Summary of debits only for the header
+    val totalDailySpend = expensesRaw.filter { 
+        it.type == TransactionType.DEBIT && it.status == TransactionStatus.COMPLETED 
+    }.sumOf { it.amount }
     
     val sheetState = rememberModalBottomSheetState()
-    val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
     
     var showAddSection by remember { mutableStateOf(false) }
-    var editingExpenseId by remember { mutableStateOf<Long?>(null) }
     var showAddCategoryDialog by remember { mutableStateOf(false) }
 
     if (showAddCategoryDialog) {
@@ -116,7 +111,6 @@ fun ExpenseDetailBottomSheet(
         dragHandle = { BottomSheetDefaults.DragHandle(color = SurfaceGlassBright) }
     ) {
         Scaffold(
-            snackbarHost = { SnackbarHost(snackbarHostState) },
             containerColor = Color.Transparent
         ) { padding ->
             Column(
@@ -138,19 +132,19 @@ fun ExpenseDetailBottomSheet(
                             color = TextSecondary
                         )
                         Text(
-                            text = "Today's Transactions",
+                            text = "Daily Transactions",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
                         )
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "$currencySymbol${"%,.0f".format(expenses.sumOf { it.amount })}",
+                            text = "- $currencySymbol${formatIndianCurrency(totalDailySpend)}",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.ExtraBold,
-                            color = CyanGlow
+                            color = Color(0xFFF87171)
                         )
                     }
                     
@@ -201,10 +195,10 @@ fun ExpenseDetailBottomSheet(
 
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                    contentPadding = PaddingValues(bottom = 20.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 32.dp)
                 ) {
-                    if (expenses.isEmpty()) {
+                    if (expensesRaw.isEmpty()) {
                         item {
                             Box(
                                 modifier = Modifier
@@ -213,7 +207,7 @@ fun ExpenseDetailBottomSheet(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "No expenses recorded for this day",
+                                    text = "No transactions recorded for this day",
                                     color = TextSecondary.copy(alpha = 0.5f),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
@@ -221,67 +215,42 @@ fun ExpenseDetailBottomSheet(
                         }
                     }
                     
-                    val dayItems = expensesRaw.filter { it.date == date }
-                    val allItems = expensesRaw // Already filtered for this day in viewmodel usually, but let's be safe
                     val handledIds = mutableSetOf<Long>()
 
-                    expensesRaw.forEach { expense ->
-                        if (expense.id in handledIds) return@forEach
+                    items(expensesRaw) { expense ->
+                        if (expense.id in handledIds) return@items
 
                         if (expense.status == TransactionStatus.SETTLEMENT && expense.linkedId != null) {
-                            // Find partner for movement card
                             val partner = expensesRaw.find { it.id == expense.linkedId }
                             if (partner != null) {
-                                val debit = if (expense.type == com.example.smartexpensecalendar.domain.model.TransactionType.DEBIT) expense else partner
-                                val credit = if (expense.type == com.example.smartexpensecalendar.domain.model.TransactionType.CREDIT) expense else partner
+                                val debit = if (expense.type == TransactionType.DEBIT) expense else partner
+                                val credit = if (expense.type == TransactionType.CREDIT) expense else partner
                                 
-                                item(key = "move_${debit.id}") {
-                                    MovementTransactionItem(
-                                        debit = debit,
-                                        credit = credit,
-                                        currencySymbol = currencySymbol,
-                                        onClick = { }
-                                    )
-                                }
+                                MovementTransactionItem(
+                                    debit = debit,
+                                    credit = credit,
+                                    currencySymbol = currencySymbol,
+                                    onClick = { 
+                                        navController.navigate(Screen.TransactionDetails.createRoute(debit.id))
+                                        onDismiss()
+                                    }
+                                )
                                 handledIds.add(debit.id)
                                 handledIds.add(credit.id)
-                                return@forEach
+                                return@items
                             }
                         }
 
-                        // Regular Expense Row
-                        if (expense.type == com.example.smartexpensecalendar.domain.model.TransactionType.DEBIT && 
-                            expense.status == com.example.smartexpensecalendar.domain.model.TransactionStatus.COMPLETED) {
-                            item(key = expense.id) {
-                                ExpenseRow(
-                                    expense = expense,
-                                    categories = categories,
-                                    isEditing = editingExpenseId == expense.id,
-                                    currencySymbol = currencySymbol,
-                                    onEditToggle = { isEditing ->
-                                        editingExpenseId = if (isEditing) expense.id else null
-                                        if (isEditing) showAddSection = false
-                                    },
-                                    onDelete = {
-                                        scope.launch {
-                                            viewModel.deleteExpense(expense)
-                                            val result = snackbarHostState.showSnackbar(
-                                                message = "Expense deleted",
-                                                actionLabel = "Undo",
-                                                duration = SnackbarDuration.Short
-                                            )
-                                            if (result == SnackbarResult.ActionPerformed) {
-                                                viewModel.addExpense(expense.amount, expense.category, expense.date)
-                                            }
-                                        }
-                                    },
-                                    onEdit = { amount, category, applyToFuture ->
-                                        viewModel.updateExpense(expense, amount, category, applyToFuture)
-                                        editingExpenseId = null
-                                    },
-                                    onAddCustomCategory = { showAddCategoryDialog = true }
-                                )
-                            }
+                        // Regular Transaction Row
+                        if (expense.status == TransactionStatus.COMPLETED || expense.status == TransactionStatus.REFUNDED) {
+                            ExpenseRow(
+                                expense = expense,
+                                currencySymbol = currencySymbol,
+                                onClick = {
+                                    navController.navigate(Screen.TransactionDetails.createRoute(expense.id))
+                                    onDismiss()
+                                }
+                            )
                         }
                         handledIds.add(expense.id)
                     }
@@ -294,166 +263,59 @@ fun ExpenseDetailBottomSheet(
 @Composable
 fun ExpenseRow(
     expense: Expense,
-    categories: List<String>,
-    isEditing: Boolean,
     currencySymbol: String = "₹",
-    onEditToggle: (Boolean) -> Unit,
-    onDelete: () -> Unit,
-    onEdit: (Double, String, Boolean) -> Unit,
-    onAddCustomCategory: () -> Unit
+    onClick: () -> Unit
 ) {
-    var editAmount by remember(isEditing) { mutableStateOf(expense.amount.toString()) }
-    var editCategory by remember(isEditing) { mutableStateOf(expense.category) }
-    var applyToFuture by remember(isEditing) { mutableStateOf(false) }
-    var expanded by remember { mutableStateOf(false) }
-
-    val categoryColor = getCategoryColor(expense.category)
+    val isDebit = expense.type == TransactionType.DEBIT
+    val time = expense.transactionTime ?: expense.createdAt
+    val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
+    val timeStr = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).format(timeFormatter)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(SurfaceGlass)
-            .border(1.dp, SurfaceGlassBright, RoundedCornerShape(8.dp))
-            .padding(8.dp)
+            .border(1.dp, SurfaceGlassBright, RoundedCornerShape(18.dp))
+            .clickable { onClick() }
+            .padding(12.dp)
     ) {
-        if (isEditing) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        OutlinedButton(
-                            onClick = { expanded = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(brush = SolidColor(SurfaceGlassBright))
-                        ) {
-                            Text(editCategory)
-                        }
-                        if (expanded) {
-                            CategoryGridPicker(
-                                categories = categories,
-                                selectedCategory = editCategory,
-                                onDismiss = { expanded = false },
-                                onSelect = { 
-                                    editCategory = it
-                                    expanded = false 
-                                }
-                            )
-                        }
-                    }
-                    OutlinedTextField(
-                        value = editAmount,
-                        onValueChange = { editAmount = it },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = TextPrimary),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = CyanGlow,
-                            unfocusedBorderColor = SurfaceGlassBright
-                        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                CategoryIconView(category = expense.category, size = 42.dp, iconSize = 20.dp)
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    val displayName = ExpenseDisplayUtils.getDisplayName(expense)
+                    
+                    Text(
+                        text = displayName,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        maxLines = 1
+                    )
+
+                    Text(
+                        text = "${expense.category}  •  $timeStr",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextSecondary
                     )
                 }
-
-                if (expense.merchant != null) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 8.dp).clickable { applyToFuture = !applyToFuture }
-                    ) {
-                        Checkbox(
-                            checked = applyToFuture,
-                            onCheckedChange = { applyToFuture = it },
-                            colors = CheckboxDefaults.colors(checkedColor = CyanGlow)
-                        )
-                        Text(
-                            text = "Apply to all future ${expense.merchant} transactions",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
-                        )
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = { onEditToggle(false) }) { Text("Cancel", color = TextSecondary) }
-                    TextButton(
-                        onClick = {
-                            val amt = editAmount.toDoubleOrNull()
-                            if (amt != null) {
-                                onEdit(amt, editCategory, applyToFuture)
-                            }
-                        }
-                    ) { Text("Save", color = CyanGlow) }
-                }
             }
-        } else {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                    // Unified Category Icon
-                    CategoryIconView(category = expense.category)
 
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column {
-                        val displayName = ExpenseDisplayUtils.getDisplayName(expense)
-                        
-                        Text(
-                            text = displayName,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-
-                        val subtitle = buildAnnotatedString {
-                            withStyle(SpanStyle(color = TextSecondary)) {
-                                append(expense.category)
-                            }
-                            if (!expense.accountName.isNullOrBlank()) {
-                                withStyle(SpanStyle(color = TextSecondary.copy(alpha = 0.5f))) {
-                                    append("  •  ")
-                                }
-                                withStyle(SpanStyle(
-                                    color = SecondaryAccent.copy(alpha = 0.8f),
-                                    fontWeight = FontWeight.Medium
-                                )) {
-                                    append(ExpenseDisplayUtils.getVesselDisplay(expense.accountName))
-                                }
-                            }
-                        }
-
-                        Text(
-                            text = subtitle,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = "$currencySymbol${formatIndianCurrency(expense.amount)}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = TextPrimary
-                        )
-                        Row {
-                            IconButton(onClick = { onEditToggle(true) }, modifier = Modifier.size(24.dp)) {
-                                Icon(Icons.Default.Edit, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
-                            }
-                            IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
-                                Icon(Icons.Default.Delete, contentDescription = null, tint = ColorTransport, modifier = Modifier.size(16.dp))
-                            }
-                        }
-                    }
-                }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "${if (isDebit) "-" else "+"} $currencySymbol${formatIndianCurrency(expense.amount)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (isDebit) Color(0xFFF87171) else ColorGroceries
+                )
             }
         }
     }

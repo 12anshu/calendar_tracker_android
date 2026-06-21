@@ -8,7 +8,7 @@ import com.example.smartexpensecalendar.domain.model.TransactionDirection
 import com.example.smartexpensecalendar.domain.model.TransactionExtraction
 import com.example.smartexpensecalendar.domain.model.TransactionMode
 import com.example.smartexpensecalendar.sms_engine.extractor.AmountExtractor
-import com.example.smartexpensecalendar.sms_engine.extractor.DirectionExtractor
+import com.example.smartexpensecalendar.sms_engine.direction.DirectionExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.FinancialEventTypeExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.ModeExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.MerchantExtractor
@@ -96,7 +96,7 @@ class TransactionExtractionViewModel @Inject constructor(
             val results = smsList.map { sms ->
                 val amount = AmountExtractor.extractAmount(sms.message)
                 val mode = ModeExtractor.extractMode(sms.message)
-                val direction = DirectionExtractor.extractDirection(sms.message)
+                val direction = DirectionExtractor.extractDirectionOnly(sms.message)
                 val merchant = MerchantExtractor.extractMerchant(sms.message)
 
                 var confidence = 0

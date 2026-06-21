@@ -31,7 +31,6 @@ import com.example.smartexpensecalendar.features.developer_tools.data.entity.Ana
 import com.example.smartexpensecalendar.presentation.sms_inbox.SmsInboxViewModel
 import com.example.smartexpensecalendar.ui.components.MonthYearPicker
 import com.example.smartexpensecalendar.ui.components.FintechBottomNav
-import com.example.smartexpensecalendar.ui.components.CategoryIconView
 import com.example.smartexpensecalendar.utils.CurrencyUtils.formatIndianCurrency
 import com.example.smartexpensecalendar.utils.ExpenseDisplayUtils
 import java.time.LocalDate
@@ -44,6 +43,7 @@ import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import com.example.smartexpensecalendar.domain.model.TransactionDirection
 import com.example.smartexpensecalendar.presentation.sms_inbox.ReviewStatus
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
@@ -87,7 +87,8 @@ fun SmsInboxScreen(
         containerColor = BackgroundStart
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
-            // Filter Row 1: Message Type
+
+            // Filter Row 0: Financial Decision (Detector Result)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -95,12 +96,41 @@ fun SmsInboxScreen(
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val types = listOf("TRANSACTION", "OBLIGATION", "INFORMATION", "UNKNOWN")
-                types.forEach { type ->
+                listOf(
+                    Triple("ALL", null as Boolean?, Color.White),
+                    Triple("FINANCIAL (${uiState.financialCount})", true, CyanGlow),
+                    Triple("NON-FINANCIAL (${uiState.nonFinancialCount})", false, ColorTransport)
+                ).forEach { (label, value, color) ->
                     FilterChip(
-                        selected = uiState.messageTypeFilter == type,
-                        onClick = { viewModel.setMessageTypeFilter(if (uiState.messageTypeFilter == type) null else type) },
-                        label = { Text(type, fontSize = 10.sp) },
+                        selected = uiState.financialFilter == value,
+                        onClick = { viewModel.setFinancialFilter(value) },
+                        label = { Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = color,
+                            selectedLabelColor = BackgroundStart
+                        )
+                    )
+                }
+            }
+
+            // Filter Row 1: Direction
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, start = 16.dp, end = 16.dp)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val directions = listOf(
+                    "DEBIT" to "DEBIT (${uiState.debitCount})",
+                    "CREDIT" to "CREDIT (${uiState.creditCount})",
+                    "UNKNOWN" to "UNKNOWN (${uiState.unknownDirectionCount})"
+                )
+                directions.forEach { (dir, label) ->
+                    FilterChip(
+                        selected = uiState.directionFilter == dir,
+                        onClick = { viewModel.setDirectionFilter(if (uiState.directionFilter == dir) null else dir) },
+                        label = { Text(label, fontSize = 10.sp) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = CyanGlow,
                             selectedLabelColor = BackgroundStart
@@ -109,7 +139,34 @@ fun SmsInboxScreen(
                 }
             }
 
-            // Filter Row 2: Financial Event Type
+            // Filter Row 2: Message Type
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, start = 16.dp, end = 16.dp)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val types = listOf(
+                    "TRANSACTION" to "TRANSACTION (${uiState.financialTransactionCount})",
+                    "OBLIGATION" to "OBLIGATION",
+                    "INFORMATION" to "INFORMATION",
+                    "UNKNOWN" to "UNKNOWN"
+                )
+                types.forEach { (type, label) ->
+                    FilterChip(
+                        selected = uiState.messageTypeFilter == type,
+                        onClick = { viewModel.setMessageTypeFilter(if (uiState.messageTypeFilter == type) null else type) },
+                        label = { Text(label, fontSize = 10.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = CyanGlow,
+                            selectedLabelColor = BackgroundStart
+                        )
+                    )
+                }
+            }
+
+            // Filter Row 3: Financial Event Type
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -131,7 +188,7 @@ fun SmsInboxScreen(
                 }
             }
 
-            // Filter Row 3: Review Status
+            // Filter Row 4: Review Status
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -174,6 +231,7 @@ fun SmsInboxScreen(
                             sms = sms,
                             onDoneClick = { viewModel.toggleReviewStatus(sms.id, sms.isReviewed) },
                             onFlagClick = { viewModel.toggleFlagStatus(sms.id, sms.isFlagged) },
+                            getDirectionColor = ::getDirectionColor,
                             onClick = { selectedSmsForDetail = sms }
                         )
                     }
@@ -215,9 +273,10 @@ fun SmsDateHeader(date: LocalDate) {
 
 @Composable
 fun SmsInboxItem(
-    sms: AnalyzedSMS, 
+    sms: AnalyzedSMS,
     onDoneClick: () -> Unit,
     onFlagClick: () -> Unit,
+    getDirectionColor: (TransactionDirection) -> Color = ::getDirectionColor,
     onClick: () -> Unit
 ) {
     val clipboardManager = LocalClipboardManager.current
@@ -238,6 +297,11 @@ fun SmsInboxItem(
     ) {
         // Line 1: Financial status | Message Type | Event Type | Mode
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Tag(
+                sms.direction.name,
+                getDirectionColor(sms.direction)
+            )
+            Text("|", color = TextSecondary.copy(alpha = 0.3f), fontSize = 10.sp)
             Tag(if (sms.isFinancial) "FIN" else "NON-FIN", if (sms.isFinancial) CyanGlow else TextSecondary)
             Text("|", color = TextSecondary.copy(alpha = 0.3f), fontSize = 10.sp)
             Tag(sms.messageType, TextSecondary)
@@ -309,6 +373,18 @@ fun SmsInboxItem(
                     maxLines = 1,
                     modifier = Modifier.weight(1f)
                 )
+                if (sms.directionEvidence.isNotEmpty()) {
+                    Text(
+                        text = "Dir: ${
+                            sms.directionEvidence
+                                .take(3)
+                                .joinToString(", ")
+                        }",
+                        color = PremiumGold.copy(alpha = 0.8f),
+                        fontSize = 9.sp,
+                        maxLines = 1
+                    )
+                }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Score: ${sms.score}",
@@ -328,6 +404,18 @@ fun SmsInboxItem(
                         FINANCIAL: ${if (sms.isFinancial) "YES" else "NO"}
                         SCORE: ${sms.score}
                         TYPE: ${sms.messageType}
+                        DIRECTION ANALYSIS:
+                        - DIRECTION: ${sms.direction},
+                        - DIRECTION_CONFIDENCE: ${sms.directionConfidence}
+                        - DIRECTION_SCORE: ${sms.directionScore}
+                        - DIRECTION_EVIDENCE: ${sms.directionEvidence.joinToString("\n")}
+                        
+                        MESSAGE TYPE ANALYSIS:
+                        - TRANSACTION SCORE: ${sms.transactionScore}
+                        - OBLIGATION SCORE: ${sms.obligationScore}
+                        - INFORMATION SCORE: ${sms.informationScore}
+                        - FINAL DECISION: ${sms.messageType}
+
                         EVENT: ${sms.financialEventType}
                         CATEGORY: ${sms.category ?: "NONE"}
                         MERCHANT: ${sms.merchant ?: "NONE"}
@@ -474,6 +562,86 @@ fun SmsDetailDialog(sms: AnalyzedSMS, onDismiss: () -> Unit) {
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                    if (sms.directionEvidence.isNotEmpty()) {
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    SurfaceGlass.copy(alpha = 0.3f),
+                                    RoundedCornerShape(4.dp)
+                                )
+                                .padding(8.dp)
+                        ) {
+                            Text("Direction Analysis", color = TextSecondary, fontSize = 11.sp)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Text(
+                                    "Dir: ${sms.direction}",
+                                    color = TextPrimary,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "Conf: ${sms.directionConfidence}%",
+                                    color = PremiumGold,
+                                    fontSize = 12.sp
+                                )
+                                Text(
+                                    "Score: ${sms.directionScore}",
+                                    color = PremiumGold,
+                                    fontSize = 12.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Evidence:\n" + sms.directionEvidence.joinToString("\n"),
+                                color = TextPrimary.copy(alpha = 0.8f),
+                                fontSize = 10.sp,
+                                lineHeight = 14.sp
+                            )
+                        }
+                    }
+                }
+
+                // Message Type Analysis Card
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            SurfaceGlass.copy(alpha = 0.3f),
+                            RoundedCornerShape(4.dp)
+                        )
+                        .padding(8.dp)
+                ) {
+                    Text("Message Type Analysis", color = TextSecondary, fontSize = 11.sp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("Transaction", color = TextSecondary, fontSize = 10.sp)
+                            Text("${sms.transactionScore}", color = if (sms.transactionScore > 0) CyanGlow else TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                        Column {
+                            Text("Obligation", color = TextSecondary, fontSize = 10.sp)
+                            Text("${sms.obligationScore}", color = if (sms.obligationScore > 0) ColorFood else TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                        Column {
+                            Text("Information", color = TextSecondary, fontSize = 10.sp)
+                            Text("${sms.informationScore}", color = if (sms.informationScore > 0) SecondaryAccent else TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row {
+                        Text("Current Type: ", color = TextSecondary, fontSize = 11.sp)
+                        Text(sms.messageType, color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                     Column {
                         Text("Type", color = TextSecondary, fontSize = 11.sp)
                         Text(sms.messageType, color = TextPrimary, fontWeight = FontWeight.Bold)
@@ -528,4 +696,15 @@ fun SmsDetailDialog(sms: AnalyzedSMS, onDismiss: () -> Unit) {
         },
         containerColor = BackgroundEnd
     )
+}
+
+
+private fun getDirectionColor(
+    direction: TransactionDirection
+): Color {
+    return when (direction) {
+        TransactionDirection.DEBIT -> ColorTransport
+        TransactionDirection.CREDIT -> ColorGroceries
+        TransactionDirection.UNKNOWN -> TextSecondary
+    }
 }

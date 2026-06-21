@@ -12,7 +12,7 @@ import com.example.smartexpensecalendar.features.developer_tools.domain.model.Pa
 import com.example.smartexpensecalendar.sms_engine.detector.FinancialDetector
 import com.example.smartexpensecalendar.domain.model.MessageType
 import com.example.smartexpensecalendar.sms_engine.extractor.AmountExtractor
-import com.example.smartexpensecalendar.sms_engine.extractor.DirectionExtractor
+import com.example.smartexpensecalendar.sms_engine.direction.DirectionExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.FinancialEventTypeExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.ModeExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.MerchantExtractor
@@ -39,9 +39,14 @@ class SMSAnalysisRepository @Inject constructor(
     fun getLowConfidenceFinancialCount() = dao.getLowConfidenceFinancialCount()
 
     fun getTransactionCount() = dao.getMessageTypeCount("TRANSACTION")
+    fun getFinancialTransactionCount() = dao.getFinancialTransactionCount()
     fun getObligationCount() = dao.getMessageTypeCount("OBLIGATION")
     fun getInformationCount() = dao.getMessageTypeCount("INFORMATION")
     fun getPromotionalCount() = dao.getMessageTypeCount("PROMOTIONAL")
+
+    fun getDebitCount() = dao.getDirectionCount("DEBIT")
+    fun getCreditCount() = dao.getDirectionCount("CREDIT")
+    fun getUnknownDirectionCount() = dao.getDirectionCount("UNKNOWN")
 
     fun getUnknownFinancialCount() = dao.getUnknownFinancialCount()
 
@@ -49,11 +54,12 @@ class SMSAnalysisRepository @Inject constructor(
         query: String = "", 
         isAsc: Boolean = false,
         financial: Boolean? = null,
-        messageType: String? = null
+        messageType: String? = null,
+        direction: String? = null
     ): Flow<PagingData<AnalyzedSMS>> {
         return Pager(
             config = PagingConfig(pageSize = 50),
-            pagingSourceFactory = { dao.getAllAnalyzedSMS(query, isAsc, financial, messageType) }
+            pagingSourceFactory = { dao.getAllAnalyzedSMS(query, isAsc, financial, messageType, direction) }
         ).flow
     }
 
@@ -179,6 +185,9 @@ class SMSAnalysisRepository @Inject constructor(
                                          oldSms.financialEventType != newSms.financialEventType ||
                                          oldSms.isFinancial != newSms.isFinancial ||
                                          oldSms.merchant != newSms.merchant ||
+                                         oldSms.transactionScore != newSms.transactionScore ||
+                                         oldSms.obligationScore != newSms.obligationScore ||
+                                         oldSms.informationScore != newSms.informationScore ||
                                          oldSms.transactionMode != newSms.transactionMode ||
                                          oldSms.score != newSms.score ||
                                          oldSms.amount != newSms.amount ||

@@ -8,9 +8,10 @@ import com.example.smartexpensecalendar.domain.model.SenderType
 import com.example.smartexpensecalendar.domain.model.TransactionDirection
 import com.example.smartexpensecalendar.domain.model.TransactionMode
 import com.example.smartexpensecalendar.domain.model.MessageType
-import com.example.smartexpensecalendar.sms_engine.detector.MessageTypeDetector
+import com.example.smartexpensecalendar.sms_engine.detector.DetectionPatterns
+import com.example.smartexpensecalendar.sms_engine.message_type.MessageTypeDetector
 import com.example.smartexpensecalendar.sms_engine.extractor.AmountExtractor
-import com.example.smartexpensecalendar.sms_engine.extractor.DirectionExtractor
+import com.example.smartexpensecalendar.sms_engine.direction.DirectionExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.FinancialEventTypeExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.ModeExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.AccountNameExtractor
@@ -41,22 +42,14 @@ object SMSParser {
 
     private val messageTypeDetector = MessageTypeDetector()
 
-    private val accountSuffixRegex = Pattern.compile(
-        "(?i)(?:Card|Account|A/c|Acct|Acc|XX|X|No|ending|ending\\sin)\\s*[\\(\\[:\\-#\\s]*\\s*[*xX]*\\s*(\\d{2,4})\\b",
-        Pattern.CASE_INSENSITIVE
-    )
-
     fun parse(body: String, sender: String = ""): ParsedSMS? {
         val normalizedBody = SMSNormalizer.normalize(body)
         val uppercaseBody = normalizedBody.uppercase()
 
         // 1. Filter out Outward Transfer Confirmations (Status Updates)
-        // These say "successfully credited TO [recipient]", but it's our money that was debited.
-        // We don't want to count this as new Income (Credit).
-        val isOutwardConfirmation = Regex("TO\\s+[A-Za-z0-9 .]+\\s+IS\\s+SUCCESSFULLY\\s+CREDITED").containsMatchIn(uppercaseBody) ||
-                                   Regex("TRANSFER\\s+OF\\s+INR\\s+[0-9.]+\\s+TO\\s+[A-Za-z0-9 .]+\\s+IS\\s+SUCCESSFUL").containsMatchIn(uppercaseBody)
-        
-        if (isOutwardConfirmation) return null
+        if (DetectionPatterns.outwardConfirmationRegex.any { it.containsMatchIn(uppercaseBody) }) {
+            return null
+        }
 
         val isOtp = MessageTypePhrases.otpPhrases.any { uppercaseBody.contains(it) }
         val isOtpExclusion = MessageTypePhrases.otpExcludePhrases.any { uppercaseBody.contains(it) }
@@ -68,6 +61,11 @@ object SMSParser {
         val messageTypeResult = messageTypeDetector.detect(normalizedBody)
         var messageType = messageTypeResult.messageType
 
+        // 2. Discard purely Promotional or Obligation messages (Reminders)
+        if (messageType == MessageType.PROMOTIONAL || messageType == MessageType.OBLIGATION) {
+            return null
+        }
+
         if (messageType == MessageType.UNKNOWN && financialResult.isFinancial) {
             messageType = MessageType.TRANSACTION
         }
@@ -77,7 +75,7 @@ object SMSParser {
         val direction = if (messageTypeResult.detectedDirection != TransactionDirection.UNKNOWN) {
             messageTypeResult.detectedDirection
         } else {
-            DirectionExtractor.extractDirection(normalizedBody)
+            DirectionExtractor.extractDirectionOnly(normalizedBody)
         }
 
         val mode = ModeExtractor.extractMode(body)
@@ -114,23 +112,15 @@ object SMSParser {
 
         if (merchant.isNullOrBlank() && mode == TransactionMode.MEAL_CARD) {
             merchant = when {
-                uppercaseBody.contains("PLUXEE") -> "Pluxee Transaction"
-                uppercaseBody.contains("SODEXO") -> "Sodexo Transaction"
-                uppercaseBody.contains("ZETA") -> "Zeta Transaction"
-                uppercaseBody.contains("EDENRED") -> "Edenred Transaction"
-                uppercaseBody.contains("SWILE") -> "Swile Transaction"
-                uppercaseBody.contains("AXIS") -> "Axis Meal Card"
-                uppercaseBody.contains("HDFC") -> "HDFC Food Card"
-                uppercaseBody.contains("ICICI") -> "ICICI Food Card"
+                DetectionPatterns.INSTRUMENT_MEAL.any { uppercaseBody.contains(it) } -> {
+                    val provider = DetectionPatterns.INSTRUMENT_MEAL.find { uppercaseBody.contains(it) }
+                    "${provider?.lowercase()?.replaceFirstChar { it.uppercase() }} Transaction"
+                }
                 else -> "Meal Card Transaction"
             }
         }
 
-        val suffixMatcher = accountSuffixRegex.matcher(body)
-        var accountSuffix: String? = null
-        if (suffixMatcher.find()) {
-            accountSuffix = suffixMatcher.group(1)
-        }
+        val accountSuffix = AccountNameExtractor.getSuffix(body)
 
         val accountName = AccountNameExtractor.extract(body, sender)
         val quality = calculateQuality(body)
@@ -155,8 +145,8 @@ object SMSParser {
     private fun calculateQuality(body: String): Int {
         val upper = body.uppercase()
         var score = 1
-        if (Regex("UPI\\s*REF|VPA|PAID\\s*VIA|SUCCESS|TXN\\s*ID|REF#").containsMatchIn(upper)) score = 2
-        if (Regex("VALUE\\s*DATE|AVL\\s*BAL|AVAILABLE\\s*BALANCE|A/C\\s*ENDING|CREDITED\\s*TO\\s*YOUR\\s*CARD").containsMatchIn(upper)) score = 3
+        if (DetectionPatterns.qualitySignalsTier2.containsMatchIn(upper)) score = 2
+        if (DetectionPatterns.qualitySignalsTier3.containsMatchIn(upper)) score = 3
         return score
     }
 
