@@ -756,6 +756,50 @@ fun MessageReviewView(sms: AnalyzedSMS?, viewModel: SMSAnalysisViewModel, onComp
                         )
                     }
                 }
+
+                // Merchant Analysis Card
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            SurfaceGlass.copy(alpha = 0.3f),
+                            RoundedCornerShape(8.dp)
+                        )
+                        .padding(16.dp)
+                ) {
+                    Text("MERCHANT ANALYSIS", color = CyanGlow, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Merchant: ${sms.merchant ?: "None"}",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(32.dp)
+                    ) {
+                        Column {
+                            Text("Confidence", color = TextSecondary, fontSize = 11.sp)
+                            Text("${sms.merchantConfidence}", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+                        Column {
+                            Text("Score", color = TextSecondary, fontSize = 11.sp)
+                            Text("${sms.merchantScore}", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+                    }
+                    if (sms.merchantEvidence.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Evidence:", color = TextSecondary, fontSize = 11.sp)
+                        Text(
+                            text = sms.merchantEvidence.joinToString("\n"),
+                            color = TextPrimary.copy(alpha = 0.8f),
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
             }
         }
 

@@ -415,6 +415,12 @@ fun SmsInboxItem(
                         - OBLIGATION SCORE: ${sms.obligationScore}
                         - INFORMATION SCORE: ${sms.informationScore}
                         - FINAL DECISION: ${sms.messageType}
+                        
+                        MERCHANT ANALYSIS:
+                        - MERCHANT: ${sms.merchant ?: "NONE"}
+                        - CONFIDENCE: ${sms.merchantConfidence}
+                        - SCORE: ${sms.merchantScore}
+                        - EVIDENCE: ${sms.merchantEvidence.joinToString("\n")}
 
                         EVENT: ${sms.financialEventType}
                         CATEGORY: ${sms.category ?: "NONE"}
@@ -638,6 +644,49 @@ fun SmsDetailDialog(sms: AnalyzedSMS, onDismiss: () -> Unit) {
                     Row {
                         Text("Current Type: ", color = TextSecondary, fontSize = 11.sp)
                         Text(sms.messageType, color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    }
+                }
+
+                // Merchant Analysis Card
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            SurfaceGlass.copy(alpha = 0.3f),
+                            RoundedCornerShape(4.dp)
+                        )
+                        .padding(8.dp)
+                ) {
+                    Text("Merchant Analysis", color = TextSecondary, fontSize = 11.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Merchant: ${sms.merchant ?: "None"}",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(24.dp)
+                    ) {
+                        Column {
+                            Text("Confidence", color = TextSecondary, fontSize = 10.sp)
+                            Text("${sms.merchantConfidence}", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                        Column {
+                            Text("Score", color = TextSecondary, fontSize = 10.sp)
+                            Text("${sms.merchantScore}", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                    if (sms.merchantEvidence.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Evidence:", color = TextSecondary, fontSize = 10.sp)
+                        Text(
+                            text = sms.merchantEvidence.joinToString("\n"),
+                            color = TextPrimary.copy(alpha = 0.8f),
+                            fontSize = 10.sp,
+                            lineHeight = 14.sp
+                        )
                     }
                 }
 

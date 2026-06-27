@@ -15,6 +15,7 @@ import com.example.smartexpensecalendar.sms_engine.extractor.ModeExtractor
 import com.example.smartexpensecalendar.sms_engine.direction.DirectionExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.AccountNameExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.MerchantExtractor
+import com.example.smartexpensecalendar.sms_engine.merchant.NewMerchantExtractor
 import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
 import com.example.smartexpensecalendar.sms_engine.detector.EntityTypeDetector
 import com.example.smartexpensecalendar.sms.sender.SenderValidationEngine
@@ -85,12 +86,14 @@ class SmsProviderDataSource @Inject constructor(
                     }
 
                 val direction = directionResult.value ?: TransactionDirection.UNKNOWN
-                val directionEvidence = directionResult.evidence.map {
-                    "${it.source}:${it.matchedText}"
+                val directionEvidence = directionResult.evidence.map { evidence ->
+                    "${evidence.source}:${evidence.matchedText}"
                 }
                 val mode = ModeExtractor.extractMode(body)
                 val eventType = FinancialEventTypeExtractor.extract(body, direction, mode)
-                val rawMerchant = MerchantExtractor.extractMerchant(body)
+                
+                val newMerchantResult = NewMerchantExtractor.extract(body)
+                val rawMerchant = newMerchantResult.value ?: MerchantExtractor.extractMerchant(body)
                 var normalizedMerchant = rawMerchant?.let { MerchantNormalizer.normalize(it) }
                 
                 // --- NEW: Source-Aware Merchant Fallback (Aligned with SMSParser) ---
@@ -158,6 +161,10 @@ class SmsProviderDataSource @Inject constructor(
                         transactionScore = messageTypeResult?.scores?.get(MessageType.TRANSACTION) ?: 0,
                         obligationScore = messageTypeResult?.scores?.get(MessageType.OBLIGATION) ?: 0,
                         informationScore = messageTypeResult?.scores?.get(MessageType.INFORMATION) ?: 0,
+                        merchantConfidence = newMerchantResult.confidence,
+                        merchantScore = newMerchantResult.score,
+                        merchantEvidence = newMerchantResult.evidence.map { "${it.source}:${it.matchedText}" },
+                        directionEvidenceList = directionResult.evidence,
                         financialEventType = eventType.name,
                         category = category,
                         amount = amount,

@@ -185,6 +185,9 @@ class SMSAnalysisRepository @Inject constructor(
                                          oldSms.financialEventType != newSms.financialEventType ||
                                          oldSms.isFinancial != newSms.isFinancial ||
                                          oldSms.merchant != newSms.merchant ||
+                                         oldSms.merchantScore != newSms.merchantScore ||
+                                         oldSms.merchantConfidence != newSms.merchantConfidence ||
+                                         oldSms.merchantEvidence != newSms.merchantEvidence ||
                                          oldSms.transactionScore != newSms.transactionScore ||
                                          oldSms.obligationScore != newSms.obligationScore ||
                                          oldSms.informationScore != newSms.informationScore ||
