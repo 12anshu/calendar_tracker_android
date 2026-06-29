@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -400,10 +401,6 @@ fun SmsInboxItem(
                     val debugInfo = """
                         SENDER: ${sms.sender}
                         MESSAGE: ${sms.message}
-                        AMOUNT: ${sms.amount ?: "NONE"}
-                        FINANCIAL: ${if (sms.isFinancial) "YES" else "NO"}
-                        SCORE: ${sms.score}
-                        TYPE: ${sms.messageType}
                         
                         QUALIFICATION ANALYSIS:
                         - QUALIFIED: ${if (sms.isQualified) "YES" else "NO"}
@@ -412,30 +409,12 @@ fun SmsInboxItem(
                         - RULES: ${sms.qualificationRules.joinToString(", ")}
                         - EVIDENCE: ${sms.qualificationEvidence.joinToString(", ")}
 
-                        DIRECTION ANALYSIS:
-                        - DIRECTION: ${sms.direction},
-                        - DIRECTION_CONFIDENCE: ${sms.directionConfidence}
-                        - DIRECTION_SCORE: ${sms.directionScore}
-                        - DIRECTION_EVIDENCE: ${sms.directionEvidence.joinToString("\n")}
-                        
-                        MESSAGE TYPE ANALYSIS:
-                        - TRANSACTION SCORE: ${sms.transactionScore}
-                        - OBLIGATION SCORE: ${sms.obligationScore}
-                        - INFORMATION SCORE: ${sms.informationScore}
-                        - FINAL DECISION: ${sms.messageType}
-                        
-                        MERCHANT ANALYSIS:
-                        - MERCHANT: ${sms.merchant ?: "NONE"}
-                        - CONFIDENCE: ${sms.merchantConfidence}
-                        - SCORE: ${sms.merchantScore}
-                        - EVIDENCE: ${sms.merchantEvidence.joinToString("\n")}
-
-                        EVENT: ${sms.financialEventType}
-                        CATEGORY: ${sms.category ?: "NONE"}
-                        MERCHANT: ${sms.merchant ?: "NONE"}
-                        MODE: ${sms.transactionMode}
-                        ACCOUNT: ${sms.accountName ?: "UNKNOWN"}
-                        SIGNALS: ${sms.matchedSignals.joinToString(", ")}
+                        CLASSIFICATION ANALYSIS:
+                        - DIRECTION: ${sms.classifiedDirection}
+                        - CONFIDENCE: ${sms.classifiedDirectionConfidence}%
+                        - SCORE: ${sms.classifiedDirectionScore}
+                        - EVIDENCE: ${sms.classifiedDirectionEvidence.joinToString(", ")}
+                        - MATCHES: ${sms.classifiedDirectionMatches.joinToString(", ")}
                     """.trimIndent()
                     clipboardManager.setText(AnnotatedString(debugInfo)) 
                 }, modifier = Modifier.size(24.dp)) {
@@ -552,7 +531,10 @@ fun SmsDetailDialog(sms: AnalyzedSMS, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = { Text("SMS Analysis", color = TextPrimary, fontWeight = FontWeight.Bold) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 Column {
                     Text("Sender", color = TextSecondary, fontSize = 11.sp)
                     Text(sms.sender, color = TextPrimary, fontWeight = FontWeight.Bold)
@@ -562,6 +544,7 @@ fun SmsDetailDialog(sms: AnalyzedSMS, onDismiss: () -> Unit) {
                     Text(sms.message, color = TextPrimary, fontSize = 13.sp)
                 }
                 
+                /*
                 Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                     if (sms.amount != null) {
                         Column {
@@ -574,51 +557,7 @@ fun SmsDetailDialog(sms: AnalyzedSMS, onDismiss: () -> Unit) {
                         Text(sms.category ?: "None", color = CyanGlow, fontWeight = FontWeight.Bold)
                     }
                 }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                    if (sms.directionEvidence.isNotEmpty()) {
-
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(
-                                    SurfaceGlass.copy(alpha = 0.3f),
-                                    RoundedCornerShape(4.dp)
-                                )
-                                .padding(8.dp)
-                        ) {
-                            Text("Direction Analysis", color = TextSecondary, fontSize = 11.sp)
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                Text(
-                                    "Dir: ${sms.direction}",
-                                    color = TextPrimary,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    "Conf: ${sms.directionConfidence}%",
-                                    color = PremiumGold,
-                                    fontSize = 12.sp
-                                )
-                                Text(
-                                    "Score: ${sms.directionScore}",
-                                    color = PremiumGold,
-                                    fontSize = 12.sp
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Evidence:\n" + sms.directionEvidence.joinToString("\n"),
-                                color = TextPrimary.copy(alpha = 0.8f),
-                                fontSize = 10.sp,
-                                lineHeight = 14.sp
-                            )
-                        }
-                    }
-                }
+                */
 
                 // Qualification Analysis Card
                 Column(
@@ -676,7 +615,7 @@ fun SmsDetailDialog(sms: AnalyzedSMS, onDismiss: () -> Unit) {
                     }
                 }
 
-                // Message Type Analysis Card
+                // Classification Analysis Card
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -686,67 +625,46 @@ fun SmsDetailDialog(sms: AnalyzedSMS, onDismiss: () -> Unit) {
                         )
                         .padding(8.dp)
                 ) {
-                    Text("Message Type Analysis", color = TextSecondary, fontSize = 11.sp)
+                    Text("CLASSIFICATION ANALYSIS", color = CyanGlow, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text("Direction", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text("Transaction", color = TextSecondary, fontSize = 10.sp)
-                            Text("${sms.transactionScore}", color = if (sms.transactionScore > 0) CyanGlow else TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("Direction", color = TextSecondary, fontSize = 10.sp)
+                            Text(sms.classifiedDirection, color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
-                        Column {
-                            Text("Obligation", color = TextSecondary, fontSize = 10.sp)
-                            Text("${sms.obligationScore}", color = if (sms.obligationScore > 0) ColorFood else TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                        Column {
-                            Text("Information", color = TextSecondary, fontSize = 10.sp)
-                            Text("${sms.informationScore}", color = if (sms.informationScore > 0) SecondaryAccent else TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row {
-                        Text("Current Type: ", color = TextSecondary, fontSize = 11.sp)
-                        Text(sms.messageType, color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                    }
-                }
-
-                // Merchant Analysis Card
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            SurfaceGlass.copy(alpha = 0.3f),
-                            RoundedCornerShape(4.dp)
-                        )
-                        .padding(8.dp)
-                ) {
-                    Text("Merchant Analysis", color = TextSecondary, fontSize = 11.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Merchant: ${sms.merchant ?: "None"}",
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(24.dp)
-                    ) {
                         Column {
                             Text("Confidence", color = TextSecondary, fontSize = 10.sp)
-                            Text("${sms.merchantConfidence}", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("${sms.classifiedDirectionConfidence}%", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
-                        Column {
+                        Column(horizontalAlignment = Alignment.End) {
                             Text("Score", color = TextSecondary, fontSize = 10.sp)
-                            Text("${sms.merchantScore}", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("${sms.classifiedDirectionScore}", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
-                    if (sms.merchantEvidence.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
+
+                    if (sms.classifiedDirectionEvidence.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text("Evidence:", color = TextSecondary, fontSize = 10.sp)
                         Text(
-                            text = sms.merchantEvidence.joinToString("\n"),
+                            text = sms.classifiedDirectionEvidence.joinToString(", "),
+                            color = TextPrimary.copy(alpha = 0.8f),
+                            fontSize = 10.sp,
+                            lineHeight = 14.sp
+                        )
+                    }
+
+                    if (sms.classifiedDirectionMatches.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Matches:", color = TextSecondary, fontSize = 10.sp)
+                        Text(
+                            text = sms.classifiedDirectionMatches.joinToString(", "),
                             color = TextPrimary.copy(alpha = 0.8f),
                             fontSize = 10.sp,
                             lineHeight = 14.sp
@@ -754,6 +672,7 @@ fun SmsDetailDialog(sms: AnalyzedSMS, onDismiss: () -> Unit) {
                     }
                 }
 
+                /*
                 Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                     Column {
                         Text("Type", color = TextSecondary, fontSize = 11.sp)
@@ -800,6 +719,7 @@ fun SmsDetailDialog(sms: AnalyzedSMS, onDismiss: () -> Unit) {
                         Text(sms.matchedSignals.joinToString(", "), color = TextPrimary, fontSize = 12.sp)
                     }
                 }
+                */
             }
         },
         confirmButton = {

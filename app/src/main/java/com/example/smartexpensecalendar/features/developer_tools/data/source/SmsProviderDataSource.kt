@@ -29,6 +29,10 @@ import com.example.smartexpensecalendar.new_sms_engine.qualification.message.Mes
 import com.example.smartexpensecalendar.new_sms_engine.qualification.engine.QualificationEngine
 import com.example.smartexpensecalendar.new_sms_engine.qualification.rules.*
 import com.example.smartexpensecalendar.new_sms_engine.qualification.models.QualificationInput
+import com.example.smartexpensecalendar.new_sms_engine.classification.direction.DirectionClassifier
+import com.example.smartexpensecalendar.new_sms_engine.classification.direction.rules.DebitRule
+import com.example.smartexpensecalendar.new_sms_engine.classification.direction.rules.CreditRule
+import com.example.smartexpensecalendar.new_sms_engine.classification.models.DirectionResult
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -56,6 +60,13 @@ class SmsProviderDataSource @Inject constructor(
             confidenceCalculator = MessageConfidenceCalculator()
         ),
         engine = QualificationEngine()
+    )
+
+    private val directionClassifier = DirectionClassifier(
+        listOf(
+            DebitRule(),
+            CreditRule()
+        )
     )
 
     suspend fun fetchAndAnalyzeAllSms(onBatchReady: suspend (List<AnalyzedSMS>) -> Unit, onProgress: (Float) -> Unit) = withContext(Dispatchers.IO) {
@@ -93,6 +104,17 @@ class SmsProviderDataSource @Inject constructor(
                 val qualificationInput = QualificationInput(sender = address, message = body)
                 val qualificationContext = qualificationPipeline.execute(qualificationInput)
                 val qual = qualificationContext.qualification
+
+                // NEW: Direction Classification
+                val directionClassificationResult = if (qual.qualified) {
+                    directionClassifier.classify(qualificationContext)
+                } else {
+                    DirectionResult(
+                        direction = com.example.smartexpensecalendar.new_sms_engine.common.enums.TransactionDirection.UNKNOWN,
+                        confidence = 0,
+                        score = 0
+                    )
+                }
                 
                 val template = SMSPatternGroupingEngine.generateTemplate(body)
                 
@@ -199,6 +221,11 @@ class SmsProviderDataSource @Inject constructor(
                         qualificationConfidence = qual.confidence,
                         qualificationEvidence = qual.sender.evidence + qual.message.evidence,
                         qualificationRules = qual.sender.executedRules + qual.message.executedRules,
+                        classifiedDirection = directionClassificationResult.direction.name,
+                        classifiedDirectionConfidence = directionClassificationResult.confidence,
+                        classifiedDirectionScore = directionClassificationResult.score,
+                        classifiedDirectionEvidence = directionClassificationResult.evidence,
+                        classifiedDirectionMatches = directionClassificationResult.matches,
                         directionEvidenceList = directionResult.evidence,
                         financialEventType = eventType.name,
                         category = category,
