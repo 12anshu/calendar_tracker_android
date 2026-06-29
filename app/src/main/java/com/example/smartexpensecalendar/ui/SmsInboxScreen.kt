@@ -404,6 +404,14 @@ fun SmsInboxItem(
                         FINANCIAL: ${if (sms.isFinancial) "YES" else "NO"}
                         SCORE: ${sms.score}
                         TYPE: ${sms.messageType}
+                        
+                        QUALIFICATION ANALYSIS:
+                        - QUALIFIED: ${if (sms.isQualified) "YES" else "NO"}
+                        - CONFIDENCE: ${sms.qualificationConfidence}%
+                        - SCORE: ${sms.qualificationScore}
+                        - RULES: ${sms.qualificationRules.joinToString(", ")}
+                        - EVIDENCE: ${sms.qualificationEvidence.joinToString(", ")}
+
                         DIRECTION ANALYSIS:
                         - DIRECTION: ${sms.direction},
                         - DIRECTION_CONFIDENCE: ${sms.directionConfidence}
@@ -609,6 +617,62 @@ fun SmsDetailDialog(sms: AnalyzedSMS, onDismiss: () -> Unit) {
                                 lineHeight = 14.sp
                             )
                         }
+                    }
+                }
+
+                // Qualification Analysis Card
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            SurfaceGlass.copy(alpha = 0.3f),
+                            RoundedCornerShape(8.dp)
+                        )
+                        .padding(8.dp)
+                ) {
+                    Text("QUALIFICATION ANALYSIS", color = CyanGlow, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("Confidence", color = TextSecondary, fontSize = 10.sp)
+                            Text("${sms.qualificationConfidence}%", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                        Column {
+                            Text("Score", color = TextSecondary, fontSize = 10.sp)
+                            Text("${sms.qualificationScore}", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Qualified", color = TextSecondary, fontSize = 10.sp)
+                            Text(
+                                if (sms.isQualified) "YES" else "NO",
+                                color = if (sms.isQualified) PrimaryAccent else ColorTransport,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                    
+                    if (sms.qualificationRules.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Executed Rules:", color = TextSecondary, fontSize = 10.sp)
+                        sms.qualificationRules.forEach { rule ->
+                            Text("✔ $rule", color = TextPrimary.copy(alpha = 0.8f), fontSize = 10.sp)
+                        }
+                    }
+
+                    if (sms.qualificationEvidence.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Evidence:", color = TextSecondary, fontSize = 10.sp)
+                        Text(
+                            text = sms.qualificationEvidence.joinToString(", "),
+                            color = TextPrimary.copy(alpha = 0.8f),
+                            fontSize = 10.sp,
+                            lineHeight = 14.sp
+                        )
                     }
                 }
 

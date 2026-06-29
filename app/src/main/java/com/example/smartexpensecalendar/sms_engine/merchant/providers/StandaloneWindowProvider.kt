@@ -6,7 +6,7 @@ import com.example.smartexpensecalendar.sms_engine.merchant.model.MerchantWindow
 
 class StandaloneWindowProvider : MerchantWindowProvider {
 
-    override val source = MerchantWindowSource.STANDALONE
+    override val source = MerchantWindowSource.PATTERN
 
     override fun detect(
         text: String,

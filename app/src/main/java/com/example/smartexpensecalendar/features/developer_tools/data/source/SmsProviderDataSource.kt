@@ -20,6 +20,15 @@ import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
 import com.example.smartexpensecalendar.sms_engine.detector.EntityTypeDetector
 import com.example.smartexpensecalendar.sms.sender.SenderValidationEngine
 import com.example.smartexpensecalendar.sms_engine.model.ExtractionResult
+import com.example.smartexpensecalendar.new_sms_engine.qualification.pipeline.QualificationPipeline
+import com.example.smartexpensecalendar.new_sms_engine.qualification.sender.SenderQualificationEngine
+import com.example.smartexpensecalendar.new_sms_engine.qualification.sender.SenderConfidenceCalculator
+import com.example.smartexpensecalendar.new_sms_engine.qualification.message.MessageQualificationEngine
+import com.example.smartexpensecalendar.new_sms_engine.qualification.message.MessageQualificationEvaluator
+import com.example.smartexpensecalendar.new_sms_engine.qualification.message.MessageConfidenceCalculator
+import com.example.smartexpensecalendar.new_sms_engine.qualification.engine.QualificationEngine
+import com.example.smartexpensecalendar.new_sms_engine.qualification.rules.*
+import com.example.smartexpensecalendar.new_sms_engine.qualification.models.QualificationInput
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -32,6 +41,22 @@ class SmsProviderDataSource @Inject constructor(
     private val categorizer: com.example.smartexpensecalendar.sms.SMSCategorizer
 ) {
     private val messageTypeDetector = MessageTypeDetector()
+
+    private val qualificationPipeline = QualificationPipeline(
+        senderQualifier = SenderQualificationEngine(SenderConfidenceCalculator()),
+        messageQualifier = MessageQualificationEngine(
+            evaluator = MessageQualificationEvaluator(
+                listOf(
+                    SenderFormatRule(),
+                    FinancialSignalRule(),
+                    FinancialPatternRule(),
+                    FinancialRegexRule()
+                )
+            ),
+            confidenceCalculator = MessageConfidenceCalculator()
+        ),
+        engine = QualificationEngine()
+    )
 
     suspend fun fetchAndAnalyzeAllSms(onBatchReady: suspend (List<AnalyzedSMS>) -> Unit, onProgress: (Float) -> Unit) = withContext(Dispatchers.IO) {
         val contentResolver = context.contentResolver
@@ -63,6 +88,11 @@ class SmsProviderDataSource @Inject constructor(
                 val senderInfo = SenderValidationEngine.validate(address)
                 val normalized = SMSNormalizer.normalize(body)
                 val financialResult = FinancialDetector.detect(body)
+
+                // NEW: Qualification Pipeline Execution
+                val qualificationInput = QualificationInput(sender = address, message = body)
+                val qualificationContext = qualificationPipeline.execute(qualificationInput)
+                val qual = qualificationContext.qualification
                 
                 val template = SMSPatternGroupingEngine.generateTemplate(body)
                 
@@ -164,6 +194,11 @@ class SmsProviderDataSource @Inject constructor(
                         merchantConfidence = newMerchantResult.confidence,
                         merchantScore = newMerchantResult.score,
                         merchantEvidence = newMerchantResult.evidence.map { "${it.source}:${it.matchedText}" },
+                        isQualified = qual.qualified,
+                        qualificationScore = qual.score,
+                        qualificationConfidence = qual.confidence,
+                        qualificationEvidence = qual.sender.evidence + qual.message.evidence,
+                        qualificationRules = qual.sender.executedRules + qual.message.executedRules,
                         directionEvidenceList = directionResult.evidence,
                         financialEventType = eventType.name,
                         category = category,

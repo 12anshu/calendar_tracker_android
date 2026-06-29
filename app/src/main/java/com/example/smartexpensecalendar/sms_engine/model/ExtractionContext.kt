@@ -1,8 +1,8 @@
 package com.example.smartexpensecalendar.sms_engine.model
 
-import com.example.smartexpensecalendar.sms_engine.direction.TransactionDirection
-import com.example.smartexpensecalendar.sms_engine.event.FinancialEventType
-import com.example.smartexpensecalendar.sms_engine.message.MessageType
+import com.example.smartexpensecalendar.domain.model.FinancialEventType
+import com.example.smartexpensecalendar.domain.model.MessageType
+
 
 data class ExtractionContext(
 
@@ -19,7 +19,7 @@ data class ExtractionContext(
     /**
      * DEBIT / CREDIT / UNKNOWN
      */
-    val direction: TransactionDirection,
+//    val direction: TransactionDirection,
 
     /**
      * CREDIT_CARD_SPEND

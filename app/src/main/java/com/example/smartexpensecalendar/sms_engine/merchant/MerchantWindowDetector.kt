@@ -17,7 +17,10 @@ object MerchantWindowDetector {
     ): List<MerchantWindow> {
 
         return providers.flatMap { provider ->
-            provider.detect(text)
+            provider.detect(
+                text,
+                context = TODO()
+            )
         }
     }
 }
