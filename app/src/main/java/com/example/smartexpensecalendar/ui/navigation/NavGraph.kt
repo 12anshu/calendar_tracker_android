@@ -23,6 +23,8 @@ import com.example.smartexpensecalendar.ui.TransactionDetailsScreen
 import com.example.smartexpensecalendar.features.developer_tools.presentation.DeveloperDashboardScreen
 import com.example.smartexpensecalendar.features.developer_tools.presentation.SMSAnalysisDashboardScreen
 import com.example.smartexpensecalendar.features.developer_tools.presentation.TransactionExtractionScreen
+import com.example.smartexpensecalendar.new_sms_engine.developer.navigation.DeveloperDashboardV2Route
+import com.example.smartexpensecalendar.new_sms_engine.developer.presentation.DeveloperDashboardScreenV2
 
 @Composable
 fun NavGraph(navController: NavHostController) {
@@ -85,6 +87,16 @@ fun NavGraph(navController: NavHostController) {
         composable(Screen.TransactionExtractionLab.route) {
             TransactionExtractionScreen(navController = navController)
         }
+        // --------------------------------------------------
+
+        // V2 DEVELOPER MODULE ROUTES
+        // --------------------------------------------------
+        composable(
+            route = DeveloperDashboardV2Route.ROUTE
+        ) {
+            DeveloperDashboardScreenV2(navController = navController)
+        }
+
         // --------------------------------------------------
     }
 }

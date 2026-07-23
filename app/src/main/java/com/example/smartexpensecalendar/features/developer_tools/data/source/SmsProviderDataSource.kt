@@ -9,7 +9,6 @@ import com.example.smartexpensecalendar.sms_engine.detector.FinancialDetector
 import com.example.smartexpensecalendar.domain.model.MessageType
 import com.example.smartexpensecalendar.domain.model.TransactionDirection
 import com.example.smartexpensecalendar.sms_engine.message_type.MessageTypeDetector
-import com.example.smartexpensecalendar.sms_engine.extractor.AmountExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.FinancialEventTypeExtractor
 import com.example.smartexpensecalendar.sms_engine.extractor.ModeExtractor
 import com.example.smartexpensecalendar.sms_engine.direction.DirectionExtractor
@@ -20,19 +19,10 @@ import com.example.smartexpensecalendar.sms_engine.normalizer.MerchantNormalizer
 import com.example.smartexpensecalendar.sms_engine.detector.EntityTypeDetector
 import com.example.smartexpensecalendar.sms.sender.SenderValidationEngine
 import com.example.smartexpensecalendar.sms_engine.model.ExtractionResult
-import com.example.smartexpensecalendar.new_sms_engine.qualification.pipeline.QualificationPipeline
-import com.example.smartexpensecalendar.new_sms_engine.qualification.sender.SenderQualificationEngine
-import com.example.smartexpensecalendar.new_sms_engine.qualification.sender.SenderConfidenceCalculator
-import com.example.smartexpensecalendar.new_sms_engine.qualification.message.MessageQualificationEngine
-import com.example.smartexpensecalendar.new_sms_engine.qualification.message.MessageQualificationEvaluator
-import com.example.smartexpensecalendar.new_sms_engine.qualification.message.MessageConfidenceCalculator
-import com.example.smartexpensecalendar.new_sms_engine.qualification.engine.QualificationEngine
-import com.example.smartexpensecalendar.new_sms_engine.qualification.rules.*
+import com.example.smartexpensecalendar.new_sms_engine.qualification.QualificationEngine
 import com.example.smartexpensecalendar.new_sms_engine.qualification.models.QualificationInput
-import com.example.smartexpensecalendar.new_sms_engine.classification.direction.DirectionClassifier
-import com.example.smartexpensecalendar.new_sms_engine.classification.direction.rules.DebitRule
-import com.example.smartexpensecalendar.new_sms_engine.classification.direction.rules.CreditRule
-import com.example.smartexpensecalendar.new_sms_engine.classification.models.DirectionResult
+import com.example.smartexpensecalendar.sms_engine.extractor.AmountExtractor
+//import com.example.smartexpensecalendar.new_sms_engine.extraction.amount.AmountExtractor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -46,28 +36,13 @@ class SmsProviderDataSource @Inject constructor(
 ) {
     private val messageTypeDetector = MessageTypeDetector()
 
-    private val qualificationPipeline = QualificationPipeline(
-        senderQualifier = SenderQualificationEngine(SenderConfidenceCalculator()),
-        messageQualifier = MessageQualificationEngine(
-            evaluator = MessageQualificationEvaluator(
-                listOf(
-                    SenderFormatRule(),
-                    FinancialSignalRule(),
-                    FinancialPatternRule(),
-                    FinancialRegexRule()
-                )
-            ),
-            confidenceCalculator = MessageConfidenceCalculator()
-        ),
-        engine = QualificationEngine()
-    )
+    private val messageQualifier = QualificationEngine()
 
-    private val directionClassifier = DirectionClassifier(
-        listOf(
-            DebitRule(),
-            CreditRule()
-        )
-    )
+    private val amountExtractor = AmountExtractor
+
+//    private val messageTypeClassifier = MessageTypeClassifier()
+
+//    private val directionClassifier = DirectionClassifier()
 
     suspend fun fetchAndAnalyzeAllSms(onBatchReady: suspend (List<AnalyzedSMS>) -> Unit, onProgress: (Float) -> Unit) = withContext(Dispatchers.IO) {
         val contentResolver = context.contentResolver
@@ -101,21 +76,9 @@ class SmsProviderDataSource @Inject constructor(
                 val financialResult = FinancialDetector.detect(body)
 
                 // NEW: Qualification Pipeline Execution
-                val qualificationInput = QualificationInput(sender = address, message = body)
-                val qualificationContext = qualificationPipeline.execute(qualificationInput)
-                val qual = qualificationContext.qualification
+                val qual = messageQualifier
+                    .qualify(QualificationInput(sender = address))
 
-                // NEW: Direction Classification
-                val directionClassificationResult = if (qual.qualified) {
-                    directionClassifier.classify(qualificationContext)
-                } else {
-                    DirectionResult(
-                        direction = com.example.smartexpensecalendar.new_sms_engine.common.enums.TransactionDirection.UNKNOWN,
-                        confidence = 0,
-                        score = 0
-                    )
-                }
-                
                 val template = SMSPatternGroupingEngine.generateTemplate(body)
                 
                 val messageTypeResult =
@@ -125,7 +88,7 @@ class SmsProviderDataSource @Inject constructor(
                         null
 
                 // Extract Metadata for enriched SMS view
-                val amount = AmountExtractor.extractAmount(body)
+                val amountResult = amountExtractor.extractAmount(body)
 
                 val directionResult =
                     if (
@@ -217,19 +180,20 @@ class SmsProviderDataSource @Inject constructor(
                         merchantScore = newMerchantResult.score,
                         merchantEvidence = newMerchantResult.evidence.map { "${it.source}:${it.matchedText}" },
                         isQualified = qual.qualified,
-                        qualificationScore = qual.score,
-                        qualificationConfidence = qual.confidence,
-                        qualificationEvidence = qual.sender.evidence + qual.message.evidence,
-                        qualificationRules = qual.sender.executedRules + qual.message.executedRules,
-                        classifiedDirection = directionClassificationResult.direction.name,
-                        classifiedDirectionConfidence = directionClassificationResult.confidence,
-                        classifiedDirectionScore = directionClassificationResult.score,
-                        classifiedDirectionEvidence = directionClassificationResult.evidence,
-                        classifiedDirectionMatches = directionClassificationResult.matches,
+//                        classifiedDirection = directionClassificationResult.direction.name,
+//                        classifiedDirectionConfidence = directionClassificationResult.confidence,
+//                        classifiedDirectionScore = directionClassificationResult.score,
+//                        classifiedDirectionEvidence = directionClassificationResult.evidence,
+//                        classifiedDirectionMatches = directionClassificationResult.matches,
+//                        classifiedMessageType = messageTypeClassificationResult.messageType.name,
+//                        classifiedMessageTypeConfidence = messageTypeClassificationResult.confidence,
+//                        classifiedMessageTypeScore = messageTypeClassificationResult.score,
+//                        classifiedMessageTypeEvidence = messageTypeClassificationResult.evidence,
+//                        classifiedMessageTypeMatches = messageTypeClassificationResult.matches,
                         directionEvidenceList = directionResult.evidence,
                         financialEventType = eventType.name,
                         category = category,
-                        amount = amount,
+                        amount = amountResult,
                         merchant = normalizedMerchant,
                         transactionMode = mode.name,
                         accountName = accountName,

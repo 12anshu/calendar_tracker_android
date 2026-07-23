@@ -19,6 +19,22 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 
+data class EngineV2Stats(
+    val totalSms: Int = 0,
+    val qualified: Int = 0,
+    val rejected: Int = 0,
+    val qualificationRate: Float = 0f,
+
+    val debit: Int = 0,
+    val credit: Int = 0,
+    val unknownDirection: Int = 0,
+
+    val transaction: Int = 0,
+    val obligation: Int = 0,
+    val information: Int = 0,
+    val unknownType: Int = 0
+)
+
 data class SMSAnalysisUiState(
     val totalCount: Int = 0,
     val financialCount: Int = 0,
@@ -37,6 +53,9 @@ data class SMSAnalysisUiState(
     val creditCount: Int = 0,
     val unknownDirectionCount: Int = 0,
 
+    val engineV2Stats: EngineV2Stats = EngineV2Stats(),
+    val useV2Filters: Boolean = false,
+
     val isAnalyzing: Boolean = false,
     val progress: Float = 0f,
     val patternGroups: List<PatternGroup> = emptyList(),
@@ -46,7 +65,8 @@ data class SMSAnalysisUiState(
     val topFinancialKeywords: List<Pair<String, Int>> = emptyList(),
     val topNegativeKeywords: List<Pair<String, Int>> = emptyList(),
     val topFinancialSenders: List<SenderCount> = emptyList(),
-    val topNonFinancialSenders: List<SenderCount> = emptyList()
+    val topNonFinancialSenders: List<SenderCount> = emptyList(),
+    val latestQualifiedSms: AnalyzedSMS? = null
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -64,21 +84,35 @@ class SMSAnalysisViewModel @Inject constructor(
     private val _financialFilter = MutableStateFlow<Boolean?>(null)
     private val _messageTypeFilter = MutableStateFlow<String?>(null)
     private val _directionFilter = MutableStateFlow<String?>(null)
+    private val _useV2Filters = MutableStateFlow(false)
 
     val financialFilter = _financialFilter.asStateFlow()
     val messageTypeFilter = _messageTypeFilter.asStateFlow()
     val directionFilter = _directionFilter.asStateFlow()
+    val useV2Filters = _useV2Filters.asStateFlow()
 
     val analyzedSMSPaged: Flow<PagingData<AnalyzedSMS>> = combine(
         _searchQuery, 
         _isScoreAsc, 
         _financialFilter, 
         _messageTypeFilter,
-        _directionFilter
-    ) { query, isAsc, fin, type, direction ->
-        FilterParams(query, isAsc, fin, type, direction)
+        _directionFilter,
+        _useV2Filters
+    ) { args ->
+        FilterParams(
+            query = args[0] as String,
+            isAsc = args[1] as Boolean,
+            financial = args[2] as Boolean?,
+            messageType = args[3] as String?,
+            direction = args[4] as String?,
+            useV2 = args[5] as Boolean
+        )
     }.flatMapLatest { params ->
-        repository.getAnalyzedSMSPaged(params.query, params.isAsc, params.financial, params.messageType, params.direction)
+        if (params.useV2) {
+            repository.getAnalyzedSMSPagedV2(params.query, params.isAsc, params.financial, params.messageType, params.direction)
+        } else {
+            repository.getAnalyzedSMSPaged(params.query, params.isAsc, params.financial, params.messageType, params.direction)
+        }
     }.cachedIn(viewModelScope)
 
     private data class FilterParams(
@@ -86,7 +120,8 @@ class SMSAnalysisViewModel @Inject constructor(
         val isAsc: Boolean,
         val financial: Boolean?,
         val messageType: String?,
-        val direction: String?
+        val direction: String?,
+        val useV2: Boolean
     )
 
     init {
@@ -143,6 +178,84 @@ class SMSAnalysisViewModel @Inject constructor(
                 _uiState.value = it
             }
         }
+
+        viewModelScope.launch {
+            repository.getAllAnalyzedSMSFlow().collect { allSms ->
+                val stats = calculateEngineV2Stats(allSms)
+                val latest = allSms.firstOrNull { it.isQualified }
+                _uiState.update { it.copy(engineV2Stats = stats, latestQualifiedSms = latest) }
+            }
+        }
+    }
+
+    private fun calculateEngineV2Stats(list: List<AnalyzedSMS>): EngineV2Stats {
+        val total = list.size
+        val qualified = list.count { it.isQualified }
+        val rejected = total - qualified
+        val rate = if (total > 0) (qualified.toFloat() / total * 100f) else 0f
+
+        val debit = list.count { it.isQualified && it.classifiedDirection == "DEBIT" }
+        val credit = list.count { it.isQualified && it.classifiedDirection == "CREDIT" }
+        val unknownDir = list.count { it.isQualified && it.classifiedDirection == "UNKNOWN" }
+
+        val transaction = list.count { it.isQualified && it.classifiedMessageType == "TRANSACTION" }
+        val obligation = list.count { it.isQualified && it.classifiedMessageType == "OBLIGATION" }
+        val information = list.count { it.isQualified && it.classifiedMessageType == "INFORMATION" }
+        val unknownType = list.count { it.isQualified && it.classifiedMessageType == "UNKNOWN" }
+
+        android.util.Log.d("EngineV2", """
+            ================================
+            Qualification Summary
+            Total: $total
+            Qualified: $qualified
+            Rejected: $rejected
+            ================================
+            Direction Summary
+            Debit: $debit
+            Credit: $credit
+            Unknown: $unknownDir
+            ================================
+            Message Type Summary
+            Transaction: $transaction
+            Obligation: $obligation
+            Information: $information
+            Unknown: $unknownType
+        """.trimIndent())
+
+        return EngineV2Stats(
+            totalSms = total,
+            qualified = qualified,
+            rejected = rejected,
+            qualificationRate = rate,
+            debit = debit,
+            credit = credit,
+            unknownDirection = unknownDir,
+            transaction = transaction,
+            obligation = obligation,
+            information = information,
+            unknownType = unknownType
+        )
+    }
+
+    fun setV2QualificationFilter(qualified: Boolean?) {
+        _useV2Filters.value = true
+        _financialFilter.value = qualified
+        _messageTypeFilter.value = null
+        _directionFilter.value = null
+    }
+
+    fun setV2DirectionFilter(direction: String?) {
+        _useV2Filters.value = true
+        _financialFilter.value = true
+        _messageTypeFilter.value = null
+        _directionFilter.value = direction
+    }
+
+    fun setV2MessageTypeFilter(type: String?) {
+        _useV2Filters.value = true
+        _financialFilter.value = true
+        _directionFilter.value = null
+        _messageTypeFilter.value = type
     }
 
     fun setSearchQuery(query: String) {
@@ -210,6 +323,66 @@ class SMSAnalysisViewModel @Inject constructor(
                 )
             }
             val result = exportService.exportToCsv(data, "AnalyzedSMS")
+            _exportStatus.emit(result)
+        }
+    }
+
+    fun exportRawMessagesToCSV() {
+        viewModelScope.launch {
+            val messages = repository.getAllAnalyzedSMSList()
+            if (messages.isEmpty()) {
+                _exportStatus.emit("No messages analyzed yet")
+                return@launch
+            }
+
+            val data = messages.map { sms ->
+                mapOf(
+                    "Sender" to sms.sender,
+                    "Message" to sms.message
+                )
+            }
+            val result = exportService.exportToCsv(data, "RawSMSMessages")
+            _exportStatus.emit(result)
+        }
+    }
+
+    fun exportQualifierToCSV() {
+        viewModelScope.launch {
+            val messages = repository.getAllAnalyzedSMSList()
+            if (messages.isEmpty()) {
+                _exportStatus.emit("No messages analyzed yet")
+                return@launch
+            }
+
+            val data = messages.map { sms ->
+                mapOf(
+                    "Sender" to sms.sender,
+                    "Message" to sms.message,
+                    "Qualifier" to sms.isQualified
+                )
+            }
+            val result = exportService.exportToCsv(data, "QualifierMessages")
+            _exportStatus.emit(result)
+        }
+    }
+
+    fun exportExtractionToCSV() {
+        viewModelScope.launch {
+            val messages = repository.getAllAnalyzedSMSList()
+            if (messages.isEmpty()) {
+                _exportStatus.emit("No messages analyzed yet")
+                return@launch
+            }
+
+            val data = messages.map { sms ->
+                mapOf(
+                    "Sender" to sms.sender,
+                    "Message" to sms.message,
+                    "Qualifier" to sms.isQualified,
+                    "Amount" to sms.amount
+                )
+            }
+            val result = exportService.exportToCsv(data, "QualifierMessages")
             _exportStatus.emit(result)
         }
     }

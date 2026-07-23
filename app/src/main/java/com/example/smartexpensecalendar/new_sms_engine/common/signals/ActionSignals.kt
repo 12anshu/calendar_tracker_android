@@ -15,15 +15,34 @@ object ActionSignals {
     val DEBIT_ACTION_SIGNALS = setOf(
         "DEBITED",
         "SPENT",
+        "SENT",
+        "TRANSFERRED",
         "PAID",
-        "PURCHASE",
         "PURCHASED",
         "WITHDRAWN",
         "WITHDRAWAL",
         "DEDUCTED",
         "CHARGED",
         "SWIPED",
-        "USED"
+        "USED",
+        "PAYMENT",
+        "REMITTED",
+        "COLLECTED",
+        "RECOVERED",
+        "SETTLED",
+        "LIQUIDATED",
+        "REDEEMED",
+        "SUBSCRIBED"
+    )
+
+    /**
+     * General transaction indicators.
+     */
+    val TRANSACTION_ACTION_SIGNALS = setOf(
+        "TRANSACTION",
+        "TXN",
+        "TRANS",
+        "TRN"
     )
 
     /**
@@ -34,18 +53,13 @@ object ActionSignals {
         "RECEIVED",
         "DEPOSITED",
         "ADDED",
-        "LOADED"
+        "LOADED",
+        "DISBURSED",
+        "ALLOTTED",
+        "ISSUED",
+        "POSTED"
     )
 
-    /**
-     * Transfer related actions.
-     */
-    val TRANSFER_ACTION_SIGNALS = setOf(
-        "TRANSFER",
-        "TRANSFERRED",
-        "SENT",
-        "REMITTED"
-    )
 
     /**
      * Refund related actions.
@@ -55,8 +69,9 @@ object ActionSignals {
         "REFUNDED",
         "REVERSAL",
         "REVERSED",
-        "CASHBACK"
+        "REIMBURSED"
     )
+
 
     /**
      * Reward related actions.
@@ -70,12 +85,48 @@ object ActionSignals {
     )
 
     /**
-     * Income related actions.
+     * ==========================================================
+     * Financial Event Signals
+     *
+     * Business-oriented action groups used by extractors.
+     * These are composed from the primitive action signals above.
+     * ==========================================================
      */
-    val INCOME_ACTION_SIGNALS = setOf(
-        "SALARY",
-        "INTEREST",
-        "DIVIDEND",
-        "PENSION"
+
+    val PURCHASE_ACTION_SIGNALS = setOf(
+        "SPENT",
+        "PURCHASED",
+        "SWIPED",
+        "USED",
+        "DEBITED",
+        "TXN"
+    )
+
+    val PAYMENT_ACTION_SIGNALS = setOf(
+        "PAID",
+        "PAYMENT",
+        "SETTLED",
+        "DEDUCTED"
+    )
+
+    val TRANSFER_ACTION_SIGNALS = setOf(
+        "TRANSFERRED",
+        "REMITTED"
+    )
+
+    val ATM_WITHDRAWAL_ACTION_SIGNALS = setOf(
+        "WITHDRAWN",
+        "WITHDRAWAL"
+    )
+
+    val CASHBACK_ACTION_SIGNALS = setOf(
+        "CASHBACK"
+    )
+
+    val CHARGE_ACTION_SIGNALS = setOf(
+        "CHARGED",
+        "DEDUCTED",
+        "COLLECTED",
+        "RECOVERED"
     )
 }

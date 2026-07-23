@@ -63,6 +63,19 @@ class SMSAnalysisRepository @Inject constructor(
         ).flow
     }
 
+    fun getAnalyzedSMSPagedV2(
+        query: String = "", 
+        isAsc: Boolean = false,
+        qualified: Boolean? = null,
+        messageType: String? = null,
+        direction: String? = null
+    ): Flow<PagingData<AnalyzedSMS>> {
+        return Pager(
+            config = PagingConfig(pageSize = 50),
+            pagingSourceFactory = { dao.getAllAnalyzedSMSV2(query, isAsc, qualified, messageType, direction) }
+        ).flow
+    }
+
     fun getPatternGroups(): Flow<List<PatternGroup>> {
         return dao.getPatternGroups().map { list ->
             list.map { 
@@ -110,6 +123,8 @@ class SMSAnalysisRepository @Inject constructor(
     suspend fun getTransactionSMS() = dao.getTransactionSMS()
     
     suspend fun getAllAnalyzedSMSList() = dao.getAllAnalyzedSMSList()
+
+    fun getAllAnalyzedSMSFlow() = dao.getAllAnalyzedSMSFlow()
 
     suspend fun exportDiagnosticData(
         month: java.time.YearMonth? = null,

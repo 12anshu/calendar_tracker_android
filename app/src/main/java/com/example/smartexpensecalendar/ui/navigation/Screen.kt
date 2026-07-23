@@ -22,4 +22,6 @@ sealed class Screen(val route: String) {
     object DeveloperDashboard : Screen("developer_dashboard")
     object FinancialDetectionLab : Screen("financial_detection_lab")
     object TransactionExtractionLab : Screen("transaction_extraction_lab")
+
+    object DeveloperDashboardScreenV2 : Screen(route = "developer_dashboard_v2")
 }

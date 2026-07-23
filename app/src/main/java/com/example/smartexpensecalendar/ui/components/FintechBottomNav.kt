@@ -66,12 +66,12 @@ fun FintechBottomNav(
             }
 
             FintechNavItem(
-                icon = Icons.Default.Sms, 
-                label = "SMS", 
-                isSelected = currentRoute == Screen.SmsInbox.route
+                icon = Icons.Default.Science, 
+                label = "V2 Lab", 
+                isSelected = currentRoute == Screen.DeveloperDashboardScreenV2.route
             ) {
-                if (currentRoute != Screen.SmsInbox.route) {
-                    navController.navigate(Screen.SmsInbox.route)
+                if (currentRoute != Screen.DeveloperDashboardScreenV2.route) {
+                    navController.navigate(Screen.DeveloperDashboardScreenV2.route)
                 }
             }
 

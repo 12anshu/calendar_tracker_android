@@ -138,14 +138,6 @@ fun ProfileScreen(
             // --------------------------------------------------
             item {
                 PreferenceItem(
-                    title = "Developer Dashboard",
-                    subtitle = "Analyze SMS patterns & detection",
-                    icon = Icons.Default.DeveloperMode,
-                    onClick = { navController.navigate(Screen.DeveloperDashboard.route) }
-                )
-            }
-            item {
-                PreferenceItem(
                     title = "BETA AUDIT EXPORT",
                     subtitle = "Generate full audit package (ZIP)",
                     icon = Icons.Default.Download,

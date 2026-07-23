@@ -26,4 +26,47 @@ object MatchUtils {
             .trim()
             .replace(Regex("\\s+"), " ")
     }
+
+    fun findSignalMatches(
+        message: String,
+        signals: Set<String>
+    ): List<String> {
+
+        val normalizedMessage = normalize(message)
+
+        return signals.filter {
+            normalizedMessage.contains(it.uppercase())
+        }
+    }
+
+    /**
+     * Checks if any of the provided patterns exist in the message.
+     */
+    fun containsAny(
+        message: String,
+        patterns: Set<String>
+    ): Boolean {
+
+        val normalizedMessage = normalize(message)
+
+        return patterns.any {
+            normalizedMessage.contains(it.uppercase())
+        }
+    }
+
+    /**
+     * Finds all patterns that exist in the message.
+     */
+    fun findPatternMatches(
+        message: String,
+        patterns: Set<String>
+    ): List<String> {
+
+        val normalizedMessage = normalize(message)
+
+        return patterns.filter {
+            normalizedMessage.contains(it.uppercase())
+        }
+    }
+
 }

@@ -84,6 +84,23 @@ object BankingSignals {
     )
 
     /**
+     * Card related indicators.
+     */
+    val CARD_INDICATORS = setOf(
+        "BANK CARD",
+        "CARD",
+        "CREDIT CARD",
+        "DEBIT CARD",
+        "DEBIT CD",
+        "CREDIT CD",
+        "CCARD",
+        "DCARD",
+        "VIRTUAL CARD",
+        "DEBIT CRD",
+        "CREDIT CRD"
+    )
+
+    /**
      * Financial SMS sender identifiers.
      *
      * NOTE:

@@ -52,8 +52,6 @@ object StatusSignals {
         "DUE",
         "UPCOMING",
         "SCHEDULED",
-        "WILL",
-        "SHALL"
     )
 
     /**

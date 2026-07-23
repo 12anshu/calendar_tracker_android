@@ -39,6 +39,33 @@ interface SMSAnalysisDao {
         direction: String? = null
     ): PagingSource<Int, AnalyzedSMS>
 
+    @Query("""
+        SELECT * FROM analyzed_sms 
+        WHERE (message LIKE '%' || :query || '%' OR sender LIKE '%' || :query || '%')
+        AND (:qualified IS NULL OR isQualified = :qualified)
+        AND (
+            :messageType IS NULL
+            OR (
+                :messageType = 'UNKNOWN'
+                AND (
+                    classifiedMessageType IS NULL
+                    OR classifiedMessageType = ''
+                    OR classifiedMessageType = 'UNKNOWN'
+                )
+            )
+            OR classifiedMessageType = :messageType
+        )
+        AND (:direction IS NULL OR classifiedDirection = :direction)
+        ORDER BY CASE WHEN :isAsc = 1 THEN score END ASC, CASE WHEN :isAsc = 0 THEN score END DESC
+    """)
+    fun getAllAnalyzedSMSV2(
+        query: String = "", 
+        isAsc: Boolean = false,
+        qualified: Boolean? = null,
+        messageType: String? = null,
+        direction: String? = null
+    ): PagingSource<Int, AnalyzedSMS>
+
     @Query("SELECT COUNT(*) FROM analyzed_sms")
     fun getAnalyzedSMSCount(): Flow<Int>
 
@@ -104,6 +131,9 @@ interface SMSAnalysisDao {
 
     @Query("SELECT * FROM analyzed_sms ORDER BY timestamp DESC")
     suspend fun getAllAnalyzedSMSList(): List<AnalyzedSMS>
+
+    @Query("SELECT * FROM analyzed_sms ORDER BY timestamp DESC")
+    fun getAllAnalyzedSMSFlow(): Flow<List<AnalyzedSMS>>
 
     @Query("SELECT * FROM analyzed_sms WHERE timestamp >= :start AND timestamp <= :end ORDER BY timestamp DESC")
     suspend fun getAnalyzedSMSInRange(start: Long, end: Long): List<AnalyzedSMS>

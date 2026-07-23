@@ -25,7 +25,7 @@ object MerchantExtractor {
         return evaluateCandidates(candidates, smsText)
     }
 
-    private fun extractHighConfidenceCandidates(body: String): List<MerchantCandidate> {
+    private fun  extractHighConfidenceCandidates(body: String): List<MerchantCandidate> {
         val list = mutableListOf<MerchantCandidate>()
 
         // NEFT/IMPS specific

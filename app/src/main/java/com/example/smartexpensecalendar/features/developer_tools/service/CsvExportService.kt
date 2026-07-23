@@ -16,7 +16,7 @@ import javax.inject.Singleton
 class CsvExportService @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    suspend fun exportToCsv(data: List<Map<String, String>>, fileNamePrefix: String): String = withContext(Dispatchers.IO) {
+    suspend fun exportToCsv(data: List<Map<String, Any?>>, fileNamePrefix: String): String = withContext(Dispatchers.IO) {
         if (data.isEmpty()) return@withContext "No data to export"
         
         val headers = data.first().keys.joinToString(",")
@@ -24,7 +24,8 @@ class CsvExportService @Inject constructor(
         
         data.forEach { row ->
             val line = row.values.joinToString(",") { value ->
-                "\"${value.replace("\"", "\"\"")}\""
+                val stringValue = value?.toString() ?: ""
+                "\"${stringValue.replace("\"", "\"\"")}\""
             }
             csvData.append("$line\n")
         }

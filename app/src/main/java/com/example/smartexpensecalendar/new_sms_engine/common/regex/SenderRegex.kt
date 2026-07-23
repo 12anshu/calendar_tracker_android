@@ -9,20 +9,12 @@ object SenderRegex {
      * Standard Indian SMS Sender ID.
      *
      * Examples:
-     * VM-HDFCBK
-     * VK-ICICIB
-     * JD-PAYTM
-     * AX-SBIUPI
+     * VM-HDFCBK-I
+     * VK-ICICIB-R
+     * JD-PAYTM-P
+     * AX-SBIUPI-S
      */
     val STANDARD_SENDER_REGEX =
-        Regex("^[A-Z]{2}-[A-Z0-9]{5,6}$")
+        Regex("^[A-Z]{2}-[A-Z0-9]{3,10}-[A-Z]$", RegexOption.IGNORE_CASE)
 
-    /**
-     * Captures sender identifier.
-     *
-     * Example:
-     * VM-HDFCBK -> HDFCBK
-     */
-    val SENDER_ID_REGEX =
-        Regex("^[A-Z]{2}-([A-Z0-9]{5,6})$")
 }

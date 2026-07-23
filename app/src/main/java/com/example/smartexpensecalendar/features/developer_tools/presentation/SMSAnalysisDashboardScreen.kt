@@ -7,7 +7,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -180,6 +182,46 @@ fun DashboardView(
             }
         }
 
+        item { SectionHeader("New SMS Engine (Engine V2)") }
+
+        item {
+            val stats = uiState.engineV2Stats
+            EngineV2CategoryCard(
+                title = "Qualification",
+                items = listOf(
+                    "Total SMS" to stats.totalSms.toString(),
+                    "Qualified" to stats.qualified.toString(),
+                    "Rejected" to stats.rejected.toString(),
+                    "Rate" to "${"%.1f".format(stats.qualificationRate)}%"
+                ),
+                onItemClick = { label ->
+                    when (label) {
+                        "Qualified" -> viewModel.setV2QualificationFilter(true)
+                        "Rejected" -> viewModel.setV2QualificationFilter(false)
+                    }
+                    onNavigate("all_sms")
+                }
+            )
+        }
+
+        item {
+            val latest = uiState.latestQualifiedSms
+            EngineV2CategoryCard(
+                title = "Extraction",
+                items = listOf(
+                    "Sender" to (latest?.sender ?: "N/A"),
+                    "Qualified" to if (latest?.isQualified == true) "✅ Yes" else "❌ No",
+                    "Amount" to (latest?.let { "₹${"%.2f".format(it.amount ?: 0.0)} " } ?: "N/A")
+                ),
+                onItemClick = { label ->
+                    if (label == "Sender" && latest != null) {
+                        viewModel.setSearchQuery(latest.sender)
+                    }
+                    onNavigate("all_sms")
+                }
+            )
+        }
+
         item { SectionHeader("Actions") }
         
         item {
@@ -199,6 +241,36 @@ fun DashboardView(
                 icon = Icons.Default.Download,
                 color = CyanGlow,
                 onClick = { viewModel.exportToCSV() }
+            )
+        }
+
+        item {
+            ActionCard(
+                title = "Export Raw Messages",
+                subtitle = "Sender and Body only (CSV)",
+                icon = Icons.Default.Message,
+                color = PrimaryAccent,
+                onClick = { viewModel.exportRawMessagesToCSV() }
+            )
+        }
+
+        item {
+            ActionCard(
+                title = "Export Qualification Analysis",
+                subtitle = "Sender, Body and Qualification only (CSV)",
+                icon = Icons.Default.Message,
+                color = PrimaryAccent,
+                onClick = { viewModel.exportQualifierToCSV() }
+            )
+        }
+
+        item {
+            ActionCard(
+                title = "Export Extraction Analysis",
+                subtitle = "Sender, Body and Extraction Entities only (CSV)",
+                icon = Icons.Default.Message,
+                color = PrimaryAccent,
+                onClick = { viewModel.exportQualifierToCSV() }
             )
         }
 
@@ -327,6 +399,42 @@ fun SectionHeader(title: String) {
         fontSize = 14.sp,
         modifier = Modifier.padding(top = 8.dp)
     )
+}
+
+@Composable
+fun EngineV2CategoryCard(
+    title: String,
+    items: List<Pair<String, String>>,
+    onItemClick: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceGlass)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(title, color = CyanGlow, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            items.forEach { (label, value) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onItemClick(label) }
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(label, color = TextSecondary, fontSize = 13.sp)
+                    Text(value, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+            }
+        }
+    }
+}
+
+fun calculatePercent(count: Int, total: Int): Int {
+    if (total == 0) return 0
+    return (count.toFloat() / total * 100).toInt()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -675,98 +783,97 @@ fun MessageReviewView(sms: AnalyzedSMS?, viewModel: SMSAnalysisViewModel, onComp
     var showWrongDialog by remember { mutableStateOf(false) }
 
     LazyColumn(modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        item { ReviewSection("Sender", sms.sender) }
         item { ReviewSection("Original SMS", sms.message) }
-        item { ReviewSection("Normalized SMS", sms.normalizedMessage) }
         
+        // 1. Qualification Analysis Card
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Sender", color = TextSecondary, fontSize = 12.sp)
-                    Text(sms.sender, color = TextPrimary, fontWeight = FontWeight.Bold)
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Sender Type", color = TextSecondary, fontSize = 12.sp)
-                    Text(sms.senderType, color = TextPrimary, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-        
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Financial Result", color = TextSecondary, fontSize = 12.sp)
-                    Text(if (sms.isFinancial) "YES" else "NO", color = if (sms.isFinancial) PrimaryAccent else ColorTransport, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Final Score", color = TextSecondary, fontSize = 12.sp)
-                    Text("${sms.score}", color = CyanGlow, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Confidence", color = TextSecondary, fontSize = 12.sp)
-                    Text("${sms.confidence}%", color = PremiumGold, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-
-        item { DetectorExplanationPanel(sms.scoreBreakdown) }
-        
-        item {
-            // Message Type Analysis Card
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        SurfaceGlass.copy(alpha = 0.3f),
-                        RoundedCornerShape(8.dp)
-                    )
-                    .padding(16.dp)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceGlass)
             ) {
-                Text("MESSAGE TYPE ANALYSIS", color = CyanGlow, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text("Transaction", color = TextSecondary, fontSize = 11.sp)
-                        Text("${sms.transactionScore}", color = if (sms.transactionScore > 0) CyanGlow else TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("QUALIFICATION ANALYSIS", color = CyanGlow, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Column {
+                            Text("Confidence", color = TextSecondary, fontSize = 11.sp)
+                            Text("${sms.qualificationConfidence}%", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                        Column {
+                            Text("Score", color = TextSecondary, fontSize = 11.sp)
+                            Text("${sms.qualificationScore}", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Qualified", color = TextSecondary, fontSize = 11.sp)
+                            Text(
+                                if (sms.isQualified) "YES" else "NO",
+                                color = if (sms.isQualified) PrimaryAccent else ColorTransport,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
                     }
-                    Column {
-                        Text("Obligation", color = TextSecondary, fontSize = 11.sp)
-                        Text("${sms.obligationScore}", color = if (sms.obligationScore > 0) ColorFood else TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    }
-                    Column {
-                        Text("Information", color = TextSecondary, fontSize = 11.sp)
-                        Text("${sms.informationScore}", color = if (sms.informationScore > 0) SecondaryAccent else TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Current Type: ", color = TextSecondary, fontSize = 12.sp)
-                    Surface(
-                        color = PremiumGold.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            sms.messageType,
-                            color = PremiumGold,
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
+                    
+                    if (sms.qualificationRules.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Executed Rules:", color = TextSecondary, fontSize = 11.sp)
+                        sms.qualificationRules.forEach { rule ->
+                            Text("✔ $rule", color = TextPrimary.copy(alpha = 0.8f), fontSize = 11.sp)
+                        }
                     }
                 }
+            }
+        }
 
-                // Merchant Analysis Card
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            SurfaceGlass.copy(alpha = 0.3f),
-                            RoundedCornerShape(8.dp)
-                        )
-                        .padding(16.dp)
-                ) {
+        // 2. Classification Analysis Card
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceGlass)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("CLASSIFICATION ANALYSIS", color = CyanGlow, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Direction Section
+                    V2ClassificationSection(
+                        title = "Direction",
+                        value = sms.classifiedDirection,
+                        confidence = sms.classifiedDirectionConfidence,
+                        score = sms.classifiedDirectionScore,
+                        evidence = sms.classifiedDirectionEvidence,
+                        matches = sms.classifiedDirectionMatches
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = SurfaceGlassBright.copy(alpha = 0.3f))
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Message Type Section
+                    V2ClassificationSection(
+                        title = "Message Type",
+                        value = sms.classifiedMessageType,
+                        confidence = sms.classifiedMessageTypeConfidence,
+                        score = sms.classifiedMessageTypeScore,
+                        evidence = sms.classifiedMessageTypeEvidence,
+                        matches = sms.classifiedMessageTypeMatches
+                    )
+                }
+            }
+        }
+
+        // 3. Merchant Analysis Card
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceGlass)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Text("MERCHANT ANALYSIS", color = CyanGlow, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
@@ -776,24 +883,21 @@ fun MessageReviewView(sms: AnalyzedSMS?, viewModel: SMSAnalysisViewModel, onComp
                         fontSize = 14.sp
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(32.dp)
-                    ) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
                         Column {
                             Text("Confidence", color = TextSecondary, fontSize = 11.sp)
-                            Text("${sms.merchantConfidence}", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text("${sms.merchantConfidence}", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                         Column {
                             Text("Score", color = TextSecondary, fontSize = 11.sp)
-                            Text("${sms.merchantScore}", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text("${sms.merchantScore}", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         }
                     }
                     if (sms.merchantEvidence.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(12.dp))
                         Text("Evidence:", color = TextSecondary, fontSize = 11.sp)
                         Text(
-                            text = sms.merchantEvidence.joinToString("\n"),
+                            text = sms.merchantEvidence.joinToString("\n") { "• $it" },
                             color = TextPrimary.copy(alpha = 0.8f),
                             fontSize = 12.sp,
                             lineHeight = 16.sp
@@ -803,15 +907,10 @@ fun MessageReviewView(sms: AnalyzedSMS?, viewModel: SMSAnalysisViewModel, onComp
             }
         }
 
-        item {
-            SignalList("Matched Keywords", sms.matchedKeywords, PrimaryAccent)
-        }
-        item {
-            SignalList("Matched Patterns", sms.matchedPatterns, CyanGlow)
-        }
-        item {
-            SignalList("Negative Signals", sms.negativeSignals, ColorFood)
-        }
+        /*
+        item { DetectorExplanationPanel(sms.scoreBreakdown) }
+        item { SignalList("Matched Keywords", sms.matchedKeywords, PrimaryAccent) }
+        */
         
         item {
             Spacer(modifier = Modifier.height(16.dp))
@@ -866,6 +965,58 @@ fun MessageReviewView(sms: AnalyzedSMS?, viewModel: SMSAnalysisViewModel, onComp
             confirmButton = {},
             containerColor = BackgroundEnd
         )
+    }
+}
+
+@Composable
+fun V2ClassificationSection(
+    title: String,
+    value: String,
+    confidence: Int,
+    score: Int,
+    evidence: List<String>,
+    matches: List<String>
+) {
+    Column {
+        Text(title, color = CyanGlow, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Column {
+                Text("Result", color = TextSecondary, fontSize = 10.sp)
+                Text(value, color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
+            Column {
+                Text("Confidence", color = TextSecondary, fontSize = 10.sp)
+                Text("$confidence%", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text("Score", color = TextSecondary, fontSize = 10.sp)
+                Text("$score", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
+        }
+
+        if (evidence.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("Evidence:", color = TextSecondary, fontSize = 11.sp)
+            Text(
+                text = evidence.joinToString("\n") { "• $it" },
+                color = TextPrimary.copy(alpha = 0.8f),
+                fontSize = 11.sp,
+                lineHeight = 16.sp
+            )
+        }
+
+        if (matches.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("Matches:", color = TextSecondary, fontSize = 11.sp)
+            Text(
+                text = matches.joinToString("\n") { "• $it" },
+                color = TextPrimary.copy(alpha = 0.8f),
+                fontSize = 11.sp,
+                lineHeight = 16.sp
+            )
+        }
     }
 }
 

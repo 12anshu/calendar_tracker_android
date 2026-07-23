@@ -401,6 +401,7 @@ fun SmsInboxItem(
                     val debugInfo = """
                         SENDER: ${sms.sender}
                         MESSAGE: ${sms.message}
+                        AMOUNT: ${sms.amount ?: "NONE"}
                         
                         QUALIFICATION ANALYSIS:
                         - QUALIFIED: ${if (sms.isQualified) "YES" else "NO"}
@@ -415,6 +416,12 @@ fun SmsInboxItem(
                         - SCORE: ${sms.classifiedDirectionScore}
                         - EVIDENCE: ${sms.classifiedDirectionEvidence.joinToString(", ")}
                         - MATCHES: ${sms.classifiedDirectionMatches.joinToString(", ")}
+                        
+                        - MESSAGE TYPE: ${sms.classifiedMessageType}
+                        - CONFIDENCE: ${sms.classifiedMessageTypeConfidence}%
+                        - SCORE: ${sms.classifiedMessageTypeScore}
+                        - EVIDENCE: ${sms.classifiedMessageTypeEvidence.joinToString(", ")}
+                        - MATCHES: ${sms.classifiedMessageTypeMatches.joinToString(", ")}
                     """.trimIndent()
                     clipboardManager.setText(AnnotatedString(debugInfo)) 
                 }, modifier = Modifier.size(24.dp)) {
@@ -439,6 +446,75 @@ fun SmsInboxItem(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun ClassificationSection(
+    title: String,
+    value: String,
+    confidence: Int,
+    score: Int,
+    evidence: List<String>,
+    matches: List<String>
+) {
+    Column {
+        Text(title, color = CyanGlow, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = buildAnnotatedString {
+                withStyle(SpanStyle(color = TextSecondary)) { append("$title : ") }
+                withStyle(SpanStyle(color = PremiumGold, fontWeight = FontWeight.Bold)) { append(value) }
+            },
+            fontSize = 12.sp
+        )
+        
+        Text(
+            text = buildAnnotatedString {
+                withStyle(SpanStyle(color = TextSecondary)) { append("Confidence : ") }
+                withStyle(SpanStyle(color = PremiumGold, fontWeight = FontWeight.Bold)) { append("$confidence") }
+            },
+            fontSize = 12.sp
+        )
+
+        Text(
+            text = buildAnnotatedString {
+                withStyle(SpanStyle(color = TextSecondary)) { append("Score : ") }
+                withStyle(SpanStyle(color = PremiumGold, fontWeight = FontWeight.Bold)) { append("$score") }
+            },
+            fontSize = 12.sp
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("Evidence", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = SurfaceGlassBright.copy(alpha = 0.2f))
+        
+        if (evidence.isNotEmpty()) {
+            Text(
+                text = evidence.joinToString("\n") { "• $it" },
+                color = TextPrimary.copy(alpha = 0.8f),
+                fontSize = 11.sp,
+                lineHeight = 16.sp
+            )
+        } else {
+            Text("• None", color = TextSecondary, fontSize = 11.sp)
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("Matches", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = SurfaceGlassBright.copy(alpha = 0.2f))
+
+        if (matches.isNotEmpty()) {
+            Text(
+                text = matches.joinToString("\n") { "• $it" },
+                color = TextPrimary.copy(alpha = 0.8f),
+                fontSize = 11.sp,
+                lineHeight = 16.sp
+            )
+        } else {
+            Text("• None", color = TextSecondary, fontSize = 11.sp)
         }
     }
 }
@@ -621,55 +697,36 @@ fun SmsDetailDialog(sms: AnalyzedSMS, onDismiss: () -> Unit) {
                         .fillMaxWidth()
                         .background(
                             SurfaceGlass.copy(alpha = 0.3f),
-                            RoundedCornerShape(4.dp)
+                            RoundedCornerShape(8.dp)
                         )
                         .padding(8.dp)
                 ) {
                     Text("CLASSIFICATION ANALYSIS", color = CyanGlow, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Text("Direction", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 10.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
+                    // Direction Section
+                    ClassificationSection(
+                        title = "Direction",
+                        value = sms.classifiedDirection,
+                        confidence = sms.classifiedDirectionConfidence,
+                        score = sms.classifiedDirectionScore,
+                        evidence = sms.classifiedDirectionEvidence,
+                        matches = sms.classifiedDirectionMatches
+                    )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text("Direction", color = TextSecondary, fontSize = 10.sp)
-                            Text(sms.classifiedDirection, color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                        Column {
-                            Text("Confidence", color = TextSecondary, fontSize = 10.sp)
-                            Text("${sms.classifiedDirectionConfidence}%", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("Score", color = TextSecondary, fontSize = 10.sp)
-                            Text("${sms.classifiedDirectionScore}", color = PremiumGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(color = SurfaceGlassBright.copy(alpha = 0.3f))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    if (sms.classifiedDirectionEvidence.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Evidence:", color = TextSecondary, fontSize = 10.sp)
-                        Text(
-                            text = sms.classifiedDirectionEvidence.joinToString(", "),
-                            color = TextPrimary.copy(alpha = 0.8f),
-                            fontSize = 10.sp,
-                            lineHeight = 14.sp
-                        )
-                    }
-
-                    if (sms.classifiedDirectionMatches.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Matches:", color = TextSecondary, fontSize = 10.sp)
-                        Text(
-                            text = sms.classifiedDirectionMatches.joinToString(", "),
-                            color = TextPrimary.copy(alpha = 0.8f),
-                            fontSize = 10.sp,
-                            lineHeight = 14.sp
-                        )
-                    }
+                    // Message Type Section
+                    ClassificationSection(
+                        title = "Message Type",
+                        value = sms.classifiedMessageType,
+                        confidence = sms.classifiedMessageTypeConfidence,
+                        score = sms.classifiedMessageTypeScore,
+                        evidence = sms.classifiedMessageTypeEvidence,
+                        matches = sms.classifiedMessageTypeMatches
+                    )
                 }
 
                 /*

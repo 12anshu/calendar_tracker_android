@@ -11,22 +11,8 @@ data class QualificationResult(
     val qualified: Boolean,
 
     /**
-     * Overall confidence.
-     */
-    val confidence: Int,
-
-    /**
-     * Overall score.
-     */
-    val score: Int,
-
-    /**
      * Sender qualification.
      */
-    val sender: SenderQualificationResult,
+    val sender: String,
 
-    /**
-     * Message qualification.
-     */
-    val message: MessageQualificationResult
 )

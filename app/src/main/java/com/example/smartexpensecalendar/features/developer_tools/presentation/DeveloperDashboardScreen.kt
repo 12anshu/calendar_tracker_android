@@ -16,6 +16,7 @@ import androidx.navigation.NavController
 import com.example.smartexpensecalendar.ui.navigation.Screen
 import com.example.smartexpensecalendar.core.designsystem.theme.BackgroundStart
 import com.example.smartexpensecalendar.core.designsystem.theme.TextPrimary
+import com.example.smartexpensecalendar.new_sms_engine.developer.navigation.DeveloperDashboardV2Route
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,7 +52,7 @@ fun DeveloperDashboardScreen(navController: NavController) {
         ) {
             item {
                 AnalysisNavigationCard(
-                    title = "Financial Detection Lab",
+                    title = "OLD SMS ENGINE",
                     subtitle = "Debug and validate the SMS financial pipeline",
                     icon = Icons.Default.AccountBalanceWallet
                 ) {
@@ -61,11 +62,11 @@ fun DeveloperDashboardScreen(navController: NavController) {
 
             item {
                 AnalysisNavigationCard(
-                    title = "Transaction Extraction Lab",
-                    subtitle = "Validate amount extraction from transaction SMS",
+                    title = "NEW SMS ENGINE",
+                    subtitle = "Validate new architecture",
                     icon = Icons.Default.PriceCheck
                 ) {
-                    navController.navigate(Screen.TransactionExtractionLab.route)
+                    navController.navigate(DeveloperDashboardV2Route.ROUTE)
                 }
             }
         }

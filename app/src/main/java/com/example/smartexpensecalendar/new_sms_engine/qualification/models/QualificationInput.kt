@@ -11,7 +11,7 @@ data class QualificationInput(
     val sender: String,
 
     /**
-     * SMS body.
+     * SMS message body.
      */
-    val message: String
+    val message: String = ""
 )
