@@ -2,6 +2,9 @@ package com.example.smartexpensecalendar.new_sms_engine.developer
 
 import android.content.Context
 import android.provider.Telephony
+import com.example.smartexpensecalendar.new_sms_engine.category.extractor.CategoryExtractor
+import com.example.smartexpensecalendar.new_sms_engine.category.model.CategoryId
+import com.example.smartexpensecalendar.new_sms_engine.category.model.CategoryResult
 import com.example.smartexpensecalendar.new_sms_engine.classification.ClassificationEngine
 import com.example.smartexpensecalendar.new_sms_engine.developer.model.DeveloperSmsResult
 import com.example.smartexpensecalendar.new_sms_engine.extraction.amount.AmountExtractor
@@ -16,6 +19,10 @@ import com.example.smartexpensecalendar.new_sms_engine.classification.MessageTyp
 import com.example.smartexpensecalendar.new_sms_engine.classification.model.MessageType
 import com.example.smartexpensecalendar.new_sms_engine.classification.model.MessageTypeResult
 import com.example.smartexpensecalendar.new_sms_engine.common.matcher.PatternMatch
+import com.example.smartexpensecalendar.new_sms_engine.common.merchant.model.MerchantDefinition
+import com.example.smartexpensecalendar.new_sms_engine.common.merchant.normalization.DefaultMerchantNormalizer
+import com.example.smartexpensecalendar.new_sms_engine.common.merchant.repository.DefaultMerchantRepository
+import com.example.smartexpensecalendar.new_sms_engine.common.merchant.repository.MerchantRepository
 import com.example.smartexpensecalendar.new_sms_engine.common.segmentation.MessageSegment
 import com.example.smartexpensecalendar.new_sms_engine.common.segmentation.MessageSegmentBuilder
 import com.example.smartexpensecalendar.new_sms_engine.common.segmentation.SegmentRelation
@@ -53,7 +60,13 @@ class DeveloperSmsProviderV2 @Inject constructor(
 
     private val messageSegment = MessageSegmentBuilder
 
-    private val financialEventTypeExtractor = FinancialEventTypeExtractor()
+    private val categoryExtractor = CategoryExtractor()
+
+    private val merchantNormalizer =
+        DefaultMerchantNormalizer()
+
+    private val merchantRepository: MerchantRepository =
+        DefaultMerchantRepository()
 
     suspend fun fetchSms(
         onBatchReady: suspend (List<DeveloperSmsResult>) -> Unit,
@@ -128,11 +141,14 @@ class DeveloperSmsProviderV2 @Inject constructor(
                     confidence = 0f,
                     anchor = null
                 )
+                var normalizedMerchant: String? = null
+                var merchantDefinition: MerchantDefinition? = null
                 var account: String? = null
-                var financialEventResult = FinancialEventResult(
-                    type = FinancialEventType.UNKNOWN,
+
+                var categoryResult = CategoryResult(
+                    categoryId = CategoryId.UNKNOWN,
                     confidence = 0f,
-                    evidences = emptySet()
+                    evidence = emptyList()
                 )
 
                 if (qualification.qualified) {
@@ -176,9 +192,31 @@ class DeveloperSmsProviderV2 @Inject constructor(
                         amountResult = amountExtractor.extract(extractionContext)
                         directionResult = directionExtractor.extract(extractionContext)
                         paymentModeResult = paymentModeExtractor.extract(extractionContext)
-                        merchantResult = merchantExtractor.extract(extractionContext)
+                        merchantResult =
+                            merchantExtractor.extract(extractionContext)
+
+                        normalizedMerchant =
+                            merchantNormalizer.normalize(
+                                merchantResult.merchant
+                            )
+
+                        merchantDefinition =
+                            merchantRepository.findMerchant(
+                                normalizedMerchant
+                            )
+
+                        val categoryContext =
+                            extractionContext.copy(
+                                merchant = normalizedMerchant,
+                                merchantDefinition = merchantDefinition
+                            )
+
+                        categoryResult =
+                            categoryExtractor.extract(
+                                categoryContext
+                            )
+
                         account = AccountNameExtractor.extract(body, sender)
-                        financialEventResult = financialEventTypeExtractor.extract(extractionContext)
                     }
                 }
 
@@ -199,13 +237,13 @@ class DeveloperSmsProviderV2 @Inject constructor(
                         directionConfidence = directionResult.confidence,
                         paymentMode = paymentModeResult.mode,
                         paymentModeConfidence = paymentModeResult.confidence,
-                        merchant = merchantResult.merchant,
+                        merchant = normalizedMerchant,
                         merchantSourceSegment = merchantResult.sourceSegment,
                         merchantAnchorUsed = merchantResult.anchor,
                         merchantConfidence = merchantResult.confidence,
-                        financialEventType = financialEventResult.type,
-                        financialEventConfidence = financialEventResult.confidence,
-                        financialEventEvidence = financialEventResult.evidences,
+                        category = categoryResult.categoryId,
+                        categoryConfidence = categoryResult.confidence,
+                        categoryEvidence = categoryResult.evidence.joinToString(" | "),
                         account = account,
                         messageSegments = messageSegments
                     )

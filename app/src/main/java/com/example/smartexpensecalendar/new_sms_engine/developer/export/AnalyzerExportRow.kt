@@ -29,9 +29,9 @@ data class AnalyzerExportRow(
     val merchantConfidence: String,
     val merchantAnchorUsed: String,
 
-    val financialEventType: String?,
-    val financialEventConfidence: String?,
-    val financialEventEvidence: String?,
+    val category: String?,
+    val categoryConfidence: String?,
+    val categoryEvidence: String?,
 
     val account: String,
     val reference: String,

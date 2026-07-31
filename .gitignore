@@ -1,15 +1,20 @@
 # Android Studio / IntelliJ
 .idea/
 *.iml
-.gradle/
-build/
 captures/
 externalNativeBuild/
 .cxx/
 local.properties
+project.property
+
+# Secrets and Sensitive data
+secrets.properties
+signing.properties
+google-services.json
+.env
+mock-google-services.json
 
 # Gradle
-.gradle
 gradle-app.setting
 !gradle-wrapper.jar
 .navigation/
@@ -26,9 +31,6 @@ gradle-app.setting
 *.pk8
 *.p12
 
-# Google Services
-google-services.json
-
 # Log files
 *.log
 *.hprof
@@ -42,3 +44,8 @@ Thumbs.db
 # Temp files
 *.tmp
 *.bak
+
+# Build and Caches
+.gradle/
+**/build/
+.kotlin/

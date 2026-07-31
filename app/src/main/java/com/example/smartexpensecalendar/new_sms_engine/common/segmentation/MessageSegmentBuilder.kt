@@ -2,7 +2,6 @@ package com.example.smartexpensecalendar.new_sms_engine.common.segmentation
 
 import com.example.smartexpensecalendar.new_sms_engine.common.signals.RelationshipSignals
 import com.example.smartexpensecalendar.new_sms_engine.common.tokenizer.Token
-import com.example.smartexpensecalendar.new_sms_engine.common.segmentation.SegmentBoundaryDetector
 
 object MessageSegmentBuilder {
 
@@ -14,96 +13,79 @@ object MessageSegmentBuilder {
             return emptyList()
         }
 
-        val segments = mutableListOf<MessageSegment>()
-
-        var currentRelation = SegmentRelation.ROOT
-        var currentTokens = mutableListOf<Token>()
-
-        fun flush() {
-
-            if (currentTokens.isEmpty()) {
-                return
-            }
-
-            segments += MessageSegment(
-                relation = currentRelation,
-                tokens = segmentTokens(
-                    currentRelation,
-                    currentTokens.toList()
-                )
-            )
-
-            currentTokens.clear()
-        }
+        val accumulator = SegmentAccumulator()
 
         var previousLine = tokens.first().lineIndex
 
-        tokens.forEach { token ->
+        tokens.forEachIndexed { index, token ->
 
-            // New line starts a new segment
+            val previous =
+                tokens.getOrNull(index - 1)
+
+            val next =
+                tokens.getOrNull(index + 1)
+
             if (token.lineIndex != previousLine) {
 
-                flush()
-
-                currentRelation = SegmentRelation.ROOT
+                accumulator.flush()
+                accumulator.resetRelation()
 
                 previousLine = token.lineIndex
             }
 
-            val relation = relationOf(token)
+            relationOf(token)?.let { relation ->
 
-            if (relation != null) {
+                accumulator.startRelation(relation)
 
-                flush()
+                accumulator.append(token)
 
-                currentRelation = relation
-
-                currentTokens += token
-
-                return@forEach
+                return@forEachIndexed
             }
 
-            currentTokens += token
+            accumulator.append(token)
 
             if (
                 SegmentBoundaryDetector.shouldTerminate(
-                    currentRelation,
-                    currentTokens
+                    boundaryContext(
+                        accumulator,
+                        previous,
+                        token,
+                        next
+                    )
                 )
             ) {
-
-                flush()
-
-                currentRelation = SegmentRelation.ROOT
+                accumulator.flush()
+                accumulator.resetRelation()
             }
         }
 
-        flush()
+        accumulator.flush()
 
-        return segments
+        return accumulator.segments()
     }
 
     private fun relationOf(
         token: Token
     ): SegmentRelation? {
+
         return RelationshipSignals.relationOf(
             token.text
         )
     }
 
-    private fun segmentTokens(
-        relation: SegmentRelation,
-        tokens: List<Token>
-    ): List<Token> {
+    private fun boundaryContext(
+        accumulator: SegmentAccumulator,
+        previous: Token?,
+        current: Token,
+        next: Token?
+    ): BoundaryContext {
 
-        return when (relation) {
-
-            SegmentRelation.ROOT,
-            SegmentRelation.UPI ->
-                tokens
-
-            else ->
-                tokens.drop(1)
-        }
+        return BoundaryContext(
+            relation = accumulator.currentRelation,
+            segment = accumulator.currentTokens(),
+            previous = previous,
+            current = current,
+            next = next
+        )
     }
 }

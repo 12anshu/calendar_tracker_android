@@ -1,5 +1,7 @@
 package com.example.smartexpensecalendar.new_sms_engine.common.signals
 
+import kotlin.collections.flatten
+
 object InformationSignals {
 
     /**
@@ -52,4 +54,11 @@ object InformationSignals {
         "NEUCOINS",
         "CASHBACK"
     )
+
+    val ALL = setOf(
+        STATEMENT_SIGNALS,
+        ACCOUNT_UPDATE_SIGNALS,
+        SECURITY_SIGNALS,
+        REWARD_SIGNALS
+    ).flatten().toSet()
 }

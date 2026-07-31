@@ -1,5 +1,6 @@
 package com.example.smartexpensecalendar.new_sms_engine.developer.model
 
+import com.example.smartexpensecalendar.new_sms_engine.category.model.CategoryId
 import com.example.smartexpensecalendar.new_sms_engine.extraction.direction.models.Direction
 import com.example.smartexpensecalendar.new_sms_engine.extraction.amount.models.Money
 import com.example.smartexpensecalendar.new_sms_engine.extraction.paymentmode.models.PaymentMode
@@ -48,9 +49,9 @@ data class DeveloperSmsResult(
     val paymentMode: PaymentMode = PaymentMode.UNKNOWN,
     val paymentModeConfidence: Float = 0f,
 
-    val financialEventType: FinancialEventType = FinancialEventType.UNKNOWN,
-    val financialEventConfidence: Float = 0f,
-    val financialEventEvidence: Set<FinancialEventEvidence> = emptySet(),
+    val category: CategoryId = CategoryId.UNKNOWN,
+    val categoryConfidence: Float = 0f,
+    val categoryEvidence: String,
 
     val account: String? = null,
     val merchant: String? = null,

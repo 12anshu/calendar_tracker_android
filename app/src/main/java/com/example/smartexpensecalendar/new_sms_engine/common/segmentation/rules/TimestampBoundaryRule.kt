@@ -1,6 +1,7 @@
 package com.example.smartexpensecalendar.new_sms_engine.common.segmentation.rules
 
 import com.example.smartexpensecalendar.new_sms_engine.common.regex.DateRegex
+import com.example.smartexpensecalendar.new_sms_engine.common.segmentation.BoundaryContext
 import com.example.smartexpensecalendar.new_sms_engine.common.segmentation.SegmentRelation
 import com.example.smartexpensecalendar.new_sms_engine.common.tokenizer.Token
 
@@ -11,15 +12,14 @@ class TimestampBoundaryRule : SegmentBoundaryRule {
     )
 
     override fun matches(
-        relation: SegmentRelation,
-        tokens: List<Token>
+        context: BoundaryContext
     ): Boolean {
 
-        if (relation !in SUPPORTED_RELATIONS) {
+        if (context.relation !in SUPPORTED_RELATIONS) {
             return false
         }
 
-        val normalized = tokens
+        val normalized = context.segment
             .map { normalize(it.text) }
 
         return when {

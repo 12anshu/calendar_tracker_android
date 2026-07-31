@@ -104,6 +104,16 @@ object BankingEntityMatcher {
     fun containsCurrency(text: String) =
         containsSignal(text, CurrencySignals.CURRENCY_INDICATORS)
 
+    private val MOBILE_NUMBER_REGEX = Regex(
+        """(?<!\d)(?:\+?91[-\s]?)?[6-9]\d{9}(?!\d)"""
+    )
+    fun containsMobileNumber(
+        text: String
+    ): Boolean {
+
+        return MOBILE_NUMBER_REGEX.containsMatchIn(text)
+    }
+
     private fun containsAny(
         text: String,
         signals: Set<String>

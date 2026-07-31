@@ -1,5 +1,6 @@
 package com.example.smartexpensecalendar.new_sms_engine.extraction.merchant
 
+import android.util.Log
 import com.example.smartexpensecalendar.new_sms_engine.common.confidence.ConfidenceCalculator
 import com.example.smartexpensecalendar.new_sms_engine.common.matcher.BankingEntityMatcher
 import com.example.smartexpensecalendar.new_sms_engine.common.matcher.BankingEntityMatcher.containsAccount
@@ -170,23 +171,6 @@ class MerchantExtractor {
             score -= 50
 
         return score
-    }
-
-
-    private fun scoreAnchor(
-        token: Token
-    ): Int {
-
-        val word = token.text.lowercase()
-
-        return when {
-
-            word in CounterpartySignals.COUNTERPARTY_ANCHORS ->
-                MerchantScores.AFTER_ANCHOR
-
-            else ->
-                MerchantScores.LINE
-        }
     }
 
     private fun pickWinner(

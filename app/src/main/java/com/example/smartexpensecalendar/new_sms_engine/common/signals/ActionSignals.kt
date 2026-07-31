@@ -25,7 +25,6 @@ object ActionSignals {
         "CHARGED",
         "SWIPED",
         "USED",
-        "PAYMENT",
         "REMITTED",
         "COLLECTED",
         "RECOVERED",
@@ -129,4 +128,20 @@ object ActionSignals {
         "COLLECTED",
         "RECOVERED"
     )
+
+    val all_action_signals = setOf(
+        DEBIT_ACTION_SIGNALS,
+        TRANSACTION_ACTION_SIGNALS,
+        CREDIT_ACTION_SIGNALS,
+        REFUND_ACTION_SIGNALS,
+        REWARD_ACTION_SIGNALS,
+        PURCHASE_ACTION_SIGNALS,
+        PAYMENT_ACTION_SIGNALS,
+        TRANSFER_ACTION_SIGNALS,
+        ATM_WITHDRAWAL_ACTION_SIGNALS,
+        CASHBACK_ACTION_SIGNALS,
+        CHARGE_ACTION_SIGNALS
+    ).flatten().toSet()
+
+    fun isAction(word: String): Boolean = word.uppercase() in all_action_signals
 }

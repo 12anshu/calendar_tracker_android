@@ -1,6 +1,6 @@
 package com.example.smartexpensecalendar.new_sms_engine.common.segmentation
 
-import com.example.smartexpensecalendar.new_sms_engine.common.matcher.BankingEntityMatcher
+import android.util.Log
 import com.example.smartexpensecalendar.new_sms_engine.common.matcher.BankingEntityMatcher.containsAccount
 import com.example.smartexpensecalendar.new_sms_engine.common.matcher.BankingEntityMatcher.containsAction
 import com.example.smartexpensecalendar.new_sms_engine.common.matcher.BankingEntityMatcher.containsAmount
@@ -9,9 +9,19 @@ import com.example.smartexpensecalendar.new_sms_engine.common.matcher.BankingEnt
 import com.example.smartexpensecalendar.new_sms_engine.common.matcher.BankingEntityMatcher.containsCurrency
 import com.example.smartexpensecalendar.new_sms_engine.common.matcher.BankingEntityMatcher.containsDate
 import com.example.smartexpensecalendar.new_sms_engine.common.matcher.BankingEntityMatcher.containsFailure
-import com.example.smartexpensecalendar.new_sms_engine.common.tokenizer.Token
+import com.example.smartexpensecalendar.new_sms_engine.common.signals.ActionSignals
 import com.example.smartexpensecalendar.new_sms_engine.extraction.merchant.MerchantConstants.MAX_CANDIDATE_TOKENS
 import com.example.smartexpensecalendar.new_sms_engine.extraction.merchant.MerchantScores
+import com.example.smartexpensecalendar.new_sms_engine.common.enums.merchant.MerchantStopWords
+import com.example.smartexpensecalendar.new_sms_engine.common.matcher.BankingEntityMatcher.containsMobileNumber
+import com.example.smartexpensecalendar.new_sms_engine.common.signals.BalanceSignals
+import com.example.smartexpensecalendar.new_sms_engine.common.signals.BankingSignals
+import com.example.smartexpensecalendar.new_sms_engine.common.signals.BillingSignals
+import com.example.smartexpensecalendar.new_sms_engine.common.signals.CommonSignals
+import com.example.smartexpensecalendar.new_sms_engine.common.signals.FinancialSignals
+import com.example.smartexpensecalendar.new_sms_engine.common.signals.InformationSignals
+import com.example.smartexpensecalendar.new_sms_engine.common.signals.PaymentSignals
+import com.example.smartexpensecalendar.new_sms_engine.common.signals.RelationshipSignals
 import com.example.smartexpensecalendar.new_sms_engine.extraction.merchant.MerchantTextCleaner
 import com.example.smartexpensecalendar.new_sms_engine.extraction.merchant.models.MerchantCandidate
 
@@ -50,7 +60,7 @@ object SegmentEvaluator {
 
         return buildCandidate(
             segment,
-            MerchantScores.AFTER_ANCHOR
+            MerchantScores.ON_ANCHOR
         )
     }
 
@@ -60,7 +70,7 @@ object SegmentEvaluator {
 
         return buildCandidate(
             segment,
-            MerchantScores.AFTER_ANCHOR
+            MerchantScores.AT_ANCHOR
         )
     }
 
@@ -84,7 +94,7 @@ object SegmentEvaluator {
 
         return buildCandidate(
             segment,
-            MerchantScores.AFTER_ANCHOR
+            MerchantScores.UPI_ANCHOR
         )
     }
 
@@ -97,7 +107,7 @@ object SegmentEvaluator {
         ) {
             return buildCandidate(
                 segment,
-                MerchantScores.AFTER_ANCHOR + 10
+                MerchantScores.ROOT_ANCHOR
             )
         }
         return null
@@ -125,12 +135,14 @@ object SegmentEvaluator {
             score = score
         )
 
-        return MerchantCandidate(
+        val candidate = MerchantCandidate(
             merchant = merchant,
             score = finalScore,
             anchor = segment.relation.name,
             sourceSegment = segment.text
         )
+
+        return candidate
     }
 
     private fun adjustCandidateScore(
@@ -158,6 +170,9 @@ object SegmentEvaluator {
         if (containsFailure(merchant))
             adjustedScore -= 50
 
+        if (containsMobileNumber(merchant))
+            adjustedScore -= 50
+
         return adjustedScore
     }
 
@@ -182,35 +197,37 @@ object SegmentEvaluator {
             return false
         }
 
+        val firstWord = tokens.first().text.uppercase()
+
+        if (firstWord in MerchantStopWords.ROOT_START_WORDS){
+            return false
+        }
+
+        if (ActionSignals.isAction(firstWord)) {
+            return false
+        }
+
+        if (firstWord in BalanceSignals.ALL ||
+            firstWord in PaymentSignals.ALL ||
+            firstWord in InformationSignals.ALL ||
+            firstWord in FinancialSignals.ALL ||
+            firstWord in CommonSignals.CONNECTOR_SIGNALS ||
+            firstWord in BillingSignals.ALL) {
+            return false
+        }
+
         if (tokens.size > MAX_CANDIDATE_TOKENS) {
             return false
         }
 
-        if (containsAmount(candidate)) {
-            return false
-        }
-
-        if (containsDate(candidate)) {
-            return false
-        }
-
-        if (containsCurrency(candidate)) {
-            return false
-        }
-
-        if (containsAccount(candidate)) {
-            return false
-        }
-
-        if (containsBalance(candidate)) {
-            return false
-        }
-
-        if (containsFailure(candidate)) {
-            return false
-        }
-
-        if (containsAction(candidate)) {
+        if (containsAmount(candidate) ||
+            containsDate(candidate) ||
+            containsCurrency(candidate) ||
+            containsAccount(candidate) ||
+            containsBalance(candidate) ||
+            containsFailure(candidate) ||
+            containsMobileNumber(candidate) ||
+            containsAction(candidate)) {
             return false
         }
 
@@ -255,6 +272,10 @@ object SegmentEvaluator {
         }
 
         if (containsAction(firstToken)) {
+            return false
+        }
+
+        if (containsMobileNumber(firstToken)) {
             return false
         }
 

@@ -33,7 +33,6 @@ class FinancialEventRuleEngine(
         private fun defaultRules(): List<FinancialEventRule> {
 
             return listOf(
-                PurchaseRule(),
                 PaymentRule(),
                 DepositRule(),
                 WithdrawalRule()

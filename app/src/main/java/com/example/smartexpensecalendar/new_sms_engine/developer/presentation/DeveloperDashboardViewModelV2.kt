@@ -121,9 +121,9 @@ class DeveloperDashboardViewModelV2 @Inject constructor(
                     merchantSourceSegment = sms.merchantSourceSegment,
                     merchantConfidence = "${(sms.merchantConfidence * 100).toInt()}%",
                     merchantAnchorUsed = sms.merchantAnchorUsed ?: "",
-                    financialEventType = sms.financialEventType.toString(),
-                    financialEventEvidence = sms.financialEventEvidence.toString(),
-                    financialEventConfidence = sms.financialEventConfidence.toString(),
+                    category = sms.category.name,
+                    categoryConfidence = sms.categoryConfidence.toString(),
+                    categoryEvidence = sms.categoryEvidence,
                     account = sms.account ?: "",
                     reference = sms.reference ?: "",
                     messageSegments = sms.messageSegments.joinToString(" | ") {

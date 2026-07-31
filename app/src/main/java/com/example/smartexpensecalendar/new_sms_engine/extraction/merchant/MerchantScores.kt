@@ -4,9 +4,15 @@ object MerchantScores {
 
     // Anchor based
 
-    const val AFTER_ANCHOR = 100
+    const val UPI_ANCHOR = 120
 
-    const val TO_ANCHOR = 50
+    const val AT_ANCHOR = 110
+
+    const val TO_ANCHOR = 100
+
+    const val ON_ANCHOR = 90
+
+    const val ROOT_ANCHOR = 80
 
     // Structured line
 

@@ -1,47 +1,71 @@
-package com.example.smartexpensecalendar.new_sms_engine.extraction.merchant
+package com.example.smartexpensecalendar.new_sms_engine.common.enums.merchant
 
 object MerchantStopWords {
 
-    val WORDS = setOf(
-
-        // Payment flow
-
-        "via",
-        "using",
-        "through",
-
-        // Time
-
-        "on",
-        "at",
-        "by",
-
-        // References
-
-        "ref",
-        "reference",
-        "rrn",
-        "utr",
-        "txn",
-        "txnid",
-
-        // Banking
-
-        "account",
-        "a/c",
-        "ac",
-        "balance",
-        "available",
-        "avl",
-        "limit",
-
-        // Misc
-
-        "if",
-        "please",
-        "call",
-        "contact",
-        "sms",
-        "id"
+    val ROOT_START_WORDS  = setOf(
+        "THANKS",
+        "THANK",
+        "DOWNLOAD",
+        "CLICK",
+        "VISIT",
+        "PLEASE",
+        "YOUR",
+        "AVAILABLE",
+        "ACCOUNT",
+        "SUBJECT",
+        "REGARDS",
+        "HELLO",
+        "HI",
+        "DEAR",
+        "PAY",
+        "PAYMENT",
+        "BILL",
+        "INVOICE",
+        "RECEIPT",
+        "STATEMENT",
+        "TRANSACTION",
+        "DETAILS",
+        "ORDER",
+        "BOOKING",
+        "RESERVATION",
+        "CONFIRMATION",
+        "OTP",
+        "CODE",
+        "PASSWORD",
+        "VERIFICATION",
+        "INFO",
+        "LOGIN",
+        "SECURE",
+        "ALERT",
+        "NOTIFICATION",
+        "UPDATE",
+        "REMINDER",
+        "STATUS",
+        "MESSAGE",
+        "REF",
+        "REFERENCE",
+        "RRN",
+        "UTR",
+        "TXN",
+        "TXNID",
+        "BALANCE",
+        "AVL",
+        "LIMIT",
+        "IF",
+        "CALL",
+        "CONTACT",
+        "SMS",
+        "ID",
+        "HELP",
+        "STOP",
+        "JOIN",
+        "OFFER",
+        "DEAL",
+        "PROMO",
+        "COUPON",
+        "DISCOUNT",
+        "CASHBACK",
+        "REWARD",
+        "POINTS",
     )
 }

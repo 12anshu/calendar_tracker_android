@@ -47,4 +47,10 @@ object FinancialSignals {
 
         "OVERDUE"
     )
+
+    val ALL = setOf(
+        DUE_CONTEXT,
+        INFORMATION_SIGNALS,
+        OBLIGATION_SIGNALS
+    ).flatten().toSet()
 }
