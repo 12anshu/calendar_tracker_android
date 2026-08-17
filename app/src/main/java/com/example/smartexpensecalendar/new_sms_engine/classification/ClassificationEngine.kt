@@ -11,9 +11,11 @@ object ClassificationEngine {
         tokens: List<Token>
     ): MessageTypeResult {
 
+        val patternEvidence = PatternEvidenceBuilder.build(tokens)
+
         val evidence = buildList {
-            addAll(PatternEvidenceBuilder.build(tokens))
-            addAll(SemanticEvidenceBuilder.build(tokens))
+            addAll(patternEvidence)
+            addAll(SemanticEvidenceBuilder.build(tokens, patternEvidence))
         }
 
         return MessageTypeClassifier.classify(evidence)

@@ -59,9 +59,94 @@ object ObligationPatterns {
         )
     )
 
+    /**
+     * Payment Due → Amount Descriptor
+     *
+     * Example:
+     * "due minimum amount due..."
+     */
+    val BILLING_OBJECT_AMOUNT_DESCRIPTOR = Pattern(
+        name = "BILLING_OBJECT_AMOUNT_DESCRIPTOR",
+        evidenceType = EvidenceType.OBLIGATION_CONTEXT,
+        strength = EvidenceStrength.VERY_HIGH,
+        maxGap = 0,
+        tokens = listOf(
+            CategoryToken(TokenCategory.BILLING_OBJECT),
+            CategoryToken(TokenCategory.AMOUNT_DESCRIPTOR)
+        )
+    )
+
+    /**
+     * Payment Due → Another Billing Object
+     *
+     * Example:
+     * "amount is due Due..."
+     */
+    val BILLING_OBJECT_BILLING_OBJECT = Pattern(
+        name = "BILLING_OBJECT_BILLING_OBJECT",
+        evidenceType = EvidenceType.OBLIGATION_CONTEXT,
+        strength = EvidenceStrength.VERY_HIGH,
+        maxGap = 0,
+        tokens = listOf(
+            CategoryToken(TokenCategory.BILLING_OBJECT),
+            CategoryToken(TokenCategory.BILLING_OBJECT)
+        )
+    )
+
+    /**
+     * Overdue → Financial Instrument
+     *
+     * Example:
+     * "amount is overdue on your Bank Credit Card"
+     */
+    val BILLING_OBJECT_PAYMENT_MODE = Pattern(
+        name = "BILLING_OBJECT_PAYMENT_MODE",
+        evidenceType = EvidenceType.OBLIGATION_CONTEXT,
+        strength = EvidenceStrength.VERY_HIGH,
+        maxGap = 0,
+        tokens = listOf(
+            CategoryToken(TokenCategory.BILLING_OBJECT),
+            CategoryToken(TokenCategory.PAYMENT_MODE)
+        )
+    )
+
+    val AMOUNT_LIABILITY_STATE_PAYMENT_MODE = Pattern(
+        name = "AMOUNT_LIABILITY_STATE_PAYMENT_MODE",
+        evidenceType = EvidenceType.OBLIGATION_CONTEXT,
+        strength = EvidenceStrength.VERY_HIGH,
+        maxGap = 6,
+        tokens = listOf(
+            CategoryToken(TokenCategory.CURRENCY),
+            CategoryToken(TokenCategory.LIABILITY_STATE),
+            CategoryToken(TokenCategory.PAYMENT_MODE)
+        )
+    )
+
+    /**
+     * Payment Due → Relative Time
+     *
+     * Example:
+     * "payment is due today"
+     */
+    val BILLING_OBJECT_TEMPORAL_RELATIVE = Pattern(
+        name = "BILLING_OBJECT_TEMPORAL_RELATIVE",
+        evidenceType = EvidenceType.OBLIGATION_CONTEXT,
+        strength = EvidenceStrength.VERY_HIGH,
+        maxGap = 0,
+        tokens = listOf(
+            CategoryToken(TokenCategory.BILLING_OBJECT),
+            CategoryToken(TokenCategory.TEMPORAL_RELATIVE)
+        )
+    )
+
     val ALL = listOf(
         LIABILITY_OBJECT_STATE,
         LIABILITY_STATE_OBJECT,
-        REQUEST_ACTION_OBJECT
+        REQUEST_ACTION_OBJECT,
+        AMOUNT_LIABILITY_STATE_PAYMENT_MODE,
+        BILLING_OBJECT_TEMPORAL_RELATIVE,
+        BILLING_OBJECT_AMOUNT_DESCRIPTOR,
+        BILLING_OBJECT_BILLING_OBJECT,
+        BILLING_OBJECT_PAYMENT_MODE
     )
 }

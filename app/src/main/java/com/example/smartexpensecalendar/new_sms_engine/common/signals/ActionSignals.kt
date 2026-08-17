@@ -38,7 +38,6 @@ object ActionSignals {
      * General transaction indicators.
      */
     val TRANSACTION_ACTION_SIGNALS = setOf(
-        "TRANSACTION",
         "TXN",
         "TRANS",
         "TRN"
@@ -68,7 +67,8 @@ object ActionSignals {
         "REFUNDED",
         "REVERSAL",
         "REVERSED",
-        "REIMBURSED"
+        "REIMBURSED",
+        "CASHBACK"
     )
 
 
@@ -80,7 +80,8 @@ object ActionSignals {
         "REWARDED",
         "POINTS",
         "MILES",
-        "BONUS"
+        "BONUS",
+        "COINS"
     )
 
     /**

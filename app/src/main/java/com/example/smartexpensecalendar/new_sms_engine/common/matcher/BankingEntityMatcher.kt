@@ -7,9 +7,8 @@ import com.example.smartexpensecalendar.new_sms_engine.common.signals.BalanceSig
 import com.example.smartexpensecalendar.new_sms_engine.common.signals.BankingSignals
 import com.example.smartexpensecalendar.new_sms_engine.common.signals.CurrencySignals
 import com.example.smartexpensecalendar.new_sms_engine.common.signals.FinancialSignals
-import com.example.smartexpensecalendar.new_sms_engine.common.signals.PaymentSignals
-import com.example.smartexpensecalendar.new_sms_engine.common.signals.PaymentSignals.CARD_INDICATORS
-import com.example.smartexpensecalendar.new_sms_engine.common.signals.PaymentSignals.SHORT_CARD_INDICATORS
+import com.example.smartexpensecalendar.new_sms_engine.common.signals.PaymentSignals.CARD_SIGNALS
+import com.example.smartexpensecalendar.new_sms_engine.common.signals.PaymentSignals.SHORT_CARD_SIGNALS
 import com.example.smartexpensecalendar.new_sms_engine.common.signals.StatusSignals
 
 object BankingEntityMatcher {
@@ -47,10 +46,10 @@ object BankingEntityMatcher {
 
         val upper = text.uppercase()
 
-        return CARD_INDICATORS.any {
+        return CARD_SIGNALS.any {
             upper.contains(it)
         } ||
-                SHORT_CARD_INDICATORS.any {
+                SHORT_CARD_SIGNALS.any {
                     Regex("""(?<![A-Z0-9])${Regex.escape(it)}(?![A-Z0-9])""")
                         .containsMatchIn(upper)
                 } ||

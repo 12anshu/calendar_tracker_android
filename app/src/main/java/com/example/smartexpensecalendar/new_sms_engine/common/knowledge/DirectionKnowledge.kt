@@ -25,11 +25,11 @@ object DirectionKnowledge {
 
 //        addAll(ActionSignals.PAY_ACTION_SIGNALS)
 
-        addAll(PaymentSignals.BANK_TRANSFER_INDICATORS)
+        addAll(PaymentSignals.BANK_TRANSFER_SIGNALS)
 
-        addAll(PaymentSignals.AUTO_DEBIT_INDICATORS)
+        addAll(PaymentSignals.AUTO_DEBIT_SIGNALS)
 
-        addAll(PaymentSignals.BANK_TRANSFER_INDICATORS)
+        addAll(PaymentSignals.BANK_TRANSFER_SIGNALS)
     }
 
     /**

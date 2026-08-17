@@ -13,7 +13,6 @@ import com.example.smartexpensecalendar.new_sms_engine.common.matcher.BankingEnt
 import com.example.smartexpensecalendar.new_sms_engine.common.segmentation.MessageSegment
 import com.example.smartexpensecalendar.new_sms_engine.common.segmentation.SegmentEvaluator
 import com.example.smartexpensecalendar.new_sms_engine.common.segmentation.SegmentRelation
-import com.example.smartexpensecalendar.new_sms_engine.common.signals.CounterpartySignals
 import com.example.smartexpensecalendar.new_sms_engine.common.tokenizer.Token
 import com.example.smartexpensecalendar.new_sms_engine.extraction.ExtractionContext
 import com.example.smartexpensecalendar.new_sms_engine.extraction.merchant.MerchantConstants.MAX_CANDIDATE_TOKENS

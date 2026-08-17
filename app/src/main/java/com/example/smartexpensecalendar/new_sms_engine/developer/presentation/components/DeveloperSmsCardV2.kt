@@ -302,7 +302,7 @@ private fun DecisionBadge(text: String, color: Color) {
     }
 }
 
-private fun PaymentMode.toIcon(): ImageVector = when (this) {
+private fun PaymentMode.toIcon(): ImageVector? = when (this) {
     PaymentMode.UPI -> Icons.Default.QrCode
     PaymentMode.CARD -> Icons.Default.CreditCard
     PaymentMode.BANK_TRANSFER -> Icons.Default.AccountBalance
@@ -312,4 +312,7 @@ private fun PaymentMode.toIcon(): ImageVector = when (this) {
     PaymentMode.CASH -> Icons.Default.Payments
     PaymentMode.CHEQUE -> Icons.Default.Description
     PaymentMode.UNKNOWN -> Icons.Default.QuestionMark
+    else -> {
+        null
+    }
 }

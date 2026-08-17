@@ -5,10 +5,31 @@ package com.example.smartexpensecalendar.new_sms_engine.common.signals
  */
 object PaymentSignals {
 
-    /**
-     * Card related indicators.
+    val BANK_SIGNALS = setOf(
+        "BANK",
+        "BK",
+        "BNK",
+        "BRANCH",
+    )
+
+    val ACCOUNT_SIGNALS = setOf(
+        "ACCOUNT",
+        "A/C",
+        "ACC",
+        "ACCT",
+        "ACCNT",
+        "ACCOUNT NO",
+        "A/C NO",
+        "SAVINGS",
+        "CURRENT",
+        "LOAN",
+        "OVERDRAFT",
+        "OD"
+    )
+        /**
+     * Card related SIGNALS.
      */
-    val CARD_INDICATORS = setOf(
+    val CARD_SIGNALS = setOf(
 
         "CARD",
         "CRD",
@@ -47,16 +68,16 @@ object PaymentSignals {
         "CONTACTLESS"
     )
 
-    val SHORT_CARD_INDICATORS = setOf(
+    val SHORT_CARD_SIGNALS = setOf(
         "CR",
         "CC",
         "CD",
         "DC"
     )
     /**
-     * UPI related indicators.
+     * UPI related SIGNALS.
      */
-    val UPI_INDICATORS = setOf(
+    val UPI_SIGNALS = setOf(
 
         "UPI",
         "UPI LITE",
@@ -89,9 +110,9 @@ object PaymentSignals {
     )
 
     /**
-     * Bank transfer indicators.
+     * Bank transfer SIGNALS.
      */
-    val BANK_TRANSFER_INDICATORS = setOf(
+    val BANK_TRANSFER_SIGNALS = setOf(
 
         "IMPS",
         "NEFT",
@@ -120,13 +141,28 @@ object PaymentSignals {
 
         "WIRE",
 
-        "SWIFT"
+        "SWIFT",
+
+        "SAVINGS",
+        "CURRENT",
+        "NRE",
+        "NRO",
+        "NACH",
+        "ECS",
+        "AEPS",
+        "BBPS",
+        "NET BANKING",
+        "ONLINE TRANSFER",
+        "MOBILE BANKING",
+        "INTERNET BANKING",
+        "TPT",
+        "OWN A/C"
     )
 
     /**
-     * Auto debit indicators.
+     * Auto debit SIGNALS.
      */
-    val AUTO_DEBIT_INDICATORS = setOf(
+    val AUTO_DEBIT_SIGNALS = setOf(
 
         "AUTOPAY",
 
@@ -152,9 +188,9 @@ object PaymentSignals {
     )
 
     /**
-     * Wallet indicators.
+     * Wallet SIGNALS.
      */
-    val WALLET_INDICATORS = setOf(
+    val WALLET_SIGNALS = setOf(
 
         "WALLET",
 
@@ -178,9 +214,9 @@ object PaymentSignals {
     )
 
     /**
-     * Cash transaction indicators.
+     * Cash transaction SIGNALS.
      */
-    val CASH_INDICATORS = setOf(
+    val CASH_SIGNALS = setOf(
 
         "CASH",
 
@@ -198,9 +234,9 @@ object PaymentSignals {
     )
 
     /**
-     * Meal benefit indicators.
+     * Meal benefit SIGNALS.
      */
-    val MEAL_CARD_INDICATORS = setOf(
+    val MEAL_CARD_SIGNALS = setOf(
 
         "MEAL",
 
@@ -209,8 +245,6 @@ object PaymentSignals {
         "FOOD",
 
         "FOOD CARD",
-
-        "BENEFIT",
 
         "VOUCHER",
 
@@ -222,13 +256,19 @@ object PaymentSignals {
 
         "EDENRED",
 
-        "SWILE"
+        "SWILE",
+        "TICKET RESTAURANT",
+        "TICKET MEAL",
+        "TICKET FOOD",
+        "TICKET COMPLIMENTS",
+        "FOODPLUS",
+        "FOOD PLUS"
     )
 
     /**
-     * Cheque related indicators.
+     * Cheque related SIGNALS.
      */
-    val CHEQUE_INDICATORS = setOf(
+    val CHEQUE_SIGNALS = setOf(
         "CHEQUE",
         "CHQ",
         "CHQ NO",
@@ -239,14 +279,25 @@ object PaymentSignals {
         "CTS"
     )
 
+    val REPAYMENT_SIGNALS = setOf(
+        "EMI",
+        "INSTALLMENT",
+        "INSTALMENT",
+        "REPAYMENT"
+    )
+
     val ALL = setOf(
-        CARD_INDICATORS,
-        UPI_INDICATORS,
-        BANK_TRANSFER_INDICATORS,
-        AUTO_DEBIT_INDICATORS,
-        WALLET_INDICATORS,
-        CASH_INDICATORS,
-        MEAL_CARD_INDICATORS,
-        CHEQUE_INDICATORS
+        BANK_SIGNALS,
+        ACCOUNT_SIGNALS,
+        CARD_SIGNALS,
+        SHORT_CARD_SIGNALS,
+        UPI_SIGNALS,
+        BANK_TRANSFER_SIGNALS,
+        AUTO_DEBIT_SIGNALS,
+        WALLET_SIGNALS,
+        CASH_SIGNALS,
+        MEAL_CARD_SIGNALS,
+        CHEQUE_SIGNALS,
+        REPAYMENT_SIGNALS
     ).flatten().toSet()
 }

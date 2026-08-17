@@ -7,75 +7,81 @@ import com.example.smartexpensecalendar.new_sms_engine.common.matcher.BankingEnt
 import com.example.smartexpensecalendar.new_sms_engine.common.matcher.BankingEntityMatcher.containsCurrency
 import com.example.smartexpensecalendar.new_sms_engine.common.matcher.BankingEntityMatcher.containsDate
 import com.example.smartexpensecalendar.new_sms_engine.common.matcher.BankingEntityMatcher.containsFailure
-import com.example.smartexpensecalendar.new_sms_engine.common.regex.UpiPrefixRegex.UPI_PREFIX_REGEX
+import com.example.smartexpensecalendar.new_sms_engine.common.regex.UpiRegex.UPI_PREFIX_REGEX
+import com.example.smartexpensecalendar.new_sms_engine.common.regex.EdgePunctuationRegex.EDGE_PUNCTUATION_REGEX
 import com.example.smartexpensecalendar.new_sms_engine.extraction.merchant.MerchantConstants.MAX_MERCHANT_TOKENS
 
 object MerchantTextCleaner {
-
     fun clean(
         text: String
     ): String {
 
-        val merchant = text
+        return text
             .trim()
             .split(Regex("""\s+"""))
-            .map(::normalizeToken)
-            .filter(::isMerchantCandidate)
+            .map(::sanitizeToken)
+            .filter(::isValidMerchantToken)
             .take(MAX_MERCHANT_TOKENS)
             .joinToString(" ")
-        return merchant
     }
 
-    private fun normalizeToken(
+    /**
+     * Performs only lexical cleanup.
+     *
+     * Does NOT perform merchant normalization.
+     */
+    private fun sanitizeToken(
         token: String
     ): String {
 
         return token
             .replace(UPI_PREFIX_REGEX, "")
+            .replace(EDGE_PUNCTUATION_REGEX, "")
             .trim()
     }
 
-    fun isMerchantCandidate(
+    /**
+     * Returns true if the token can be part of a merchant name.
+     */
+    private fun isValidMerchantToken(
         token: String
     ): Boolean {
 
-        val text = token.trim()
-
-        if (text.isBlank()) {
+        if (token.isBlank()) {
             return false
         }
 
-        if (text.startsWith("http", ignoreCase = true) ||
-            text.startsWith("www.", ignoreCase = true)
+        if (token.startsWith("http", ignoreCase = true) ||
+            token.startsWith("www.", ignoreCase = true)
         ) {
             return false
         }
 
-        if (containsAmount(text)) {
+        if (containsAmount(token)) {
             return false
         }
 
-        if (containsDate(text)) {
+        if (containsDate(token)) {
             return false
         }
 
-        if (containsCurrency(text)) {
+        if (containsCurrency(token)) {
             return false
         }
 
-        if (containsAccount(text)) {
+        if (containsAccount(token)) {
             return false
         }
 
-        if (containsBalance(text)) {
+        if (containsBalance(token)) {
             return false
         }
 
-        if (containsFailure(text)) {
+        if (containsFailure(token)) {
             return false
         }
 
-        if (containsAction(text)) {
+        if (containsAction(token)) {
             return false
         }
 

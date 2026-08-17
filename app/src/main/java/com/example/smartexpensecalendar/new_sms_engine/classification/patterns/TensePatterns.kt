@@ -2,9 +2,11 @@ package com.example.smartexpensecalendar.new_sms_engine.classification.patterns
 
 import com.example.smartexpensecalendar.new_sms_engine.classification.model.EvidenceStrength
 import com.example.smartexpensecalendar.new_sms_engine.classification.model.EvidenceType
+import com.example.smartexpensecalendar.new_sms_engine.classification.patterns.model.AnyWordToken
 import com.example.smartexpensecalendar.new_sms_engine.classification.patterns.model.CategoryToken
 import com.example.smartexpensecalendar.new_sms_engine.classification.patterns.model.OptionalToken
 import com.example.smartexpensecalendar.new_sms_engine.classification.patterns.model.Pattern
+import com.example.smartexpensecalendar.new_sms_engine.common.patterns.model.LiteralToken
 import com.example.smartexpensecalendar.new_sms_engine.common.signals.ActionSignals
 import com.example.smartexpensecalendar.new_sms_engine.common.signals.language.AuxiliarySignals
 import com.example.smartexpensecalendar.new_sms_engine.common.tokenizer.TokenCategory
@@ -84,6 +86,55 @@ object TensePatterns {
         )
     )
 
+    val FUTURE_AUTO_DEBIT = Pattern(
+        name = "FUTURE_AUTO_DEBIT",
+        evidenceType = EvidenceType.FUTURE_ACTION,
+        strength = EvidenceStrength.VERY_HIGH,
+        maxGap = 0,
+        tokens = listOf(
+            CategoryToken(TokenCategory.AUXILIARY_FUTURE),
+            CategoryToken(TokenCategory.AUXILIARY_PARTICIPLE),
+            LiteralToken(setOf("AUTO-DEBITED"))
+        )
+    )
+
+    val CHARGE_REVISION = Pattern(
+        name = "CHARGE_REVISION",
+        evidenceType = EvidenceType.INFORMATION_CONTEXT,
+        strength = EvidenceStrength.VERY_HIGH,
+        maxGap = 4,
+        tokens = listOf(
+            CategoryToken(TokenCategory.LIABILITY_OBJECT),
+            CategoryToken(TokenCategory.REVISION_ACTION)
+        )
+    )
+
+    val FUTURE_REVISION = Pattern(
+        name = "FUTURE_REVISION",
+        evidenceType = EvidenceType.INFORMATION_CONTEXT,
+        strength = EvidenceStrength.VERY_HIGH,
+        maxGap = 0,
+        tokens = listOf(
+            CategoryToken(TokenCategory.AUXILIARY_FUTURE),
+            CategoryToken(TokenCategory.AUXILIARY_PARTICIPLE),
+            CategoryToken(TokenCategory.REVISION_ACTION)
+        )
+    )
+
+    val GOING_TO_REVISION = Pattern(
+        name = "GOING_TO_REVISION",
+        evidenceType = EvidenceType.INFORMATION_CONTEXT,
+        strength = EvidenceStrength.VERY_HIGH,
+        maxGap = 0,
+        tokens = listOf(
+            CategoryToken(TokenCategory.AUXILIARY_PRESENT),
+            AnyWordToken,
+            CategoryToken(TokenCategory.PREPOSITION_DESTINATION),
+            CategoryToken(TokenCategory.AUXILIARY_PARTICIPLE),
+            CategoryToken(TokenCategory.REVISION_ACTION)
+        )
+    )
+
     /**
      * All tense patterns.
      */
@@ -91,6 +142,10 @@ object TensePatterns {
         COMPLETED_PERFECT,
         COMPLETED_PAST,
         COMPLETED_PRESENT,
-        FUTURE
+        FUTURE,
+        FUTURE_AUTO_DEBIT,
+        CHARGE_REVISION,
+        FUTURE_REVISION,
+        GOING_TO_REVISION
     )
 }

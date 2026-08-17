@@ -14,7 +14,7 @@ object DirectionSignals {
         ActionSignals.TRANSACTION_ACTION_SIGNALS
 
     val AUTO_DEBIT =
-        PaymentSignals.AUTO_DEBIT_INDICATORS
+        PaymentSignals.AUTO_DEBIT_SIGNALS
 
     // Credit Signals
 

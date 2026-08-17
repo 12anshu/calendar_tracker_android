@@ -82,13 +82,71 @@ object ActionPatterns {
         )
     )
 
+    val NEGATED_ACTION = Pattern(
+        name = "NEGATED_ACTION",
+        evidenceType = EvidenceType.NEGATED_ACTION,
+        strength = EvidenceStrength.VERY_HIGH,
+        maxGap = 2,
+        tokens = listOf(
+            CategoryToken(TokenCategory.NEGATION),
+            CategoryToken(FINANCIAL_MOVEMENT_ACTIONS)
+        )
+    )
+
+    val CONDITIONAL_ACTION = Pattern(
+        name = "CONDITIONAL_ACTION",
+        evidenceType = EvidenceType.CONDITIONAL_ACTION,
+        strength = EvidenceStrength.VERY_HIGH,
+        maxGap = 1,
+        tokens = listOf(
+            CategoryToken(TokenCategory.CONDITIONAL),
+            CategoryToken(FINANCIAL_MOVEMENT_ACTIONS)
+        )
+    )
+
+    val NEGATED_SUCCESS_STATUS = Pattern(
+        name = "NEGATED_SUCCESS_STATUS",
+        evidenceType = EvidenceType.NEGATED_ACTION,
+        strength = EvidenceStrength.VERY_HIGH,
+        maxGap = 2,
+        tokens = listOf(
+            CategoryToken(TokenCategory.NEGATION),
+            CategoryToken(TokenCategory.SUCCESS_STATUS)
+        )
+    )
+
+    /**
+     * Authentication explicitly absent/not required.
+     *
+     * Examples:
+     * - "without OTP"
+     * - "without PIN"
+     * - "without OTP/PIN"
+     * - "without entering OTP"
+     */
+    val NEGATED_AUTHENTICATION = Pattern(
+        name = "NEGATED_AUTHENTICATION",
+        evidenceType = EvidenceType.NEGATED_AUTHENTICATION_CONTEXT,
+        strength = EvidenceStrength.VERY_HIGH,
+        maxGap = 1,
+        tokens = listOf(
+            CategoryToken(TokenCategory.NEGATION),
+            CategoryToken(TokenCategory.AUTHENTICATION)
+        )
+    )
+
     val ALL = listOf(
         ACTION_AMOUNT,
         AMOUNT_ACTION,
         ACTION_AT,
         ACTION_TO,
         ACTION_VIA,
-        ACTION_FROM
+        ACTION_FROM,
+
+        NEGATED_ACTION,
+        CONDITIONAL_ACTION,
+        NEGATED_SUCCESS_STATUS,
+        NEGATED_AUTHENTICATION
     )
 
 }

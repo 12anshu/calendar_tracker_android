@@ -3,6 +3,30 @@ package com.example.smartexpensecalendar.new_sms_engine.common.merchant.model
 enum class MerchantId {
 
     // ---------------------------------------------------------
+    // Payments
+    // ---------------------------------------------------------
+
+    PAYTM,
+    PHONEPE,
+    GPAY,
+    AMAZON_PAY,
+    BHARATPE,
+    CRED,
+    MOBIKWIK,
+    FREECHARGE,
+    PAYZAPP,
+    BHIM,
+    NAVI,
+    JUPITER,
+    FI,
+    SLICE,
+    KIWI,
+    SUPER_MONEY,
+    OMNIPAY,
+    FAM_PAY,
+
+
+    // ---------------------------------------------------------
     // Quick Commerce
     // ---------------------------------------------------------
 

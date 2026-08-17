@@ -70,7 +70,7 @@ class HomeViewModel @Inject constructor(
                 logs = financial
             )
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
 
     private val skippedMonths = mutableSetOf<String>()
 

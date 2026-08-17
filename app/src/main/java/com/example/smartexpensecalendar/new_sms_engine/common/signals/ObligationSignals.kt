@@ -9,12 +9,11 @@ object ObligationSignals {
 
         "BILL",
         "EMI",
+        "EMIS",
         "INSTALLMENT",
         "INSTALMENT",
 
         "PREMIUM",
-
-        "PAYMENT",
 
         "DUES",
 
@@ -57,8 +56,6 @@ object ObligationSignals {
         "RECHARGE",
 
         "RENEW",
-
-        "REQUESTED",
 
         "SETTLE"
     )

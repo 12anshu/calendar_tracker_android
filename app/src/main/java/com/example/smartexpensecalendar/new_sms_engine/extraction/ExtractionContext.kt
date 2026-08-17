@@ -1,5 +1,6 @@
 package com.example.smartexpensecalendar.new_sms_engine.extraction
 
+import com.example.smartexpensecalendar.domain.model.FinancialEventType
 import com.example.smartexpensecalendar.new_sms_engine.classification.model.MessageType
 import com.example.smartexpensecalendar.new_sms_engine.common.merchant.model.MerchantDefinition
 import com.example.smartexpensecalendar.new_sms_engine.common.segmentation.MessageSegment
@@ -33,6 +34,8 @@ data class ExtractionContext(
     val tokens: List<Token>,
 
     val paymentMode: PaymentMode = PaymentMode.UNKNOWN,
+
+    val financialEventType: FinancialEventType = FinancialEventType.UNKNOWN,
 
     /**
      * Message classification result.

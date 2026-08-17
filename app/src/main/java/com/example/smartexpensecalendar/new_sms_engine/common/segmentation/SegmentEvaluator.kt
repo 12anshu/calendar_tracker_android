@@ -15,13 +15,11 @@ import com.example.smartexpensecalendar.new_sms_engine.extraction.merchant.Merch
 import com.example.smartexpensecalendar.new_sms_engine.common.enums.merchant.MerchantStopWords
 import com.example.smartexpensecalendar.new_sms_engine.common.matcher.BankingEntityMatcher.containsMobileNumber
 import com.example.smartexpensecalendar.new_sms_engine.common.signals.BalanceSignals
-import com.example.smartexpensecalendar.new_sms_engine.common.signals.BankingSignals
 import com.example.smartexpensecalendar.new_sms_engine.common.signals.BillingSignals
 import com.example.smartexpensecalendar.new_sms_engine.common.signals.CommonSignals
 import com.example.smartexpensecalendar.new_sms_engine.common.signals.FinancialSignals
 import com.example.smartexpensecalendar.new_sms_engine.common.signals.InformationSignals
 import com.example.smartexpensecalendar.new_sms_engine.common.signals.PaymentSignals
-import com.example.smartexpensecalendar.new_sms_engine.common.signals.RelationshipSignals
 import com.example.smartexpensecalendar.new_sms_engine.extraction.merchant.MerchantTextCleaner
 import com.example.smartexpensecalendar.new_sms_engine.extraction.merchant.models.MerchantCandidate
 

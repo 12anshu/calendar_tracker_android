@@ -20,7 +20,7 @@ object MessageTypeKnowledge {
 
         addAll(ActionSignals.DEBIT_ACTION_SIGNALS)
         addAll(ActionSignals.CREDIT_ACTION_SIGNALS)
-        addAll(PaymentSignals.BANK_TRANSFER_INDICATORS)
+        addAll(PaymentSignals.BANK_TRANSFER_SIGNALS)
         addAll(ActionSignals.TRANSACTION_ACTION_SIGNALS)
         addAll(ActionSignals.REWARD_ACTION_SIGNALS)
         addAll(ActionSignals.REFUND_ACTION_SIGNALS)

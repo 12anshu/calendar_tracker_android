@@ -20,7 +20,8 @@ enum class TokenCategory {
 
     TEMPORAL_RELATIVE,
     TEMPORAL_SCHEDULING,
-
+    NEGATION,
+    CONDITIONAL,
     PREPOSITION_SOURCE,
     PREPOSITION_DESTINATION,
     PREPOSITION_LOCATION,
@@ -40,6 +41,17 @@ enum class TokenCategory {
     REWARD_ACTION,
 
     // ------------------------------------------------------------------------
+    // Financial Lifecycle Actions
+    // ------------------------------------------------------------------------
+
+    EMI_CONVERSION_REQUEST,
+    EMI_CONVERSION_COMPLETED,
+    EMI_CONVERSION_NOUN,
+
+    DISBURSEMENT_TERM,
+    DISBURSEMENT_STATE,
+
+    // ------------------------------------------------------------------------
     // Financial Status
     // ------------------------------------------------------------------------
 
@@ -52,7 +64,12 @@ enum class TokenCategory {
     // ------------------------------------------------------------------------
 
     PAYMENT_MODE,
+
+    MANDATE,
+    AUTOPAY,
     BALANCE,
+    ACCOUNT_BALANCE,
+    MAB_REQUIREMENT,
     CURRENCY,
 
     BILLING_OBJECT,
@@ -73,13 +90,21 @@ enum class TokenCategory {
     LIABILITY_STATE,
     REQUEST_ACTION,
 
+    REVISION_ACTION,
+
     // ------------------------------------------------------------------------
-    // Obligation
+    // Information
     // ------------------------------------------------------------------------
     STATEMENT,
     ACCOUNT_UPDATE,
     SECURITY,
     REWARD,
+    RETIREMENT,
+    INVESTMENT,
+    TAX,
+    DOCUMENT,
+    LOAN_LIFECYCLE,
+    PROCESS_STATE,
     // ------------------------------------------------------------------------
     // Generic
     // ------------------------------------------------------------------------

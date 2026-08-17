@@ -48,3 +48,12 @@ internal fun travel(
     category = CategoryId.TRAVEL,
     keywords = keywords.toList()
 )
+
+internal fun upi(
+    id: MerchantId,
+    vararg keywords: String
+) = MerchantDefinition(
+    id = id,
+    category = CategoryId.UPI,
+    keywords = keywords.toList()
+)

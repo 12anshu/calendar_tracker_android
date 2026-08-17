@@ -14,9 +14,15 @@ enum class EvidenceType {
 
     COMPLETED_ACTION,
 
+    NEGATED_ACTION,
+
+    CONDITIONAL_ACTION,
+
     FUTURE_ACTION,
 
     ONGOING_ACTION,
+
+    FINANCIAL_COMPLETION,
 
     // ------------------------------------------------------------------------
     // Message Context
@@ -27,6 +33,8 @@ enum class EvidenceType {
     OBLIGATION_CONTEXT,
 
     INFORMATION_CONTEXT,
+
+    MAB_ADVISORY_CONTEXT,
 
     // ------------------------------------------------------------------------
     // Structural Relationships
@@ -56,6 +64,7 @@ enum class EvidenceType {
 
     PAYMENT_MODE_PRESENT,
 
+    ACCOUNT_MOVEMENT,
     // ------------------------------------------------------------------------
     // Status Indicators
     // ------------------------------------------------------------------------
@@ -66,11 +75,15 @@ enum class EvidenceType {
 
     PENDING_STATUS,
 
+    PRE_DISBURSAL_WORKFLOW,
+
     // ------------------------------------------------------------------------
     // Security & Verification
     // ------------------------------------------------------------------------
 
     AUTHENTICATION_CONTEXT,
     AUTHORIZATION_CONTEXT,
+
+    NEGATED_AUTHENTICATION_CONTEXT,
 
 }

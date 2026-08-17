@@ -4,6 +4,12 @@ enum class PaymentMode {
 
     UPI,
 
+    CREDIT_CARD,
+
+    DEBIT_CARD,
+
+    ATM,
+
     CARD,
 
     BANK_TRANSFER,

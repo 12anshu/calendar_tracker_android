@@ -17,7 +17,7 @@ object AmountSignals {
 
         addAll(ActionSignals.TRANSACTION_ACTION_SIGNALS)
 
-        addAll(PaymentSignals.BANK_TRANSFER_INDICATORS)
+        addAll(PaymentSignals.BANK_TRANSFER_SIGNALS)
     }
 
     val REPORTING_SIGNALS = buildSet {

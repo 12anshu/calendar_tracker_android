@@ -35,6 +35,12 @@ object MessageTypeClassifier {
         evidence: Set<EvidenceType>
     ): MessageType {
 
+        val hasAuthenticationContext =
+            EvidenceType.AUTHENTICATION_CONTEXT in evidence
+
+        val hasNegatedAuthenticationContext =
+            EvidenceType.NEGATED_AUTHENTICATION_CONTEXT in evidence
+
         return when {
 
             // Explicit future action
@@ -47,15 +53,26 @@ object MessageTypeClassifier {
 
                 MessageType.OBLIGATION
 
+            // MAB advisory is informational unless the message
+            // also contains an independently completed financial movement.
+            EvidenceType.MAB_ADVISORY_CONTEXT in evidence &&
+                    EvidenceType.COMPLETED_ACTION !in evidence ->
+
+                MessageType.INFORMATION
+
             // Informational financial message
             EvidenceType.INFORMATION_CONTEXT in evidence ->
 
                 MessageType.INFORMATION
 
             // Completed financial activity
-            EvidenceType.COMPLETED_ACTION in evidence &&
+            (EvidenceType.ACCOUNT_MOVEMENT in evidence)
+                    &&
             EvidenceType.FAILURE_STATUS !in evidence &&
-            EvidenceType.AUTHENTICATION_CONTEXT !in evidence &&
+                    (
+                            !hasAuthenticationContext || hasNegatedAuthenticationContext
+                    ) &&
+                    EvidenceType.PENDING_STATUS !in evidence &&
             EvidenceType.AUTHORIZATION_CONTEXT !in evidence ->
 
                 MessageType.TRANSACTION

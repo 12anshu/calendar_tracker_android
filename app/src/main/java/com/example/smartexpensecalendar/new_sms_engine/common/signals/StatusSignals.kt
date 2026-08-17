@@ -42,7 +42,11 @@ object StatusSignals {
         "UNSUCCESSFUL",
         "CANCELLED",
         "EXPIRED",
-        "REVERSED"
+        "REVERSED",
+        "REVOKED",
+        "RETURNED",
+        "BOUNCED",
+        "UNPAID",
     )
 
     /**

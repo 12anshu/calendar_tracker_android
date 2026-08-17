@@ -5,6 +5,7 @@ enum class CategoryId {
 
     // Expense
 
+    UPI,
     FOOD,
     GROCERIES,
     SHOPPING,
